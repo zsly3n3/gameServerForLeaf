@@ -33,7 +33,9 @@ func handleUserLogin(args []interface{}) {
     //fmt.Println(m.MsgContent.Platform)
     
     p_str:=thirdParty.GetOpenID("微信",m.MsgContent.LoginName)
-    m.MsgContent.LoginName = *p_str
+    if p_str!=nil{
+       m.MsgContent.LoginName = *p_str  
+    }
     uid := db.Module.UserLogin(m)
 
     // fmt.Println("handleUserLogin:")
