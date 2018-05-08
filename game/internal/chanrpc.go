@@ -22,6 +22,9 @@ func matchingPlayers(args []interface{}) {
 			m_pool.Pool=append(m_pool.Pool,p_id)
 			isAppend = true
 		}
+		if m_pool.CleanTime >= 5||len(m_pool.Pool)==Pool_Capacity{
+			//create room
+		}
 		m_pool.Mutex.Unlock()
 		if isAppend{
 		   break

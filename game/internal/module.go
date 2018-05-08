@@ -8,7 +8,7 @@ import (
 )
 
 const Pool_Num int =10
-const Pool_Capacity int =30
+const Pool_Capacity int =20
 
 var (
 	skeleton = base.NewSkeleton()

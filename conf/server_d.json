@@ -4,8 +4,8 @@
 	"TCPAddr": "127.0.0.1:3563",
 	"WSAddr": "192.168.6.103:3653",
 	"MaxConnNum": 20000,
-	"DB_IP":"192.168.6.150:3306",//14.29.123.151
+	"DB_IP":"192.168.6.150:3306",
 	"DB_Name":"testbase",
-	"DB_UserName":"root",//zsly
-	"DB_Pwd":"1234s6"//Zsly2018!
+	"DB_UserName":"root",
+	"DB_Pwd":"1234s6"
 }

@@ -50,6 +50,7 @@ type Hall struct {
 type MatchingPool struct {
 	Mutex *sync.RWMutex //读写互斥量
 	Pool  []int //存放玩家id
+	CleanTime int //平均5秒清空一次
 }
 
 
