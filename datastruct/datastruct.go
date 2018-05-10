@@ -22,15 +22,24 @@ const (
 	Playing
 )
 
+type AgentUserData struct {
+	 ConnUUID string //每条连接的uuid
+	 Uid int //对应user表中的Id
+}
+
 type Player struct {
 	Mutex *sync.RWMutex
-	Id       int       
-	Avatar   string   
+	Id       int //对应user表中的Id    
+	Avatar   string 
 	NickName string
-	Agent    *gate.Agent
-	RoomId   string
-	MatchingPoolId  int//匹配池的id
-	LocationStatus  LocationStatus //当前位置状态
+	Agent    gate.Agent
+    GameData *PlayerGameData
+}
+
+type PlayerGameData struct{
+	RoomId   string //房间id
+	StartMatchingTime  time.Time //开始匹配的时间
+	// LocationStatus  LocationStatus //当前位置状态
 }
 
 type Room struct {
@@ -49,7 +58,7 @@ type Hall struct {
 /*匹配池*/
 type MatchingPool struct {
 	Mutex *sync.RWMutex //读写互斥量
-	Pool  []int //存放玩家id
+	Pool  []string //存放玩家uuid
 	CleanTime int //平均5秒清空一次
 }
 

@@ -5,10 +5,16 @@ import (
 	"github.com/name5566/leaf/module"
 	"server/base"
 	"sync"
+	"time"
 )
 
-const Pool_Num int =10
-const Pool_Capacity int =20
+const Pool_Num int =1
+const Pool_Capacity int =LeastPeople
+
+const MaxPeopleInRoom = 20 //每个房间最大人数
+const LeastPeople = 10 //满足有多少个人就开始游戏
+const MaxWaitTime time.Duration= 5.0*time.Second//玩家最大等待时间多少秒
+const times = time.Second * 1 //定时器多少时间执行一次
 
 var (
 	skeleton = base.NewSkeleton()
@@ -16,6 +22,7 @@ var (
 	hall  *datastruct.Hall
 	onlinePlayers  *datastruct.OnlinePlayers //在线玩家统计
 	matchingPools *[Pool_Num]*datastruct.MatchingPool
+	ticker *time.Ticker
 )
 
 type Module struct {
@@ -24,6 +31,8 @@ type Module struct {
 
 func (m *Module) OnInit() {
 	m.Skeleton = skeleton
+	ticker = nil
+	go selectTicker()
 	hall = createHall()
 	onlinePlayers=createOnlinePlayers()
 	matchingPools=createMatchingPools()
@@ -56,9 +65,11 @@ func createMatchingPools()*[Pool_Num]*datastruct.MatchingPool{
 func createMatchingPool()*datastruct.MatchingPool{
 	new_pool:= new(datastruct.MatchingPool)
 	new_pool.Mutex=new(sync.RWMutex)
-	new_pool.Pool=make([]int,0,Pool_Capacity)
+	new_pool.Pool=make([]string,0,Pool_Capacity)
 	return new_pool
 }
+
+
 
 
 

@@ -1,5 +1,6 @@
 package thirdParty
 import (
+	"server/msg"
 	"fmt"
 	"bytes"
 	"net/http"
@@ -16,12 +17,11 @@ type WX_OPENID struct {
 	OpenId string `json:"openid"`
 }
 
-func GetOpenID(platform string,code string) *string{
-	var p_str *string
-	p_str=nil
+func GetOpenID(platform string,code string) string{
+	str:=""
 	var buf bytes.Buffer
 	switch platform{
-	  case "微信":
+	  case msg.WX_Platform:
 		buf.WriteString("https://api.weixin.qq.com/sns/jscode2session?appid="+wx_appid)
 		buf.WriteString("&secret="+wx_appsecret)
 		buf.WriteString("&js_code="+code)
@@ -30,11 +30,11 @@ func GetOpenID(platform string,code string) *string{
 		p_body:=getOpenIDWithArgs(url)
 		wx_data := new(WX_OPENID)
 		if json_err := json.Unmarshal(*p_body, wx_data); json_err == nil {
-            p_str = &wx_data.OpenId
+            str = wx_data.OpenId
 		}
 	  default:
 	}
-	return p_str
+	return str
 }
 
 func getOpenIDWithArgs(url string) *[]byte{

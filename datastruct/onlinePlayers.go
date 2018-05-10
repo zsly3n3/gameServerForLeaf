@@ -4,10 +4,12 @@ import (
 	"sync"
 )
 
+const NULLKEY = ""
+
 /*只统计执行过匹配的在线玩家们*/
 type OnlinePlayers struct {
 	lock *sync.RWMutex //读写互斥量
-	bm   map[int]*Player //map[int]*Player 根据Id保存
+	bm   map[string]Player //map[int]*Player 根据Id保存
 }
 
 
@@ -16,40 +18,52 @@ type OnlinePlayers struct {
 func NewOnlinePlayers() *OnlinePlayers {
 	return &OnlinePlayers{
 		lock: new(sync.RWMutex),
-		bm:   make(map[int]*Player),
+		bm:   make(map[string]Player),
 	}
 }
 
 // Get from maps return the k's value
-func (m *OnlinePlayers) Get(k int) *Player {
+func (m *OnlinePlayers) Get(k string) Player {
 	m.lock.RLock()
 	defer m.lock.RUnlock()
 	if val, ok := m.bm[k]; ok {
 		return val
 	}
-	return nil
+	return Player{}
 }
 
-
-func (m *OnlinePlayers) GetWithAddr(addr string) (int,*Player) {
-	index:=-1
-	var pl *Player = nil
+// Get from maps return the k's value
+func (m *OnlinePlayers) Gets(keys []string) []Player {
+	players := make([]Player, 0)
 	m.lock.RLock()
-	for k, v := range m.bm {
-		str:=(*v.Agent).RemoteAddr().String()
-		if str == addr{
-			index = k
-			pl = v
-			break
+	defer m.lock.RUnlock()
+	for _,k := range keys{
+		if val, ok := m.bm[k]; ok {
+		   players = append(players,val)
 		}
 	}
-	m.lock.RUnlock()
-	return index,pl
+	return players
 }
+
+// func (m *OnlinePlayers) GetWithAddr(addr string) (string,*Player) {
+// 	key:=NULLKEY
+// 	var pl *Player = nil
+// 	m.lock.RLock()
+// 	for k, v := range m.bm {
+// 		str:=v.Agent.RemoteAddr().String()
+// 		if str == addr{
+// 			key = k
+// 			pl = v
+// 			break
+// 		}
+// 	}
+// 	m.lock.RUnlock()
+// 	return key,pl
+// }
 
 // Set Maps the given key and value. Returns false
 // if the key is already in the map and changes nothing.
-func (m *OnlinePlayers) Set(k int, v *Player) bool {
+func (m *OnlinePlayers) Set(k string, v Player) bool {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 	if val, ok := m.bm[k]; !ok {
@@ -63,19 +77,32 @@ func (m *OnlinePlayers) Set(k int, v *Player) bool {
 }
 
 // Check Returns true if k is exist in the map.
-func (m *OnlinePlayers) Check(k int) bool {
+func (m *OnlinePlayers) Check(k string) (Player,bool){
 	m.lock.RLock()
 	defer m.lock.RUnlock()
-	_, ok := m.bm[k]
-	return ok
+	v, ok := m.bm[k]
+	return v,ok
 }
 
+
 // Delete the given key and value.
-func (m *OnlinePlayers) Delete(k int) {
+func (m *OnlinePlayers) Delete(k string) {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 	delete(m.bm, k)
 }
+
+// Items returns all items in safemap.
+func (m *OnlinePlayers) Items() map[string]Player {
+	m.lock.RLock()
+	r := make(map[string]Player)
+	for k, v := range m.bm {
+		r[k] = v
+	}
+	m.lock.RUnlock()
+	return r
+}
+
 
 // func (m *OnlinePlayers) RemovePlayer(addr string) {
 // 	m.lock.RLock()
@@ -99,22 +126,9 @@ func (m *OnlinePlayers) Delete(k int) {
 
 
 
-/*
-// Items returns all items in OnlinePlayers.
-func (m *OnlinePlayers) Items() map[interface{}]interface{} {
-	m.lock.RLock()
-	defer m.lock.RUnlock()
-	r := make(map[interface{}]interface{})
-	for k, v := range m.bm {
-		r[k] = v
-	}
-	return r
-}
-
 // Count returns the number of items within the map.
 func (m *OnlinePlayers) Count() int {
 	m.lock.RLock()
 	defer m.lock.RUnlock()
 	return len(m.bm)
 }
-*/
