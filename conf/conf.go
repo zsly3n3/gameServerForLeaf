@@ -13,7 +13,7 @@ var (
 	
 	// gate conf
 	PendingWriteNum        = 2000
-	MaxMsgLen       uint32 = 4096
+	MaxMsgLen       uint32 = 4096*1024
 	HTTPTimeout            = 10 * time.Second
 	LenMsgLen              = 2
 	LittleEndian           = false

@@ -23,11 +23,8 @@ func removeOnlinePlayer(args []interface{}){
 	u_data:=a.UserData()
 	if u_data != nil{
 		au_data:=u_data.(datastruct.AgentUserData)
-		removePlayer(au_data.ConnUUID)
+		connUUID:=au_data.ConnUUID
+		removePlayer(connUUID)
+		removeFromMatchActionPool(connUUID)
 	}
-}
-
-func removeFromMatchingPool(){
-	 
-	//slice.Remove
 }

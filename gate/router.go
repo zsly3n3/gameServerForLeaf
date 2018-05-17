@@ -12,5 +12,7 @@ func init() {
     //msg.Processor.SetRouter(&msg.Test{}, game.ChanRPC)
 	//路由分发数据到login
     msg.Processor.SetRouter(&msg.CS_UserLogin{}, login.ChanRPC)
-    msg.Processor.SetRouter(&msg.CS_PlayerMatching{}, game.ChanRPC) 
+    msg.Processor.SetRouter(&msg.CS_PlayerMatching{}, game.ChanRPC)
+    msg.Processor.SetRouter(&msg.CS_PlayerCancelMatching{}, game.ChanRPC)
+    msg.Processor.SetRouter(&msg.CS_PlayerJoinRoom{}, game.ChanRPC)
 }

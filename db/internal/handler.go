@@ -13,11 +13,10 @@ func init() {
     // 向当前模块（game 模块）注册 Test 消息的消息处理函数 handleTest  
     //handler(&msg.Test{}, handleTest)
 
-}  
+}
 // 异步处理  
 func handler(m interface{}, h interface{}) {  
     skeleton.RegisterChanRPC(reflect.TypeOf(m), h)
-    
 }
 
 func handleUserLogin(arg interface{}) int {

@@ -15,8 +15,15 @@ func init() {
 	Processor.Register(&SC_UserLogin{})
 	Processor.Register(&CS_PlayerMatching{})
 	Processor.Register(&SC_PlayerMatching{})
-	Processor.Register(&SC_PlayerOnline{})
-	Processor.Register(&SC_PlayerRoomData{})
+	Processor.Register(&SC_PlayerAlreadyMatching{})
+	Processor.Register(&SC_PlayerMatchingEnd{})
+	Processor.Register(&CS_PlayerCancelMatching{})
+
+	Processor.Register(&CS_PlayerJoinRoom{})
+	Processor.Register(&SC_PlayerReMatch{})
+
+	Processor.Register(&SC_InitRoomData{})
+	Processor.Register(&SC_RoomFrameData{})
 }
 
 /*客户端发送来完成注册*/
@@ -48,6 +55,10 @@ type CS_PlayerMatching struct {
 	MsgHeader json.MsgHeader
 }
 
+/*玩家取消匹配*/
+type CS_PlayerCancelMatching struct {
+	MsgHeader json.MsgHeader
+}
 
 /*发送正在匹配中*/
 type SC_PlayerMatching struct {
@@ -58,8 +69,10 @@ type SC_PlayerMatchingContent struct {
 	IsMatching bool
 }
 
-/*已在线(在匹配或在房间)*/
-type SC_PlayerOnline struct {
+
+
+/*已在匹配中*/
+type SC_PlayerAlreadyMatching struct {
 	MsgHeader json.MsgHeader
 }
 
@@ -82,19 +95,132 @@ type CS_PlayerJoinRoomContent struct {
 	RoomID string
 }
 
-/*发送给客户端当前帧数据*/
-type SC_GetRoomFrameData struct {
+/*玩家加入房间无效*/
+type SC_PlayerJoinInvalid struct {
 	MsgHeader json.MsgHeader
-	MsgContent SC_GetRoomFrameDataContent
-}
-type SC_GetRoomFrameDataContent struct {
-	 //暂定
 }
 
-//RoomID string
+/*重新开始匹配*/
+type SC_PlayerReMatch struct {
+	MsgHeader json.MsgHeader
+}
 
 
 
+//能量点类型
+const (
+	TypeA = 1 +iota
+    TypeB 
+    TypeC 
+    TypeD
+)
+
+type Point struct {
+	Type int
+    X int
+    Y int
+}
+
+type Quadrant struct {
+    X_Min int
+    X_Max int
+    Y_Min int
+    Y_Max int
+}
+
+
+/*发送给客户端房间初始化数据*/
+type SC_InitRoomData struct {
+	MsgHeader json.MsgHeader
+	MsgContent SC_InitRoomDataContent
+}
+
+type SC_InitRoomDataContent struct {
+	 MapHeight int//3000
+	 MapWidth int//4000
+	 CurrentFrameIndex int //游戏进行到当前多少帧,从0开始
+	 Interval int //毫秒单位 比如50,代表50毫秒	 
+}
+
+
+
+
+
+
+
+
+
+/*发送给客户端当前帧数据*/
+type SC_RoomFrameData struct {
+	MsgHeader json.MsgHeader
+	MsgContent *SC_RoomFrameDataContent
+}
+
+type SC_RoomFrameDataContent struct {
+	 FramesData []FrameData
+}
+
+type FrameData struct {
+	FrameIndex int
+	PlayerFrameData interface{}
+	CreateEnergyPoints []Point
+}
+
+
+// [
+// 	"FrameIndex":1,"FrameData":{"playersFrameData":null,"CreateEnergyPoints":[]}
+// ]
+// [
+// 	"FrameIndex":2,"FrameData":{"playersFrameData":null,"CreateEnergyPoints":[]}
+// ]
+
+
+func GetMatchingEndMsg(r_id string) *SC_PlayerMatchingEnd{
+	var msgHeader json.MsgHeader
+    msgHeader.MsgName = "SC_PlayerMatchingEnd"
+
+    var msgContent SC_PlayerMatchingEndContent
+    msgContent.RoomID =r_id
+    
+    return &SC_PlayerMatchingEnd{
+		MsgHeader:msgHeader,
+		MsgContent:msgContent,
+	}
+}
+
+func GetReMatchMsg() *SC_PlayerReMatch{
+	var msgHeader json.MsgHeader
+    msgHeader.MsgName = "SC_PlayerReMatch"
+    return &SC_PlayerReMatch{
+		MsgHeader:msgHeader,
+	}
+}
+
+func GetJoinInvalidMsg() *SC_PlayerJoinInvalid{
+	var msgHeader json.MsgHeader
+    msgHeader.MsgName = "SC_PlayerJoinInvalid"
+    return &SC_PlayerJoinInvalid{
+		MsgHeader:msgHeader,
+	}
+}
+
+func GetInitRoomDataMsg(content SC_InitRoomDataContent) *SC_InitRoomData{
+	var msgHeader json.MsgHeader
+    msgHeader.MsgName = "SC_InitRoomData"
+    return &SC_InitRoomData{
+		MsgHeader:msgHeader,
+		MsgContent:content,
+	}
+}
+
+func GetRoomFrameDataMsg(content *SC_RoomFrameDataContent) *SC_RoomFrameData{
+	var msgHeader json.MsgHeader
+    msgHeader.MsgName = "SC_RoomFrameData"
+    return &SC_RoomFrameData{
+		MsgHeader:msgHeader,
+		MsgContent:content,
+	}
+}
 
 
 

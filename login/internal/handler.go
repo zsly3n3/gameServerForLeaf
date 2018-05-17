@@ -19,6 +19,7 @@ func handleMsg(m interface{}, h interface{}) {
 func init() {
     // 向当前模块（login 模块）注册 UserLogin 消息的消息处理函数 handleUserLogin  
     handleMsg(&msg.CS_UserLogin{}, handleUserLogin)
+   
 }
 
 // 消息处理  
@@ -36,14 +37,10 @@ func handleUserLogin(args []interface{}) {
     }
     
     uid := db.Module.UserLogin(m)
-    
-    // fmt.Println("handleUserLogin:")
-    // fmt.Println(*m.MsgContent)
-    // fmt.Println(*m.MsgHeader)
+
 	//log.Debug("RemoteAddr %v", a.RemoteAddr().String())//客户端地址
 	// log.Debug("LocalAddr %v", a.LocalAddr().String())//服务器本机地址
-	    
-  
+
     var msgHeader json.MsgHeader
     msgHeader.MsgName = "SC_UserLogin"
 
@@ -52,12 +49,15 @@ func handleUserLogin(args []interface{}) {
    
     
    if uid > 0{
-     tools.ReSetAgentUserData(a,uid)
+      tools.ReSetAgentUserData(a,uid)
    }
-
+   
    a.WriteMsg(&msg.SC_UserLogin{
         MsgHeader:msgHeader,
         MsgContent:msgContent,
    })
     
-} 
+}
+
+
+
