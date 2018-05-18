@@ -23,6 +23,7 @@ var (
 	onlinePlayers  *datastruct.OnlinePlayers //在线玩家统计
 	matchingPools [Pool_Num]*datastruct.MatchingPool
 	ticker *time.Ticker
+	isExistTicker bool
 	rooms *Rooms
 	matchActionPool *datastruct.MatchActionPool//匹配动作池，保存匹配动作
 )
@@ -37,12 +38,10 @@ func (m *Module) OnInit() {
 	onlinePlayers=createOnlinePlayers()
 	matchingPools=createMatchingPools()
 	matchActionPool=createMatchActionPool()
-	ticker = nil
-	go selectTicker()
+	isExistTicker = false
 }
 
 func (m *Module) OnDestroy() {
-
 }
 
 func (m *Module)RemoveFromMatchActionPool(connUUID string){

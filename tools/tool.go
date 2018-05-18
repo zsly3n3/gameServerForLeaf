@@ -33,32 +33,31 @@ func GetRandomPoint(quad msg.Quadrant,num int,maxRangeType int)[]msg.Point{
      return slice_point
 }
 
-func CreateQuadrant(length int,width int,index int) msg.Quadrant{
+func CreateQuadrant(width int,height int,index int) msg.Quadrant{
     var min_x int
     var max_x int
     var min_y int
     var max_y int
-
     switch index{
     case 1:
         min_x =0
-        max_x =length/2.0
+        max_x =width/2.0
         min_y =0
-        max_y =width/2.0 
+        max_y =height/2.0
     case 2:
-        min_x =-length/2.0 
+        min_x =-width/2.0 
         max_x =0
         min_y =0
-        max_y =width/2.0 
+        max_y =height/2.0 
     case 3:
-        min_x =-length/2.0 
+        min_x =-width/2.0 
         max_x =0
-        min_y =-width/2.0
+        min_y =-height/2.0
         max_y =0
     case 4:
         min_x =0
-        max_x =length/2.0 
-        min_y =-width/2.0
+        max_x =width/2.0 
+        min_y =-height/2.0
         max_y =0
     }
    

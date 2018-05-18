@@ -1,5 +1,6 @@
 package internal
 import (
+	//"fmt"
 	"server/db"
     "reflect"  
     "server/msg"
@@ -36,19 +37,24 @@ func handlePlayerJoinRoom(args []interface{}){
         if player.GameData.EnterType == datastruct.FreeRoom&&player.GameData.RoomId==r_id{
            room:=rooms.Get(r_id)
            room.Mutex.Lock()
-           defer room.Mutex.Unlock()
-           if room.IsOn{
-              room.Join(&player)
+           isOn:=room.IsOn
+           if isOn{
+              room.Join(connUUID,a)
               log.Debug("通过遍历空闲房间进入")
+           }
+           room.Mutex.Unlock()
+           if isOn{
+              removeFromMatchActionPool(connUUID)
            }else{
-               go handleRoomOff(a,connUUID)
+              go handleRoomOff(a,connUUID)
            }
         }else if player.GameData.EnterType == datastruct.FromMatchingPool{
             room:=rooms.Get(r_id)
-            for _,v:=range room.AllowList{
+            for _,v:=range room.unlockedData.AllowList{
                 if v == connUUID{
                     log.Debug("通过匹配池进入")
-                    room.Join(&player)
+                    removeFromMatchActionPool(connUUID)
+                    room.Join(connUUID,a)
                     break
                 }
             }
@@ -133,7 +139,6 @@ func handlePlayerMatching(args []interface{}) {
 
 func matchingPlayers(p_uuid string){
     //willEnterRoom 是否将要加入了房间
-    
     r_id,willEnterRoom:=rooms.GetFreeRoomId()
 
     if !willEnterRoom{
@@ -182,8 +187,6 @@ func createMatchingTypeRoom(playerUUID []string){
     }
 }
 
-
-
 func createPlayer(user *datastruct.User) *datastruct.Player{
     var player datastruct.Player
     player.Avatar=user.Avatar
@@ -202,33 +205,33 @@ func removePlayer(key string){
 }
 
 func createTicker(){
-	if ticker == nil{
-        ticker = time.NewTicker(times)
-    }
+    if !isExistTicker {
+       isExistTicker = true
+       ticker = time.NewTicker(times)
+       go selectTicker()
+    } 
 }
+
 func stopTicker(){
     if ticker != nil{
-        ticker.Stop()
-        ticker=nil
+     ticker.Stop() 
+     isExistTicker = false
     }
 }
 
 func selectTicker(){
      for {
-		 if ticker != nil{
-			select {
-			case <-ticker.C:
-				computeMatchingTime()
-			}
-		 }
-	 }
+        select {
+         case <-ticker.C:
+            computeMatchingTime()
+        }
+    }
 }
 
 func computeMatchingTime(){
     m_pool:=getPool()
     m_pool.Mutex.Lock()
     defer m_pool.Mutex.Unlock()
-    
     num:=len(m_pool.Pool)
     if num >0{
         removeIndex,online_map:=getOfflinePlayers(m_pool)
@@ -248,6 +251,7 @@ func computeMatchingTime(){
     }else{
       stopTicker()
     }
+    
 }
 func getOfflinePlayers(m_pool *datastruct.MatchingPool) ([]int, map[string]datastruct.Player){
     tmp_map:=onlinePlayers.Items()
