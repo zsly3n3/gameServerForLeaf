@@ -1,7 +1,7 @@
 package internal
 
 import (
-	"fmt"
+	//"fmt"
 	"server/msg"
 	"server/datastruct"
 	"sync"
@@ -300,7 +300,6 @@ func (room *Room)ComputeFrameData(){
      room.roomData.Mutex.Unlock()
      
      for _,player := range onlinePlayersInRoom{
-         fmt.Println(frame_content)
          player.Agent.WriteMsg(msg.GetRoomFrameDataMsg(&frame_content))
      }
     
