@@ -13,16 +13,6 @@ import (
     "server/msg"
 )
 
-var lastPoint msg.Point
-
-func TestPoint() {
-     lastPoint=msg.Point{
-        Type:msg.TypeA,
-        X:0,
-        Y:0,
-     }
-}
-
 func randInt(min int,max int) int {
     return min + rand.Intn(max-min)
 }
