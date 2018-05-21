@@ -1,10 +1,10 @@
 {
-	"LogLevel": "release",
+	"LogLevel": "debug",
 	"LogPath": "",
 	"TCPAddr": "127.0.0.1:3563",
 	"WSAddr": "14.29.123.151:3653",
 	"MaxConnNum": 20000,
-	"DB_IP":"14.29.123.151:3306",
+	"DB_IP":"127.0.0.1:3306",
 	"DB_Name":"testbase",
 	"DB_UserName":"zsly",
 	"DB_Pwd":"Zsly2018!"
