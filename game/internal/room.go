@@ -1,6 +1,7 @@
 package internal
 
 import (
+	"fmt"
 	"server/msg"
 	"server/datastruct"
 	"sync"
@@ -154,28 +155,32 @@ func (room *Room)createEnergyPointData(width int,height int) *EnergyPointData{
     p_data:=new(EnergyPointData)
   
     diff:=200
-    num:=2
+    num:=1
     width=width-diff
     height=height-diff
     
     p_data.quadrant = make([]msg.Quadrant,0,4)
     p_data.quadrant=append(p_data.quadrant,tools.CreateQuadrant(width,height,1))
-    p_data.quadrant=append(p_data.quadrant,tools.CreateQuadrant(width,height,2))
-    p_data.quadrant=append(p_data.quadrant,tools.CreateQuadrant(width,height,3))
-    p_data.quadrant=append(p_data.quadrant,tools.CreateQuadrant(width,height,4))
-    p_data.firstFramePoint=getPoints(num,msg.TypeB,p_data.quadrant)//第一帧生成能量点
-
+    // p_data.quadrant=append(p_data.quadrant,tools.CreateQuadrant(width,height,2))
+    // p_data.quadrant=append(p_data.quadrant,tools.CreateQuadrant(width,height,3))
+    // p_data.quadrant=append(p_data.quadrant,tools.CreateQuadrant(width,height,4))
+    //p_data.firstFramePoint=getPoints(num,msg.TypeB,p_data.quadrant)//第一帧生成能量点
+    tools.TestPoint()
+    p_data.firstFramePoint= tools.TestRandomPoint(msg.TypeB)
+    
     go room.goCreatePoints(num,msg.TypeB)
     return p_data
 }
 
 func getPoints(num int,maxRangeType int,quadrant []msg.Quadrant) []msg.Point{
-    rs_slice:=make([]msg.Point,0,len(quadrant)*num)
-    for _,v := range quadrant{
-        tmp:=tools.GetRandomPoint(v,num,maxRangeType)
-        rs_slice=append(rs_slice,tmp...)
-    }
-    return rs_slice
+    // rs_slice:=make([]msg.Point,0,len(quadrant)*num)
+    // for _,v := range quadrant{
+    //     tmp:=tools.GetRandomPoint(v,num,maxRangeType)
+    //     rs_slice=append(rs_slice,tmp...)
+    // }
+    // return rs_slice
+
+    return tools.TestRandomPoint(msg.TypeB)
 }
 
 
@@ -197,8 +202,12 @@ func(room *Room)Join(connUUID string,a gate.Agent){
        room.IsOn = false
     }
     room.roomData.players=append(room.roomData.players,connUUID)
-
+    
+    log.Debug("Join GetInitRoomDataMsg")
     a.WriteMsg(msg.GetInitRoomDataMsg(content))
+
+    
+    //存入容器,定时发送
 
     //player actions and points
     if content.CurrentFrameIndex == FirstFrameIndex{
@@ -206,6 +215,7 @@ func(room *Room)Join(connUUID string,a gate.Agent){
         frame_data.FrameIndex = FirstFrameIndex
         frame_data.CreateEnergyPoints = room.unlockedData.pointData.firstFramePoint
         frame_content.FramesData=append(frame_content.FramesData,frame_data)
+        log.Debug("Join GetRoomFrameDataMsg")
         a.WriteMsg(msg.GetRoomFrameDataMsg(&frame_content))
         
     }else{
@@ -267,7 +277,7 @@ func (room *Room)ComputeFrameData(){
       points=nil
     }
 
-    if points != nil{
+     if points != nil&&len(points)>0{
         frame_data.CreateEnergyPoints = points 
      }
      frame_content.FramesData=append(frame_content.FramesData,frame_data)
@@ -290,6 +300,7 @@ func (room *Room)ComputeFrameData(){
      room.roomData.Mutex.Unlock()
      
      for _,player := range onlinePlayersInRoom{
+         fmt.Println(frame_content)
          player.Agent.WriteMsg(msg.GetRoomFrameDataMsg(&frame_content))
      }
     
@@ -319,7 +330,7 @@ func (room *Room)createRoomData(){
 
 func (room *Room)createRoomUnlockedData(connUUIDs []string,r_type RoomDataType,r_id string){
     unlockedData:=new(RoomUnlockedData)
-    unlockedData.points_ch = make(chan []msg.Point)
+    unlockedData.points_ch = make(chan []msg.Point,2)
     unlockedData.pointData = room.createEnergyPointData(room.gameMap.width,room.gameMap.height)
     unlockedData.AllowList = connUUIDs
     unlockedData.RoomId = r_id

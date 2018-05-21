@@ -13,7 +13,15 @@ import (
     "server/msg"
 )
 
+var lastPoint msg.Point
 
+func TestPoint() {
+     lastPoint=msg.Point{
+        Type:msg.TypeA,
+        X:0,
+        Y:0,
+     }
+}
 
 func randInt(min int,max int) int {
     return min + rand.Intn(max-min)
@@ -32,6 +40,36 @@ func GetRandomPoint(quad msg.Quadrant,num int,maxRangeType int)[]msg.Point{
      }
      return slice_point
 }
+
+//num =1, x,y相隔20, x 0 - 1000, y 0 - 600
+func TestRandomPoint(maxRangeType int)[]msg.Point{
+    max_x := 1000
+    max_y := 600
+    rs_x:=lastPoint.X
+    rs_y:=lastPoint.Y
+    tf := true
+    if rs_x+20<=max_x{
+        rs_x+=20
+    }else {
+        if rs_y+20<=max_y{
+           rs_y+=20
+           rs_x=0
+        }else{
+            tf = false
+        }
+    }
+    slice_point:=make([]msg.Point,0,1)
+    if tf{
+        lastPoint=msg.Point{
+            Type:randInt(msg.TypeA,maxRangeType+1),
+            X:rs_x,
+            Y:rs_y,
+        }
+        slice_point=append(slice_point,lastPoint)
+    }
+    return slice_point
+}
+
 
 func CreateQuadrant(width int,height int,index int) msg.Quadrant{
     var min_x int
