@@ -21,6 +21,39 @@ func init() {
     handleMsg(&msg.CS_PlayerMatching{}, handlePlayerMatching)
     handleMsg(&msg.CS_PlayerCancelMatching{}, handleCancelMatching)
     handleMsg(&msg.CS_PlayerJoinRoom{}, handlePlayerJoinRoom)
+    handleMsg(&msg.CS_RoomFrameData{}, handlePlayerFrameData)
+}
+
+func handlePlayerFrameData(args []interface{}){
+   
+    a := args[1].(gate.Agent)
+    if !tools.IsValid(a.UserData()){
+       return
+    }
+    agentUserData := a.UserData().(datastruct.AgentUserData)
+    connUUID:=agentUserData.ConnUUID
+    r_id:=agentUserData.RoomID
+    room:=rooms.Get(r_id)
+    framesData:=room.playersData.Get(connUUID)
+   
+    m := args[0].(*msg.CS_RoomFrameData)
+
+   
+    action_interface:=m.MsgContent["Action"]
+
+    index:=-1
+    switch action_interface.(type){
+          case float32:
+            index=int(action_interface.(float32))
+          case float64:
+            index=int(action_interface.(float64))
+          case int:
+            index=action_interface.(int) 
+    }
+    switch msg.ActionType(index){
+        case msg.Move:
+             framesData.Set(m.MsgContent)  
+    }
 }
 
 func handlePlayerJoinRoom(args []interface{}){
@@ -36,14 +69,9 @@ func handlePlayerJoinRoom(args []interface{}){
         r_id := m.MsgContent.RoomID
         if player.GameData.EnterType == datastruct.FreeRoom&&player.GameData.RoomId==r_id{
            room:=rooms.Get(r_id)
-           room.Mutex.Lock()
-           isOn:=room.IsOn
+           isOn:=room.Join(connUUID,player,false)
            if isOn{
-              room.Join(connUUID,a)
-              log.Debug("通过遍历空闲房间进入")
-           }
-           room.Mutex.Unlock()
-           if isOn{
+              log.Debug("通过遍历空闲房间进入") 
               removeFromMatchActionPool(connUUID)
            }else{
               go handleRoomOff(a,connUUID)
@@ -53,8 +81,8 @@ func handlePlayerJoinRoom(args []interface{}){
             for _,v:=range room.unlockedData.AllowList{
                 if v == connUUID{
                     log.Debug("通过匹配池进入")
+                    room.Join(connUUID,player,true)
                     removeFromMatchActionPool(connUUID)
-                    room.Join(connUUID,a)
                     break
                 }
             }
@@ -172,7 +200,8 @@ func matchingPlayers(p_uuid string){
 
 func cleanPoolAndCreateRoom(m_pool *datastruct.MatchingPool){
     stopTicker()
-    arr := m_pool.Pool[:] //copy data
+    arr:=make([]string,len(m_pool.Pool))
+    copy(arr,m_pool.Pool)
     m_pool.Pool=m_pool.Pool[:0]//clean pool
     go createMatchingTypeRoom(arr)
 }
@@ -201,7 +230,7 @@ func createPlayer(user *datastruct.User) *datastruct.Player{
 }
 
 func removePlayer(key string){
-    onlinePlayers.Delete(key)   
+    onlinePlayers.Delete(key)  
 }
 
 func createTicker(){

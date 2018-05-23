@@ -27,11 +27,10 @@ const (
 	BeInvited//通过被邀请准备进入
 )
 
-
-
 type AgentUserData struct {
 	 ConnUUID string //每条连接的uuid
 	 Uid int //对应user表中的Id
+	 RoomID string 
 }
 
 type Player struct {
@@ -40,6 +39,13 @@ type Player struct {
 	NickName string
 	Agent    gate.Agent
     GameData PlayerGameData
+}
+
+type PlayerGameData struct{
+	RoomId   string //房间id
+	StartMatchingTime  time.Time //开始匹配的时间
+	EnterType PlayerEnterType
+	FrameIndex int //保存 已接收第多少帧，大于0
 }
 
 
@@ -53,12 +59,7 @@ type Robot struct {
 
 
 
-type PlayerGameData struct{
-	RoomId   string //房间id
-	StartMatchingTime  time.Time //开始匹配的时间
-	EnterType PlayerEnterType
-	FrameIndex int //保存 已接收第多少帧，大于0
-}
+
 
 
 

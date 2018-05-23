@@ -15,4 +15,5 @@ func init() {
     msg.Processor.SetRouter(&msg.CS_PlayerMatching{}, game.ChanRPC)
     msg.Processor.SetRouter(&msg.CS_PlayerCancelMatching{}, game.ChanRPC)
     msg.Processor.SetRouter(&msg.CS_PlayerJoinRoom{}, game.ChanRPC)
+    msg.Processor.SetRouter(&msg.CS_RoomFrameData{}, game.ChanRPC)
 }

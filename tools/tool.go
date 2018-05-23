@@ -17,47 +17,58 @@ func randInt(min int,max int) int {
     return min + rand.Intn(max-min)
 }
 
-func GetRandomPoint(quad msg.Quadrant,num int,maxRangeType int)[]msg.Point{
-     slice_point:=make([]msg.Point,0,num)
+func GetRandomQuadrantIndex() int {
+    return randInt(0,4)
+}
+
+func GetCreatePlayerPoint(quad msg.Quadrant,index int) msg.Point {
+    var point msg.Point
+    diff := 400
+    x_min:=0
+    x_max:=0
+    y_min:=0
+    y_max:=0
+    switch index{
+    case 0:
+         x_min=quad.X_Min
+         x_max=quad.X_Max-diff
+         y_min=quad.Y_Min
+         y_max=quad.Y_Max-diff
+    case 1:
+        x_min=quad.X_Min+diff
+        x_max=quad.X_Max
+        y_min=quad.Y_Min
+        y_max=quad.Y_Max-diff
+    case 2:
+        x_min=quad.X_Min+diff
+        x_max=quad.X_Max
+        y_min=quad.Y_Min+diff
+        y_max=quad.Y_Max
+    case 3:
+        x_min=quad.X_Min
+        x_max=quad.X_Max-diff
+        y_min=quad.Y_Min+diff
+        y_max=quad.Y_Max
+    }
+    random_x:=randInt(x_min,x_max)
+    random_y:=randInt(y_min,y_max)
+    point.X = random_x
+    point.Y = random_y
+    return point
+}
+
+func GetRandomPoint(quad msg.Quadrant,num int,maxRangeType int)[]msg.EnergyPoint{
+     slice_point:=make([]msg.EnergyPoint,0,num)
      for i:=0;i<num;i++{
          random_x:=randInt(quad.X_Min,quad.X_Max)
          random_y:=randInt(quad.Y_Min,quad.Y_Max)
-         slice_point=append(slice_point,msg.Point{
+         slice_point=append(slice_point,msg.EnergyPoint{
              Type:randInt(msg.TypeA,maxRangeType+1),
              X:random_x,
              Y:random_y,
          })
      }
      return slice_point
-}
-
-//num =1, x,y相隔20, x 0 - 1000, y 0 - 600
-func TestRandomPoint(maxRangeType int)[]msg.Point{
-    max_x := 1000
-    max_y := 600
-    rs_x:=lastPoint.X
-    rs_y:=lastPoint.Y
-    tf := true
-    if rs_x+20<=max_x{
-        rs_x+=20
-    }else {
-        if rs_y+20<=max_y{
-           rs_y+=20
-           rs_x=0
-        }else{
-            tf = false
-        }
-    }
-    slice_point:=make([]msg.Point,0,1)
-    if tf{
-        lastPoint=msg.Point{
-            Type:randInt(msg.TypeA,maxRangeType+1),
-            X:rs_x,
-            Y:rs_y,
-        }
-        slice_point=append(slice_point,lastPoint)
-    }
-    return slice_point
 }
 
 
@@ -128,6 +139,14 @@ func ReSetAgentUserData(a gate.Agent,uid int){
     a.SetUserData(datastruct.AgentUserData{
         ConnUUID:str,
         Uid:uid,
+    })
+}
+
+func UpdateAgentUserData(a gate.Agent,connUUID string,uid int,r_id string){
+    a.SetUserData(datastruct.AgentUserData{
+        ConnUUID:connUUID,
+        Uid:uid,
+        RoomID:r_id,
     })
 }
 

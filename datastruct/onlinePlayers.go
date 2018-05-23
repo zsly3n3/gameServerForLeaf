@@ -126,6 +126,15 @@ func (m *OnlinePlayers) Check(k string) (Player,bool){
 	return v,ok
 }
 
+func (m *OnlinePlayers) IsExist(k string) bool{
+	m.Lock.RLock()
+	defer m.Lock.RUnlock()
+	_, ok := m.Bm[k]
+	return ok
+}
+
+
+
 
 // Delete the given key and value.
 func (m *OnlinePlayers) Delete(k string) {
