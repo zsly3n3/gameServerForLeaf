@@ -2,6 +2,7 @@ package msg
 
 import (
 	"github.com/name5566/leaf/network/json"
+	"fmt"
 )
 
 const PC_Platform ="pc"  //pc端
@@ -187,7 +188,9 @@ type ActionType int
 const (
     Create ActionType = iota // value --> 0
     Move              // value --> 1
-    Death            // value --> 2
+	Death            // value --> 2
+	
+	NullAction        
 )
 
 /*以下为玩家事件*/
@@ -213,14 +216,29 @@ type PlayerMoved struct {//玩家的移动
 }
 
 
+var Test1Point= Point{X:100,Y:50}
+var Test2Point= Point{X:500,Y:50}
 
+var num = 0
 
 func GetCreatePlayerAction(p_id int,x int,y int) CreatePlayer{
 	  var action CreatePlayer
 	  action.Action = Create
 	  action.PlayerId = p_id
-	  action.X = x
-	  action.Y = y
+	  switch num{
+	  case 0:
+		action.X = Test1Point.X
+		action.Y = Test1Point.Y
+		fmt.Println("------GetCreatePlayerAction 0-----")
+	  case 1:
+		action.X = Test2Point.X
+		action.Y = Test2Point.Y
+		fmt.Println("------GetCreatePlayerAction 1-----")
+	  default:
+		action.X = x
+		action.Y = y
+	  }
+	  num++
 	  return action
 }
 func GetCreatePlayerMoved(p_id int,x int,y int,speed int) PlayerMoved{
@@ -233,11 +251,9 @@ func GetCreatePlayerMoved(p_id int,x int,y int,speed int) PlayerMoved{
 	return action
 }
 
-
 func GetMatchingEndMsg(r_id string) *SC_PlayerMatchingEnd{
 	var msgHeader json.MsgHeader
     msgHeader.MsgName = "SC_PlayerMatchingEnd"
-
     var msgContent SC_PlayerMatchingEndContent
     msgContent.RoomID =r_id
     

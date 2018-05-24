@@ -1,6 +1,5 @@
 package internal
 import (
-	//"fmt"
 	"server/db"
     "reflect"  
     "server/msg"
@@ -21,10 +20,10 @@ func init() {
     handleMsg(&msg.CS_PlayerMatching{}, handlePlayerMatching)
     handleMsg(&msg.CS_PlayerCancelMatching{}, handleCancelMatching)
     handleMsg(&msg.CS_PlayerJoinRoom{}, handlePlayerJoinRoom)
-    handleMsg(&msg.CS_MoveData{}, handlePlayerFrameData)
+    handleMsg(&msg.CS_MoveData{}, handlePlayerMoveData)
 }
 
-func handlePlayerFrameData(args []interface{}){
+func handlePlayerMoveData(args []interface{}){
    
     a := args[1].(gate.Agent)
     if !tools.IsValid(a.UserData()){
@@ -33,13 +32,22 @@ func handlePlayerFrameData(args []interface{}){
     agentUserData := a.UserData().(datastruct.AgentUserData)
     connUUID:=agentUserData.ConnUUID
     r_id:=agentUserData.RoomID
+    
+    
+    
     room:=rooms.Get(r_id)
-    framesData:=room.playersData.Get(connUUID)
+    if v,ok:=room.playersData.CheckValue(connUUID);ok{
+        if v.ActionType == msg.Create{
+            return
+        }
+    }
    
     m := args[0].(*msg.CS_MoveData)
-
     action:=msg.GetCreatePlayerMoved(agentUserData.Uid,m.MsgContent.X,m.MsgContent.Y,m.MsgContent.Speed)
-    framesData.Set(action)
+    var actionData PlayerActionData
+    actionData.ActionType = action.Action
+    actionData.Data = action
+    room.playersData.Set(connUUID,actionData)
     
 }
 
