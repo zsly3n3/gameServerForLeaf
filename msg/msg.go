@@ -25,7 +25,7 @@ func init() {
 
 	Processor.Register(&SC_InitRoomData{})
 	Processor.Register(&SC_RoomFrameData{})
-	Processor.Register(&CS_RoomFrameData{})
+	Processor.Register(&CS_MoveData{})
 	//Processor.Register(&PlayerMoved{})
 }
 
@@ -154,12 +154,16 @@ type SC_InitRoomDataContent struct {
 
 
 /*接收客户端的帧数据*/
-type CS_RoomFrameData struct {
+type CS_MoveData struct {
 	MsgHeader json.MsgHeader
-	MsgContent map[string]interface{} //{"Action":1,"Direction":{X:-1,Y:-2}
+	MsgContent CS_MoveDataContent //{"Action":1,"Direction":{X:-1,Y:-2}
 }
 
-
+type CS_MoveDataContent struct {
+	X int
+	Y int
+	Speed int
+}
 
 
 
@@ -189,7 +193,8 @@ const (
 /*以下为玩家事件*/
 type CreatePlayer struct {//玩家的创建
 	 PlayerId int
-	 Point Point
+	 X int
+	 Y int
 	 Action ActionType
 }
 
@@ -198,29 +203,33 @@ type PlayerIsDied struct {//玩家的死亡
 }
 
 var DefaultDirection = Point{X:0,Y:1}
+var DefaultSpeed = 1
 type PlayerMoved struct {//玩家的移动
 	PlayerId int
 	Action ActionType
-	Direction Point //默认方向 x=0,y=1
+	Speed int//默认速度 1
+	X int
+	Y int
 }
 
 
-func GetActionType(v int) ActionType{
-	 return ActionType(v)
-}
 
-func GetCreatePlayerAction(p_id int,point Point) CreatePlayer{
+
+func GetCreatePlayerAction(p_id int,x int,y int) CreatePlayer{
 	  var action CreatePlayer
 	  action.Action = Create
 	  action.PlayerId = p_id
-	  action.Point = point
+	  action.X = x
+	  action.Y = y
 	  return action
 }
-func GetCreatePlayerMoved(p_id int,point Point) PlayerMoved{
+func GetCreatePlayerMoved(p_id int,x int,y int,speed int) PlayerMoved{
 	var action PlayerMoved
 	action.Action = Move
 	action.PlayerId = p_id
-	action.Direction = point
+	action.X = x
+	action.Y = y
+	action.Speed = speed
 	return action
 }
 

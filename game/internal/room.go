@@ -20,7 +20,7 @@ const (
 
 const min_MapWidth = 20  
 const min_MapHeight = 15
-const time_interval = 50 //50毫秒
+const time_interval = 50*200 //50毫秒
 var map_factor = 5*40
 
 const MaxPeopleInRoom = 20 //每个房间最大人数
@@ -72,7 +72,7 @@ type PlayersFramesData struct {
 
 type PlayerFramesData struct {
      Mutex *sync.RWMutex //读写互斥量
-     SaveLastNum int //保存最后一次的个数,看是否有更新
+     //SaveLastNum int //保存最后一次的个数,看是否有更新
      Data []interface{}//目前只能存一个动作,之后可能改进为每个单位存一组动作
 }
 
@@ -223,30 +223,16 @@ func(room *Room)IsSyncFinished(connUUID string,player datastruct.Player) (bool,i
         frame_data.PlayerFrameData=make([]interface{},0,1)
         randomIndex:=tools.GetRandomQuadrantIndex()
         point:=tools.GetCreatePlayerPoint(room.unlockedData.pointData.quadrant[randomIndex],randomIndex) 
-        action:=msg.GetCreatePlayerAction(player.Id,point)
+        action:=msg.GetCreatePlayerAction(player.Id,point.X,point.Y)
         frame_data.PlayerFrameData = append(frame_data.PlayerFrameData,action)
         
         frame_content.FramesData = append(frame_content.FramesData,frame_data)
         
-        player.Agent.WriteMsg(msg.GetRoomFrameDataMsg(&frame_content))
-
         
-        //room.history.Mutex.Lock() 可以不加内锁:还没开始计算帧，玩家加锁才进
-        length=len(room.history.FramesData)
-        if length > 0{
-           value:=room.history.FramesData[0]
-           value.FramesData[0].PlayerFrameData=append(value.FramesData[0].PlayerFrameData,frame_data.PlayerFrameData...)
-           room.history.FramesData[0] = value
-        }else{ 
-           room.history.FramesData = append(room.history.FramesData,&frame_content)
-        }
-        //room.history.Mutex.Unlock()
         
-
         //创建第一帧的动作
         p_FramesData:=NewPlayerFramesData()
-        p_FramesData.Set(action)
-        p_FramesData.SaveLastNum = 1
+        p_FramesData.Set(action)//添加action 到 lastFrameIndex+1
         room.playersData.Set(connUUID,p_FramesData)
         
         syncFinished = true
@@ -276,7 +262,7 @@ func (room *Room)syncData(connUUID string,player datastruct.Player){
 
      randomIndex:=tools.GetRandomQuadrantIndex()
      point:=tools.GetCreatePlayerPoint(room.unlockedData.pointData.quadrant[randomIndex],randomIndex)
-     action:=msg.GetCreatePlayerAction(player.Id,point)
+     action:=msg.GetCreatePlayerAction(player.Id,point.X,point.Y)
      p_FramesData:=NewPlayerFramesData()
      
      
@@ -402,14 +388,17 @@ func (room *Room)IsRemoveRoom()(bool,int,[]datastruct.Player,[]datastruct.Player
     room.IsOn = false
     isRemove = true
  }
-   
+    
     var currentFrameIndex int
     var online_sync []datastruct.Player
     offline_sync:= make([]datastruct.Player,0,MaxPeopleInRoom)
 
     if !isRemove{
-       room.currentFrameIndex++
-       currentFrameIndex = room.currentFrameIndex
+            
+            room.currentFrameIndex++
+            currentFrameIndex = room.currentFrameIndex //服务器帧是从1开始
+            currentFrameIndex--
+            
        var offlineSyncPlayersIndex []int
        if offlineNum > 0{
           offlineSyncPlayersIndex=make([]int,0,offlineNum)
@@ -482,7 +471,7 @@ func (room *Room)ComputeFrameData(){
      
      
      
-     for _,player := range online_sync{    
+     for _,player := range online_sync{
          player.Agent.WriteMsg(msg.GetRoomFrameDataMsg(&frame_content))
      }
      
@@ -590,7 +579,6 @@ func NewPlayersFramesData() *PlayersFramesData {
 func NewPlayerFramesData() *PlayerFramesData {
 	return &PlayerFramesData{
         Mutex: new(sync.RWMutex),
-        SaveLastNum:0, 
 		Data:   make([]interface{},0,10),
 	}
 }
@@ -618,7 +606,6 @@ func (data *PlayersFramesData)Get(k string) *PlayerFramesData{
 func (data *PlayerFramesData)Set(v interface{}){
     data.Mutex.Lock()
     defer data.Mutex.Unlock()
-    data.SaveLastNum=len(data.Data)
     data.Data=append(data.Data,v)
 }
 
@@ -627,12 +614,11 @@ func (data *PlayerFramesData)Get(pid int)interface{}{
 	defer data.Mutex.Unlock()
     num:=len(data.Data)
     var v interface{}
-    if num > data.SaveLastNum{
+    if num > 0{
         v=data.Data[num-1]
         data.Data=data.Data[:0] //clean
-        data.SaveLastNum = 0 //clean
     }else {
-        v=msg.GetCreatePlayerMoved(pid,msg.DefaultDirection) 
+        v=msg.GetCreatePlayerMoved(pid,msg.DefaultDirection.X,msg.DefaultDirection.Y,msg.DefaultSpeed) 
     }
     return v
 }

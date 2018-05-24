@@ -21,7 +21,7 @@ func init() {
     handleMsg(&msg.CS_PlayerMatching{}, handlePlayerMatching)
     handleMsg(&msg.CS_PlayerCancelMatching{}, handleCancelMatching)
     handleMsg(&msg.CS_PlayerJoinRoom{}, handlePlayerJoinRoom)
-    handleMsg(&msg.CS_RoomFrameData{}, handlePlayerFrameData)
+    handleMsg(&msg.CS_MoveData{}, handlePlayerFrameData)
 }
 
 func handlePlayerFrameData(args []interface{}){
@@ -36,24 +36,11 @@ func handlePlayerFrameData(args []interface{}){
     room:=rooms.Get(r_id)
     framesData:=room.playersData.Get(connUUID)
    
-    m := args[0].(*msg.CS_RoomFrameData)
+    m := args[0].(*msg.CS_MoveData)
 
-   
-    action_interface:=m.MsgContent["Action"]
-
-    index:=-1
-    switch action_interface.(type){
-          case float32:
-            index=int(action_interface.(float32))
-          case float64:
-            index=int(action_interface.(float64))
-          case int:
-            index=action_interface.(int) 
-    }
-    switch msg.ActionType(index){
-        case msg.Move:
-             framesData.Set(m.MsgContent)  
-    }
+    action:=msg.GetCreatePlayerMoved(agentUserData.Uid,m.MsgContent.X,m.MsgContent.Y,m.MsgContent.Speed)
+    framesData.Set(action)
+    
 }
 
 func handlePlayerJoinRoom(args []interface{}){
