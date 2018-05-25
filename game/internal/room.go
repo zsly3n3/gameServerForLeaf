@@ -31,8 +31,8 @@ const FirstFrameIndex = 0//第一帧索引
 
 const MaxPlayingTime = 5*time.Minute
 
-// const MaxEnergyPower =50000 //最大能量值
-// const MaxEnergyPointNum = 10000 //最大能量点个数
+const MaxEnergyPower = 5000 //最大能量值
+const InitEnergyPower = 1000 //地图初始化的能量值
 // const Per = 500
 
 type Room struct {
