@@ -57,18 +57,28 @@ func GetCreatePlayerPoint(quad msg.Quadrant,index int) msg.Point {
     return point
 }
 
-func GetRandomPoint(quad msg.Quadrant,num int,maxRangeType int)[]msg.EnergyPoint{
+func GetRandomPoint(num int,maxpower int,quad []msg.Quadrant)[]msg.EnergyPoint{
+     num1,num2:=GetEnergyNum(msg.TypeA,msg.TypeB,num,maxpower)
      slice_point:=make([]msg.EnergyPoint,0,num)
-     for i:=0;i<num;i++{
-         random_x:=randInt(quad.X_Min,quad.X_Max)
-         random_y:=randInt(quad.Y_Min,quad.Y_Max)
-         slice_point=append(slice_point,msg.EnergyPoint{
-             Type:randInt(msg.TypeA,maxRangeType+1),
-             X:random_x,
-             Y:random_y,
-         })
-     }
+     slice_point=append(slice_point,getQuadrantPoints(num1,msg.TypeA,quad)...)
+     slice_point=append(slice_point,getQuadrantPoints(num2,msg.TypeB,quad)...)
      return slice_point
+}
+
+func getQuadrantPoints(num int,e_type msg.EnergyPointType,quad []msg.Quadrant)[]msg.EnergyPoint{
+    slice_point:=make([]msg.EnergyPoint,0,num)
+    for i:=0;i<num;i++{
+        index:=GetRandomQuadrantIndex()
+        quad:=quad[index]
+        random_x:=randInt(quad.X_Min,quad.X_Max)
+        random_y:=randInt(quad.Y_Min,quad.Y_Max)
+        slice_point=append(slice_point,msg.EnergyPoint{
+            Type:int(e_type),
+            X:random_x,
+            Y:random_y,
+        })
+    }
+    return slice_point
 }
 
 
@@ -108,6 +118,14 @@ func CreateQuadrant(width int,height int,index int) msg.Quadrant{
     }
 }
 
+
+func GetEnergyNum(t1 msg.EnergyPointType,t2 msg.EnergyPointType,num int,power int)(int,int){
+    t1Power:=msg.GetPower(t1)
+    t2Power:=msg.GetPower(t2)
+    y:=(power-num*t1Power)/(t2Power-t1Power)
+    x:=num-y
+    return x,y
+}
 
 //生成32位md5字串  
 func getMd5String(s string) string {  

@@ -110,10 +110,11 @@ type SC_PlayerReMatch struct {
 }
 
 
+type EnergyPointType int
 
 //能量点类型
 const (
-	TypeA = 1 +iota
+	TypeA EnergyPointType= 1 +iota
     TypeB 
     TypeC 
     TypeD
@@ -122,8 +123,10 @@ const (
 type EnergyPoint struct {
 	Type int
     X int
-    Y int
+	Y int
 }
+
+
 
 type Point struct {
     X int
@@ -295,6 +298,20 @@ func GetRoomFrameDataMsg(content *SC_RoomFrameDataContent) *SC_RoomFrameData{
 		MsgHeader:msgHeader,
 		MsgContent:content,
 	}
+}
+
+func GetPower(e_type EnergyPointType) int {
+	 power:=0
+	 switch e_type{
+	   case TypeA:
+		 power=10
+	   case TypeB:
+		 power=20
+	   case TypeC:
+		 power=40
+	   case TypeD: 
+	 }
+	 return power
 }
 
 

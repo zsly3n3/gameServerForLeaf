@@ -31,9 +31,9 @@ const FirstFrameIndex = 0//第一帧索引
 
 const MaxPlayingTime = 5*time.Minute
 
-const MaxEnergyPower = 5000 //最大能量值
+const MaxEnergyPower = 5000 //全场最大能量值
 const InitEnergyPower = 1000 //地图初始化的能量值
-// const Per = 500
+const InitEnergyNum = 80//初始化能量个数
 
 type Room struct {
     Mutex *sync.RWMutex //读写互斥量
@@ -49,6 +49,8 @@ type Room struct {
     unlockedData *RoomUnlockedData
     history *HistoryFrameData
     
+    //interface{} 历史帧能量消耗事件数据，保存消耗后的能量点数据。 用于计算生产能量数据
+
     //robots *RobotData
 }
 
@@ -174,7 +176,7 @@ func (room *Room)createEnergyPointData(width int,height int) *EnergyPointData{
     p_data:=new(EnergyPointData)
   
     diff:=200
-    num:=1
+    
     width=width-diff
     height=height-diff
     
@@ -183,20 +185,14 @@ func (room *Room)createEnergyPointData(width int,height int) *EnergyPointData{
     p_data.quadrant=append(p_data.quadrant,tools.CreateQuadrant(width,height,2))
     p_data.quadrant=append(p_data.quadrant,tools.CreateQuadrant(width,height,3))
     p_data.quadrant=append(p_data.quadrant,tools.CreateQuadrant(width,height,4))
-    p_data.firstFramePoint=getPoints(num,msg.TypeB,p_data.quadrant)//第一帧生成能量点
-  
-    go room.goCreatePoints(num,msg.TypeB)
+    p_data.firstFramePoint=tools.GetRandomPoint(InitEnergyNum,InitEnergyPower,p_data.quadrant) //第零帧生成能量点
+    
+    
+    go room.goCreatePoints(1,msg.TypeB)
     return p_data
 }
 
-func getPoints(num int,maxRangeType int,quadrant []msg.Quadrant) []msg.EnergyPoint{
-    rs_slice:=make([]msg.EnergyPoint,0,len(quadrant)*num)
-    for _,v := range quadrant{
-        tmp:=tools.GetRandomPoint(v,num,maxRangeType)
-        rs_slice=append(rs_slice,tmp...)
-    }
-    return rs_slice
-}
+
 
 func(room *Room)IsSyncFinished(connUUID string,player datastruct.Player) (bool,int){
     length:=len(room.players)
@@ -211,7 +207,7 @@ func(room *Room)IsSyncFinished(connUUID string,player datastruct.Player) (bool,i
     content.Interval = time_interval
     
     
-
+    
    
     syncFinished:=false
 
@@ -341,7 +337,7 @@ func(room *Room)Join(connUUID string,player datastruct.Player,force bool) bool{
     return isOn
 }
 
-func (room*Room)goCreatePoints(num int,maxRangeType int){
+func (room*Room)goCreatePoints(num int,maxRangeType msg.EnergyPointType){
      for {
         isClosed := safeSendPoint(room.unlockedData.points_ch,getPoints(num,msg.TypeB,room.unlockedData.pointData.quadrant))
         if isClosed{
