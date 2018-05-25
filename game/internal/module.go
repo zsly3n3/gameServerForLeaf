@@ -13,7 +13,7 @@ const Pool_Capacity int =LeastPeople
 
 
 const LeastPeople = 10 //满足有多少个人就开始游戏
-const MaxWaitTime = 5.0*time.Second//玩家最大等待时间多少秒
+const MaxWaitTime = 5*time.Second//玩家最大等待时间多少秒
 const times = time.Second * 1 //定时器多少时间执行一次
 
 

@@ -2,6 +2,7 @@ package msg
 
 import (
 	"github.com/name5566/leaf/network/json"
+	"fmt"
 )
 
 const PC_Platform ="pc"  //pc端
@@ -20,10 +21,13 @@ func init() {
 	Processor.Register(&CS_PlayerCancelMatching{})
 
 	Processor.Register(&CS_PlayerJoinRoom{})
+
 	Processor.Register(&SC_PlayerReMatch{})
 
 	Processor.Register(&SC_InitRoomData{})
 	Processor.Register(&SC_RoomFrameData{})
+	Processor.Register(&CS_MoveData{})
+	//Processor.Register(&PlayerMoved{})
 }
 
 /*客户端发送来完成注册*/
@@ -115,8 +119,13 @@ const (
     TypeD
 )
 
-type Point struct {
+type EnergyPoint struct {
 	Type int
+    X int
+    Y int
+}
+
+type Point struct {
     X int
     Y int
 }
@@ -145,8 +154,17 @@ type SC_InitRoomDataContent struct {
 
 
 
+/*接收客户端的帧数据*/
+type CS_MoveData struct {
+	MsgHeader json.MsgHeader
+	MsgContent CS_MoveDataContent //{"Action":1,"Direction":{X:-1,Y:-2}
+}
 
-
+type CS_MoveDataContent struct {
+	X int
+	Y int
+	Speed int
+}
 
 
 
@@ -162,23 +180,80 @@ type SC_RoomFrameDataContent struct {
 
 type FrameData struct {
 	FrameIndex int
-	PlayerFrameData interface{}
-	CreateEnergyPoints []Point
+	PlayerFrameData []interface{}
+	CreateEnergyPoints []EnergyPoint
+}
+
+type ActionType int
+const (
+    Create ActionType = iota // value --> 0
+    Move              // value --> 1
+	Death            // value --> 2
+	
+	NullAction        
+)
+
+/*以下为玩家事件*/
+type CreatePlayer struct {//玩家的创建
+	 PlayerId int
+	 X int
+	 Y int
+	 Action ActionType
+}
+
+type PlayerIsDied struct {//玩家的死亡
+	//point Point
+}
+
+var DefaultDirection = Point{X:0,Y:1}
+var DefaultSpeed = 1
+type PlayerMoved struct {//玩家的移动
+	PlayerId int
+	Action ActionType
+	Speed int//默认速度 1
+	X int
+	Y int
 }
 
 
-// [
-// 	"FrameIndex":1,"FrameData":{"playersFrameData":null,"CreateEnergyPoints":[]}
-// ]
-// [
-// 	"FrameIndex":2,"FrameData":{"playersFrameData":null,"CreateEnergyPoints":[]}
-// ]
+var Test1Point= Point{X:100,Y:50}
+var Test2Point= Point{X:500,Y:50}
 
+var num = 0
+
+func GetCreatePlayerAction(p_id int,x int,y int) CreatePlayer{
+	  var action CreatePlayer
+	  action.Action = Create
+	  action.PlayerId = p_id
+	  switch num{
+	  case 0:
+		action.X = Test1Point.X
+		action.Y = Test1Point.Y
+		fmt.Println("------GetCreatePlayerAction 0-----")
+	  case 1:
+		action.X = Test2Point.X
+		action.Y = Test2Point.Y
+		fmt.Println("------GetCreatePlayerAction 1-----")
+	  default:
+		action.X = x
+		action.Y = y
+	  }
+	  num++
+	  return action
+}
+func GetCreatePlayerMoved(p_id int,x int,y int,speed int) PlayerMoved{
+	var action PlayerMoved
+	action.Action = Move
+	action.PlayerId = p_id
+	action.X = x
+	action.Y = y
+	action.Speed = speed
+	return action
+}
 
 func GetMatchingEndMsg(r_id string) *SC_PlayerMatchingEnd{
 	var msgHeader json.MsgHeader
     msgHeader.MsgName = "SC_PlayerMatchingEnd"
-
     var msgContent SC_PlayerMatchingEndContent
     msgContent.RoomID =r_id
     
