@@ -24,31 +24,31 @@ func GetRandomQuadrantIndex() int {
 
 func GetCreatePlayerPoint(quad msg.Quadrant,index int) msg.Point {
     var point msg.Point
-    diff := 400
     x_min:=0
     x_max:=0
     y_min:=0
     y_max:=0
+    offset:=300
     switch index{
     case 0:
          x_min=quad.X_Min
-         x_max=quad.X_Max-diff
+         x_max=quad.X_Max-offset
          y_min=quad.Y_Min
-         y_max=quad.Y_Max-diff
+         y_max=quad.Y_Max-offset
     case 1:
-        x_min=quad.X_Min+diff
+        x_min=quad.X_Min+offset
         x_max=quad.X_Max
         y_min=quad.Y_Min
-        y_max=quad.Y_Max-diff
+        y_max=quad.Y_Max-offset
     case 2:
-        x_min=quad.X_Min+diff
+        x_min=quad.X_Min+offset
         x_max=quad.X_Max
-        y_min=quad.Y_Min+diff
+        y_min=quad.Y_Min+offset
         y_max=quad.Y_Max
     case 3:
         x_min=quad.X_Min
-        x_max=quad.X_Max-diff
-        y_min=quad.Y_Min+diff
+        x_max=quad.X_Max-offset
+        y_min=quad.Y_Min+offset
         y_max=quad.Y_Max
     }
     random_x:=randInt(x_min,x_max)
@@ -170,11 +170,57 @@ func UpdateAgentUserData(a gate.Agent,connUUID string,uid int,r_id string){
 }
 
 const startIndex = 30000
-func CreateRobot(index int,isRelive bool) *datastruct.Robot{
+
+const minDirectionInterval = 5
+const maxDirectionInterval = 10
+
+const minDirection = -1000
+const maxDirection = 1000
+
+const minSpeedInterval = 5
+const maxSpeedInterval = 10
+
+const minSpeedDuration = 2
+const maxSpeedDuration = 4
+
+const minSpeed = 2
+const maxSpeed = 2
+
+
+
+func CreateRobot(index int,isRelive bool,quad []msg.Quadrant) *datastruct.Robot{
      robot:=new(datastruct.Robot)
      robot.Id = startIndex+index
      robot.IsRelive = isRelive
      robot.Avatar = fmt.Sprintf("Avatar%d",index)
      robot.NickName = fmt.Sprintf("Robot%d",index)
+     robot.Action = GetCreateRobotAction(robot.Id,quad)
+     robot.SpeedInterval = randInt(minSpeedInterval,maxSpeedInterval+1)
+     robot.DirectionInterval = randInt(minDirectionInterval,maxDirectionInterval+1)
      return robot
+}
+
+func GetCreateRobotAction(p_id int,quad []msg.Quadrant)msg.CreatePlayer{
+    randomIndex:=GetRandomQuadrantIndex()
+    point:=GetCreatePlayerPoint(quad[randomIndex],randomIndex) 
+    action:=msg.GetCreatePlayerAction(p_id,point.X,point.Y)
+    return action
+}
+
+
+func GetRandomDirection()msg.Point{
+     return msg.Point{
+         X:randInt(minDirection,maxDirection+1),
+         Y:randInt(minDirection,maxDirection+1),
+     }
+}
+
+
+
+func GetRandomSpeed()int{
+    return randInt(minSpeed,maxSpeed+1)
+}
+
+func GetRandomSpeedDuration()int{
+    return randInt(minSpeedDuration,maxSpeedDuration+1)
 }

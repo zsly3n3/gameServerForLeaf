@@ -316,3 +316,4 @@ func GetPower(e_type EnergyPointType) int {
 
 
 
+

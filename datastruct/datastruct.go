@@ -55,8 +55,11 @@ type Robot struct {
 	Avatar   string 
 	NickName string 
 	IsRelive bool //是否能重生
+	Action interface{}
+	SpeedInterval int ///加速的时间间隔
+	SpeedDuration int //加速持续时间,持续多少秒
+	DirectionInterval int //转向的时间间隔
 }
-
 
 
 

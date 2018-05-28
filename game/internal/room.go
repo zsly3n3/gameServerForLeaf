@@ -39,6 +39,7 @@ const InitEnergy_B=20
 const PerFrameEnergy_A=2
 const PerFrameEnergy_B=1
 
+const offset = 400//出生点偏移量
 
 type Room struct {
     Mutex *sync.RWMutex //读写互斥量
@@ -74,7 +75,7 @@ type RoomUnlockedData struct {
      RoomType RoomDataType//房间类型
      RoomId string
      startSync chan struct{} //开始同步的管道
-     //rebotAction chan Action
+     rebotMoveAction chan msg.Point
 }
 
 type GameMap struct{
@@ -104,7 +105,11 @@ type PlayerActionData struct {
 
 type RobotData struct {
     Mutex *sync.RWMutex //读写互斥量
-    robots map[int]datastruct.Robot//机器人列表map[string]
+    robots map[int]*datastruct.Robot//机器人列表map[string]
+    //for map , create actions ,  read
+    //isrelive false,remove,  write
+    //get robot, set isrelive = false, write
+    
 }
 
 // type RoomData struct {
@@ -135,12 +140,13 @@ func createRoom(connUUIDs []string,r_type RoomDataType,r_id string)*Room{
     room := new(Room)
     room.Mutex = new(sync.RWMutex)
     room.createGameMap(map_factor)
+    room.createRoomUnlockedData(connUUIDs,r_type,r_id)
     room.createHistoryFrameData()
     room.createEnergyPowerData()
     
     room.currentFrameIndex = FirstFrameIndex
     room.onlineSyncPlayers = make([]datastruct.Player,0,MaxPeopleInRoom)
-    room.createRoomUnlockedData(connUUIDs,r_type,r_id)
+    
     room.IsOn = true
     room.players = make([]string,0,MaxPeopleInRoom)
     room.playersData = NewPlayersFrameData()
@@ -169,6 +175,7 @@ func createRoom(connUUIDs []string,r_type RoomDataType,r_id string)*Room{
 
 func (room *Room)removeFromRooms(){
      room.stopTicker()
+     safeCloseRobotMoved(room.unlockedData.rebotMoveAction)
      safeClosePoint(room.unlockedData.points_ch)
      safeCloseSync(room.unlockedData.startSync)
      rooms.Delete(room.unlockedData.RoomId)
@@ -253,6 +260,7 @@ func(room *Room)IsSyncFinished(connUUID string,player datastruct.Player) (bool,i
     }
     return syncFinished,content.CurrentFrameIndex
 }
+
 func (room *Room)GetCreateAction(connUUID string,p_id int)msg.CreatePlayer{
      randomIndex:=tools.GetRandomQuadrantIndex()
      point:=tools.GetCreatePlayerPoint(room.unlockedData.pointData.quadrant[randomIndex],randomIndex) 
@@ -263,6 +271,8 @@ func (room *Room)GetCreateAction(connUUID string,p_id int)msg.CreatePlayer{
      room.playersData.Set(connUUID,actionData)//添加action 到 lastFrameIndex+1
      return action
 }
+
+
  
 func (room *Room)SendInitRoomDataToAgent(a gate.Agent,content *msg.SC_InitRoomDataContent){
      a.WriteMsg(msg.GetInitRoomDataMsg(*content))
@@ -353,6 +363,16 @@ func (room*Room)goCreatePoints(num int,maxRangeType msg.EnergyPointType){
         }
      }
 }
+
+func (room*Room)goCreateMovePoint(){
+    for {
+       isClosed := safeSendRobotMoved(room.unlockedData.rebotMoveAction,tools.GetRandomDirection())
+       if isClosed{
+           break
+       }
+    }
+}
+
 
 func(room *Room)createTicker(){
 	if !room.unlockedData.isExistTicker{
@@ -455,13 +475,17 @@ func (room *Room)ComputeFrameData(){
     var frame_data msg.FrameData
     frame_data.FrameIndex = currentFrameIndex
 
-    var points []msg.EnergyPoint
+    
   
-     
+    
+    frame_data.PlayerFrameData=make([]interface{},0,len(online_sync)+len(offline_sync))
+
      if currentFrameIndex == FirstFrameIndex{//已保存在历史消息中，清空初始化的能量点
         frame_data.CreateEnergyPoints=room.unlockedData.pointData.firstFramePoint
         room.unlockedData.pointData.firstFramePoint=room.unlockedData.pointData.firstFramePoint[:0]
+
      }else{
+        var points []msg.EnergyPoint
         select {
         case points = <-room.unlockedData.points_ch:
         default:
@@ -472,26 +496,28 @@ func (room *Room)ComputeFrameData(){
         }
      }
 
-    
+     
+     room.robots.Mutex.RLock()
+     for _,robot:= range room.robots.robots{
+         action:=room.getRobotAction(robot,currentFrameIndex)
+         frame_data.PlayerFrameData = append(frame_data.PlayerFrameData,action)
+     }
+     room.robots.Mutex.RUnlock()
 
-     
-    
-     
-     frame_data.PlayerFrameData=make([]interface{},0,len(online_sync)+len(offline_sync))
+
      for _,player := range online_sync{
          connUUID:=player.Agent.UserData().(datastruct.AgentUserData).ConnUUID
          action:=room.playersData.GetValue(connUUID,player.Id)
          frame_data.PlayerFrameData = append(frame_data.PlayerFrameData,action)
      }
-     
-     // for _,player := range offline_sync{
-        
-     // }
-    
+
+    //  for _,player := range offline_sync{
+    //     point:=room.getMovePoint()
+    //     action:=msg.GetCreatePlayerMoved(player.Id,point.X,point.Y,msg.DefaultSpeed)
+    //     frame_data.PlayerFrameData = append(frame_data.PlayerFrameData,action)
+    //  }
      
      frame_content.FramesData = append(frame_content.FramesData,frame_data)
-     
-     
      
      for _,player := range online_sync{
          msg:=msg.GetRoomFrameDataMsg(&frame_content)
@@ -536,6 +562,7 @@ func removeOfflineSyncPlayersInRoom(room *Room,removeIndex []int){
 func (room *Room)createRoomUnlockedData(connUUIDs []string,r_type RoomDataType,r_id string){
     unlockedData:=new(RoomUnlockedData)
     unlockedData.points_ch = make(chan []msg.EnergyPoint,2)
+    unlockedData.rebotMoveAction = make(chan msg.Point,LeastPeople-1+MaxPeopleInRoom-1)
     unlockedData.startSync = make(chan struct{},MaxPeopleInRoom-1)
     unlockedData.pointData = room.createEnergyPointData(room.gameMap.width,room.gameMap.height)
     unlockedData.AllowList = connUUIDs
@@ -562,15 +589,44 @@ func (room *Room)createEnergyPowerData(){
 func (room *Room)createRobotData(num int,isRelive bool){
     robots:=new(RobotData)
     robots.Mutex = new(sync.RWMutex)
-    robots.robots = make(map[int]datastruct.Robot)
+    robots.robots = make(map[int]*datastruct.Robot)
     for i:=0;i<num;i++{
-        robot:=tools.CreateRobot(i,isRelive)
-        robots.robots[robot.Id]=*robot
+        robot:=tools.CreateRobot(i,isRelive,room.unlockedData.pointData.quadrant)
+        robots.robots[robot.Id]=robot
     }
     room.robots = robots
 }
 
+func (room *Room)getMovePoint() msg.Point{
+    var point msg.Point
+    select {
+    case point = <-room.unlockedData.rebotMoveAction:
+    default:
+        point=msg.DefaultDirection
+    }
+    return point
+}
 
+
+func safeSendRobotMoved(ch chan msg.Point, value msg.Point) (closed bool) {
+    defer func() {
+        if recover() != nil {
+            closed = true
+        }
+	}()
+    ch <- value // panic if ch is closed
+    return false // <=> closed = false; return
+}
+
+func safeCloseRobotMoved(ch chan msg.Point) (justClosed bool) {
+	defer func() {
+        if recover() != nil {
+            justClosed = false
+        }
+	}()
+	close(ch) // panic if ch is closed
+    return true
+}
 
 func safeSendPoint(ch chan []msg.EnergyPoint, value []msg.EnergyPoint) (closed bool) {
     defer func() {
@@ -672,4 +728,41 @@ func (power *EnergyPowerData)SetPower(num int){
        power.EnableCreateEnergyPower = MaxEnergyPower 
     }
     power.Mutex.Unlock()
+}
+
+
+func (room *Room)getRobotAction(robot *datastruct.Robot,currentFrameIndex int)interface{}{
+     var rs interface{}
+     current_action:=robot.Action
+    
+
+     switch current_action.(type){
+       case msg.CreatePlayer:
+            rs=current_action
+            point:=room.getMovePoint()
+            action:=msg.GetCreatePlayerMoved(robot.Id,point.X,point.Y,msg.DefaultSpeed)
+            robot.Action = action
+       case msg.PlayerMoved:
+            if currentFrameIndex*time_interval % robot.DirectionInterval == 0 {
+                point:=room.getMovePoint()
+                action:=msg.GetCreatePlayerMoved(robot.Id,point.X,point.Y,msg.DefaultSpeed)
+                if currentFrameIndex*time_interval % robot.SpeedInterval == 0{
+                   robot.SpeedDuration = tools.GetRandomSpeedDuration()
+                   action.Speed = tools.GetRandomSpeed()
+                }
+                rs = action
+            }else{
+                action:=current_action.(msg.PlayerMoved)
+                if currentFrameIndex*time_interval % robot.SpeedInterval == 0{       
+                    robot.SpeedDuration = tools.GetRandomSpeedDuration()
+                    action.Speed = tools.GetRandomSpeed()
+                }
+                rs = action  
+            }
+            
+
+       //case msg.PlayerDied:
+              //create player
+     }
+	 return rs
 }
