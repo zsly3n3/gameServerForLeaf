@@ -2,7 +2,6 @@ package msg
 
 import (
 	"github.com/name5566/leaf/network/json"
-	"fmt"
 )
 
 const PC_Platform ="pc"  //pc端
@@ -232,11 +231,9 @@ func GetCreatePlayerAction(p_id int,x int,y int) CreatePlayer{
 	  case 0:
 		action.X = Test1Point.X
 		action.Y = Test1Point.Y
-		fmt.Println("------GetCreatePlayerAction 0-----")
 	  case 1:
 		action.X = Test2Point.X
 		action.Y = Test2Point.Y
-		fmt.Println("------GetCreatePlayerAction 1-----")
 	  default:
 		action.X = x
 		action.Y = y

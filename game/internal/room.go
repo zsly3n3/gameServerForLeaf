@@ -33,7 +33,12 @@ const MaxPlayingTime = 5*time.Minute
 
 const MaxEnergyPower = 5000 //全场最大能量值
 const InitEnergyPower = 1000 //地图初始化的能量值
-const InitEnergyNum = 80//初始化能量个数
+const PerFramePower = 30 //每帧能量30，1秒能量600
+const InitEnergy_A=60
+const InitEnergy_B=20
+const PerFrameEnergy_A=2
+const PerFrameEnergy_B=1
+
 
 type Room struct {
     Mutex *sync.RWMutex //读写互斥量
@@ -49,8 +54,9 @@ type Room struct {
     unlockedData *RoomUnlockedData
     history *HistoryFrameData
     
-    //interface{} 历史帧能量消耗事件数据，保存消耗后的能量点数据。 用于计算生产能量数据
+    energyData *EnergyPowerData
 
+    //interface{} 历史帧能量消耗事件数据，保存消耗后的能量点数据。 用于计算生产能量数据
     //robots *RobotData
 }
 
@@ -68,9 +74,22 @@ type RoomUnlockedData struct {
      RoomType RoomDataType//房间类型
      RoomId string
      startSync chan struct{} //开始同步的管道
-    
 }
 
+type GameMap struct{
+    height int
+    width int
+}
+
+type EnergyPointData struct{
+     quadrant []msg.Quadrant
+     firstFramePoint []msg.EnergyPoint //第一帧的能量点数据
+}
+
+type EnergyPowerData struct {
+     Mutex *sync.Mutex //读写互斥量
+     EnableCreateEnergyPower int //当前可以生成的能量
+}
 
 type PlayersFrameData struct {
      Mutex *sync.RWMutex //读写互斥量
@@ -108,15 +127,7 @@ type RobotData struct {
 //     FramesData []interface{} //eventdata
 // }
 
-type GameMap struct{
-    height int
-    width int
-}
 
-type EnergyPointData struct{
-     quadrant []msg.Quadrant
-     firstFramePoint []msg.EnergyPoint //第一帧的能量点数据
-}
 
 
 
@@ -125,6 +136,7 @@ func createRoom(connUUIDs []string,r_type RoomDataType,r_id string)*Room{
     room.Mutex = new(sync.RWMutex)
     room.createGameMap(map_factor)
     room.createHistoryFrameData()
+    room.createEnergyPowerData()
     room.currentFrameIndex = FirstFrameIndex
     room.onlineSyncPlayers = make([]datastruct.Player,0,MaxPeopleInRoom)
     room.createRoomUnlockedData(connUUIDs,r_type,r_id)
@@ -185,7 +197,7 @@ func (room *Room)createEnergyPointData(width int,height int) *EnergyPointData{
     p_data.quadrant=append(p_data.quadrant,tools.CreateQuadrant(width,height,2))
     p_data.quadrant=append(p_data.quadrant,tools.CreateQuadrant(width,height,3))
     p_data.quadrant=append(p_data.quadrant,tools.CreateQuadrant(width,height,4))
-    p_data.firstFramePoint=tools.GetRandomPoint(InitEnergyNum,InitEnergyPower,p_data.quadrant) //第零帧生成能量点
+    p_data.firstFramePoint=tools.GetRandomPoint(InitEnergy_A,InitEnergy_B,p_data.quadrant) //第零帧生成能量点
     
     
     go room.goCreatePoints(1,msg.TypeB)
@@ -271,11 +283,7 @@ func (room *Room)syncData(connUUID string,player datastruct.Player){
         player.Agent.WriteMsg(msg.GetRoomFrameDataMsg(data))
      }
      lastFrameIndex:=copyData[num-1].FramesData[0].FrameIndex
-
-    
-     
-     
-     
+ 
      room.Mutex.Lock()
      
      if lastFrameIndex+1 == room.currentFrameIndex {//数据帧是从0开始，服务器计算帧是从1开始
@@ -339,7 +347,8 @@ func(room *Room)Join(connUUID string,player datastruct.Player,force bool) bool{
 
 func (room*Room)goCreatePoints(num int,maxRangeType msg.EnergyPointType){
      for {
-        isClosed := safeSendPoint(room.unlockedData.points_ch,getPoints(num,msg.TypeB,room.unlockedData.pointData.quadrant))
+        points:=tools.GetRandomPoint(PerFrameEnergy_A,PerFrameEnergy_B,room.unlockedData.pointData.quadrant)
+        isClosed := safeSendPoint(room.unlockedData.points_ch,points)
         if isClosed{
             break
         }
@@ -402,10 +411,9 @@ func (room *Room)IsRemoveRoom()(bool,int,[]datastruct.Player,[]datastruct.Player
     offline_sync:= make([]datastruct.Player,0,MaxPeopleInRoom)
 
     if !isRemove{
-            
-            currentFrameIndex = room.currentFrameIndex //服务器帧是从1开始
-            room.currentFrameIndex++
-            
+       currentFrameIndex = room.currentFrameIndex //服务器帧是从1开始
+       room.currentFrameIndex++
+
        var offlineSyncPlayersIndex []int
        if offlineNum > 0{
           offlineSyncPlayersIndex=make([]int,0,offlineNum)
@@ -449,15 +457,23 @@ func (room *Room)ComputeFrameData(){
     frame_data.FrameIndex = currentFrameIndex
 
     var points []msg.EnergyPoint
-    select {
-     case points = <-room.unlockedData.points_ch:
-     default:
-      points=nil
-    }
-    
-     if currentFrameIndex%40==0&&points != nil&&len(points)>0 {
-        frame_data.CreateEnergyPoints = points
+  
+     
+     if currentFrameIndex == FirstFrameIndex{//已保存在历史消息中，清空初始化的能量点
+        frame_data.CreateEnergyPoints=room.unlockedData.pointData.firstFramePoint
+        room.unlockedData.pointData.firstFramePoint=room.unlockedData.pointData.firstFramePoint[:0]
+     }else{
+        select {
+        case points = <-room.unlockedData.points_ch:
+        default:
+         points=nil
+        }
+        if points != nil && len(points)>0 && room.energyData.IsCreatePower(){
+            frame_data.CreateEnergyPoints = points
+        }
      }
+
+    
 
      
     
@@ -479,7 +495,9 @@ func (room *Room)ComputeFrameData(){
      
      
      for _,player := range online_sync{
-         player.Agent.WriteMsg(msg.GetRoomFrameDataMsg(&frame_content))
+         msg:=msg.GetRoomFrameDataMsg(&frame_content)
+         player.Agent.WriteMsg(msg)
+         log.Debug("ComputeFrameData msgHeader:%v,msgContent:%v",msg.MsgHeader,msg.MsgContent)
      }
      
      if !isRemoveHistory{
@@ -535,6 +553,15 @@ func (room *Room)createHistoryFrameData(){
     history.FramesData = make([]*msg.SC_RoomFrameDataContent,0,rs);
     room.history = history
 }
+
+func (room *Room)createEnergyPowerData(){
+    energyData:=new(EnergyPowerData)
+    energyData.Mutex = new(sync.Mutex)
+    energyData.EnableCreateEnergyPower = MaxEnergyPower - InitEnergyPower
+    room.energyData = energyData
+}
+
+
 
 func safeSendPoint(ch chan []msg.EnergyPoint, value []msg.EnergyPoint) (closed bool) {
     defer func() {
@@ -597,8 +624,6 @@ func (data *PlayersFrameData)CheckValue(k string) (PlayerActionData,bool){
     return actionData,ok
 }
 
-
-
 func (data *PlayersFrameData)GetValue(k string,pid int)interface{}{
     data.Mutex.Lock()
 	defer data.Mutex.Unlock()
@@ -618,4 +643,24 @@ func (data *PlayersFrameData)GetValue(k string,pid int)interface{}{
       v=action
     }
     return v
+}
+
+func (power *EnergyPowerData)IsCreatePower()bool{
+     tf:=false
+     power.Mutex.Lock()
+     if power.EnableCreateEnergyPower>=PerFramePower{
+        power.EnableCreateEnergyPower-=PerFramePower
+        tf = true
+     }
+     power.Mutex.Unlock()
+     return tf
+}
+
+func (power *EnergyPowerData)SetPower(num int){
+    power.Mutex.Lock()
+    power.EnableCreateEnergyPower += num
+    if power.EnableCreateEnergyPower>MaxEnergyPower{
+       power.EnableCreateEnergyPower = MaxEnergyPower 
+    }
+    power.Mutex.Unlock()
 }
