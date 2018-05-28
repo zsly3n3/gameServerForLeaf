@@ -1,6 +1,7 @@
 package tools
 
 import (
+	"fmt"
 	"crypto/md5"  
     crypto_rand "crypto/rand"
     "math/rand" 
@@ -168,3 +169,12 @@ func UpdateAgentUserData(a gate.Agent,connUUID string,uid int,r_id string){
     })
 }
 
+const startIndex = 30000
+func CreateRobot(index int,isRelive bool) *datastruct.Robot{
+     robot:=new(datastruct.Robot)
+     robot.Id = startIndex+index
+     robot.IsRelive = isRelive
+     robot.Avatar = fmt.Sprintf("Avatar%d",index)
+     robot.NickName = fmt.Sprintf("Robot%d",index)
+     return robot
+}

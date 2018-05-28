@@ -50,11 +50,11 @@ type PlayerGameData struct{
 
 
 /*机器人*/
-type Robot struct {  
+type Robot struct {
+	Id int
 	Avatar   string 
-	NickName string
+	NickName string 
 	IsRelive bool //是否能重生
-	//IsDeath
 }
 
 

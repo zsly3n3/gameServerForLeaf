@@ -57,7 +57,7 @@ type Room struct {
     energyData *EnergyPowerData
 
     //interface{} 历史帧能量消耗事件数据，保存消耗后的能量点数据。 用于计算生产能量数据
-    //robots *RobotData
+    robots *RobotData
 }
 
 type HistoryFrameData struct {
@@ -74,6 +74,7 @@ type RoomUnlockedData struct {
      RoomType RoomDataType//房间类型
      RoomId string
      startSync chan struct{} //开始同步的管道
+     //rebotAction chan Action
 }
 
 type GameMap struct{
@@ -103,8 +104,7 @@ type PlayerActionData struct {
 
 type RobotData struct {
     Mutex *sync.RWMutex //读写互斥量
-    robots map[string]datastruct.Robot//机器人列表map[string]
-    //robotsData *tools.SafeMap//机器人数据map[string]*RebotFramesData
+    robots map[int]datastruct.Robot//机器人列表map[string]
 }
 
 // type RoomData struct {
@@ -137,6 +137,7 @@ func createRoom(connUUIDs []string,r_type RoomDataType,r_id string)*Room{
     room.createGameMap(map_factor)
     room.createHistoryFrameData()
     room.createEnergyPowerData()
+    
     room.currentFrameIndex = FirstFrameIndex
     room.onlineSyncPlayers = make([]datastruct.Player,0,MaxPeopleInRoom)
     room.createRoomUnlockedData(connUUIDs,r_type,r_id)
@@ -146,9 +147,7 @@ func createRoom(connUUIDs []string,r_type RoomDataType,r_id string)*Room{
     switch r_type{
        case Matching:
         log.Debug("create Matching Room")
-        // room.robots = tools.NewSafeMap()
-        // room.robotsData = tools.NewSafeMap()
-        //create robots
+        room.createRobotData(LeastPeople-len(connUUIDs),true)
         time.AfterFunc(RoomCloseTime,func(){
             isRemove:=false
             room.Mutex.Lock()
@@ -559,6 +558,16 @@ func (room *Room)createEnergyPowerData(){
     energyData.Mutex = new(sync.Mutex)
     energyData.EnableCreateEnergyPower = MaxEnergyPower - InitEnergyPower
     room.energyData = energyData
+}
+func (room *Room)createRobotData(num int,isRelive bool){
+    robots:=new(RobotData)
+    robots.Mutex = new(sync.RWMutex)
+    robots.robots = make(map[int]datastruct.Robot)
+    for i:=0;i<num;i++{
+        robot:=tools.CreateRobot(i,isRelive)
+        robots.robots[robot.Id]=*robot
+    }
+    room.robots = robots
 }
 
 
