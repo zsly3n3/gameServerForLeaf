@@ -215,10 +215,9 @@ func GetRandomDirection()msg.Point{
      }
 }
 
-
-
 func GetRandomSpeed()int{
-    return randInt(minSpeed,maxSpeed+1)
+    //return randInt(minSpeed,maxSpeed+1)
+    return minSpeed
 }
 
 func GetRandomSpeedDuration()int{

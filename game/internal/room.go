@@ -207,6 +207,7 @@ func (room *Room)createEnergyPointData(width int,height int) *EnergyPointData{
     
     
     go room.goCreatePoints(1,msg.TypeB)
+    go room.goCreateMovePoint()
     return p_data
 }
 
@@ -735,7 +736,6 @@ func (room *Room)getRobotAction(robot *datastruct.Robot,currentFrameIndex int)in
      var rs interface{}
      current_action:=robot.Action
     
-
      switch current_action.(type){
        case msg.CreatePlayer:
             rs=current_action
@@ -743,24 +743,33 @@ func (room *Room)getRobotAction(robot *datastruct.Robot,currentFrameIndex int)in
             action:=msg.GetCreatePlayerMoved(robot.Id,point.X,point.Y,msg.DefaultSpeed)
             robot.Action = action
        case msg.PlayerMoved:
-            if currentFrameIndex*time_interval % robot.DirectionInterval == 0 {
+            var ptr_action *msg.PlayerMoved
+
+            if currentFrameIndex*time_interval % (robot.DirectionInterval*1000) == 0 {
+                lastSpeed:=current_action.(msg.PlayerMoved).Speed
                 point:=room.getMovePoint()
                 action:=msg.GetCreatePlayerMoved(robot.Id,point.X,point.Y,msg.DefaultSpeed)
-                if currentFrameIndex*time_interval % robot.SpeedInterval == 0{
-                   robot.SpeedDuration = tools.GetRandomSpeedDuration()
-                   action.Speed = tools.GetRandomSpeed()
-                }
-                rs = action
+                action.Speed=lastSpeed
+                ptr_action = &action
+                
             }else{
                 action:=current_action.(msg.PlayerMoved)
-                if currentFrameIndex*time_interval % robot.SpeedInterval == 0{       
-                    robot.SpeedDuration = tools.GetRandomSpeedDuration()
-                    action.Speed = tools.GetRandomSpeed()
-                }
-                rs = action  
+                ptr_action = &action
             }
             
+            if currentFrameIndex*time_interval % (robot.SpeedInterval*1000) == 0{
+                speedDuration:= tools.GetRandomSpeedDuration()
+                robot.StopSpeedFrameIndex = currentFrameIndex+speedDuration*(1000/time_interval)
+                ptr_action.Speed = tools.GetRandomSpeed()
+            }
 
+            if robot.StopSpeedFrameIndex != 0 && currentFrameIndex == robot.StopSpeedFrameIndex{
+                robot.StopSpeedFrameIndex = 0
+                ptr_action.Speed = msg.DefaultSpeed
+            }
+            
+            robot.Action=*ptr_action
+            rs=robot.Action
        //case msg.PlayerDied:
               //create player
      }

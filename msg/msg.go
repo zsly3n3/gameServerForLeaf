@@ -243,6 +243,7 @@ func GetCreatePlayerAction(p_id int,x int,y int) CreatePlayer{
 	  action.Y = y
 	  return action
 }
+
 func GetCreatePlayerMoved(p_id int,x int,y int,speed int) PlayerMoved{
 	var action PlayerMoved
 	action.Action = Move
