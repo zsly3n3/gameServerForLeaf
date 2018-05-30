@@ -1,4 +1,4 @@
-package Matching
+package match
 
 import (
 	"sync"
@@ -11,7 +11,7 @@ type MatchActionPool struct {
 	Pool  []string //存放玩家uuid
 }
 
-func newMatchActionPool(poolCapacity int)*MatchActionPool{
+func NewMatchActionPool(poolCapacity int)*MatchActionPool{
 	matchActionPool:=new(MatchActionPool)
 	matchActionPool.init(poolCapacity)
 	return matchActionPool

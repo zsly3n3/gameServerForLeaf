@@ -1,4 +1,4 @@
-package internal
+package singleMatch
 
 import (
 	"sync"

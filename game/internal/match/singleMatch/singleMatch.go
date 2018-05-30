@@ -1,4 +1,4 @@
-package Matching
+package singleMatch
 
 import (
 	"server/datastruct"
@@ -8,6 +8,7 @@ import (
 	"server/db"
 	"server/tools"
 	"server/msg"
+	"server/game/internal/match"
 )
 
 /*单人匹配*/
@@ -20,7 +21,7 @@ type SingleMatch struct {
 	rooms *Rooms
 	onlinePlayers *datastruct.OnlinePlayers
 	singleMatchPool *SingleMatchingPool
-	actionPool *MatchActionPool
+	actionPool *match.MatchActionPool
 }
 
 func NewSingleMatch()*SingleMatch{
@@ -29,15 +30,15 @@ func NewSingleMatch()*SingleMatch{
 	return singleMatch
 }
 
-func (match *SingleMatch)init(){
-	match.isExistTicker = false
-	match.Times = 1*time.Second //定时器多少时间执行一次
-	match.MaxWaitTime = 5*time.Second//玩家最大等待时间多少秒
-	match.Pool_Capacity = 10 //满足有多少个人就开始游戏
-	match.onlinePlayers = datastruct.NewOnlinePlayers()
-	match.singleMatchPool = newSingleMatchingPool(match.Pool_Capacity)
-	match.actionPool = newMatchActionPool(match.Pool_Capacity)
-	match.rooms = NewRooms()
+func (singleMatch *SingleMatch)init(){
+	singleMatch.isExistTicker = false
+	singleMatch.Times = 1*time.Second //定时器多少时间执行一次
+	singleMatch.MaxWaitTime = 5*time.Second//玩家最大等待时间多少秒
+	singleMatch.Pool_Capacity = 10 //满足有多少个人就开始游戏
+	singleMatch.onlinePlayers = datastruct.NewOnlinePlayers()
+	singleMatch.singleMatchPool = newSingleMatchingPool(singleMatch.Pool_Capacity)
+	singleMatch.actionPool = match.NewMatchActionPool(singleMatch.Pool_Capacity)
+	singleMatch.rooms = NewRooms()
 }
 
 func (match *SingleMatch)addPlayer(connUUID string,a gate.Agent,uid int){
@@ -70,10 +71,10 @@ func (match *SingleMatch)CheckActionPool(connUUID string) bool{
 
 func (match *SingleMatch)Matching(connUUID string, a gate.Agent,uid int){
 	  match.addPlayer(connUUID,a,uid)
-	  willEnterRoom:=false
+	
 	//willEnterRoom 是否将要加入了房间
-	//r_id,willEnterRoom:=rooms.GetFreeRoomId()
-
+	r_id,willEnterRoom:=match.rooms.GetFreeRoomId()
+    
 	if !willEnterRoom{
 	   match.singleMatchPool.Mutex.Lock()
 	   defer match.singleMatchPool.Mutex.Unlock()
@@ -96,10 +97,10 @@ func (match *SingleMatch)Matching(connUUID string, a gate.Agent,uid int){
 		}
 	   }
 	}else{
-		// player,tf:=onlinePlayers.GetAndUpdateState(p_uuid,datastruct.FreeRoom,r_id)
-		// if tf{
-		// 	player.Agent.WriteMsg(msg.GetMatchingEndMsg(r_id))
-		// }
+		 player,tf:=match.onlinePlayers.GetAndUpdateState(connUUID,datastruct.FreeRoom,r_id)
+		 if tf{
+		 	player.Agent.WriteMsg(msg.GetMatchingEndMsg(r_id))
+		 }
 	}
 }
 
@@ -180,8 +181,8 @@ func (match *SingleMatch)cleanPoolAndCreateRoom(){
 func (match *SingleMatch)createMatchingTypeRoom(playerUUID []string){
     r_uuid:=tools.UniqueId()
     players:=match.onlinePlayers.GetsAndUpdateState(playerUUID,datastruct.FromMatchingPool,r_uuid)
-    room:=createRoom(playerUUID,Matching,r_uuid)
-    rooms.Set(r_uuid,room)
+    room:=CreateRoom(playerUUID,r_uuid)
+    match.rooms.Set(r_uuid,room)
     for _,play := range players{
         play.Agent.WriteMsg(msg.GetMatchingEndMsg(r_uuid))
     }

@@ -1,4 +1,4 @@
-package internal
+package singleMatch
 
 import (
 	"server/msg"
@@ -10,12 +10,12 @@ import (
     "server/tools"
 )
 
-type RoomDataType int //房间类型,匹配类型还是邀请类型
+// type RoomDataType int //房间类型,匹配类型还是邀请类型
 
-const (
-	SinglePersonMatching RoomDataType = iota
-	Invite
-)
+// const (
+// 	SinglePersonMatching RoomDataType = iota
+// 	Invite
+// )
 
 
 const min_MapWidth = 20
@@ -73,7 +73,7 @@ type RoomUnlockedData struct {
      points_ch chan []msg.EnergyPoint
      pointData *EnergyPointData
      AllowList []string//允许列表
-     RoomType RoomDataType//房间类型
+    // RoomType RoomDataType//房间类型
      RoomId string
      startSync chan struct{} //开始同步的管道
      rebotMoveAction chan msg.Point
@@ -137,11 +137,11 @@ type RobotData struct {
 
 
 
-func createRoom(connUUIDs []string,r_type RoomDataType,r_id string)*Room{
+func CreateRoom(connUUIDs []string,r_id string)*Room{
     room := new(Room)
     room.Mutex = new(sync.RWMutex)
     room.createGameMap(map_factor)
-    room.createRoomUnlockedData(connUUIDs,r_type,r_id)
+    room.createRoomUnlockedData(connUUIDs,r_id)
     room.createHistoryFrameData()
     room.createEnergyPowerData()
     
@@ -151,8 +151,7 @@ func createRoom(connUUIDs []string,r_type RoomDataType,r_id string)*Room{
     room.IsOn = true
     room.players = make([]string,0,MaxPeopleInRoom)
     room.playersData = NewPlayersFrameData()
-    switch r_type{
-       case Matching:
+
         log.Debug("create Matching Room")
         room.createRobotData(LeastPeople-len(connUUIDs),true)
         time.AfterFunc(RoomCloseTime,func(){
@@ -168,9 +167,7 @@ func createRoom(connUUIDs []string,r_type RoomDataType,r_id string)*Room{
                 room.removeFromRooms()
             }
         })
-       case Invite:
-        log.Debug("create Invite Room")
-    }
+      
     return room
 }
 
@@ -561,7 +558,7 @@ func removeOfflineSyncPlayersInRoom(room *Room,removeIndex []int){
 }
 
 
-func (room *Room)createRoomUnlockedData(connUUIDs []string,r_type RoomDataType,r_id string){
+func (room *Room)createRoomUnlockedData(connUUIDs []string,r_id string){
     unlockedData:=new(RoomUnlockedData)
     unlockedData.points_ch = make(chan []msg.EnergyPoint,2)
     unlockedData.rebotMoveAction = make(chan msg.Point,LeastPeople-1+MaxPeopleInRoom-1)
@@ -569,7 +566,6 @@ func (room *Room)createRoomUnlockedData(connUUIDs []string,r_type RoomDataType,r
     unlockedData.pointData = room.createEnergyPointData(room.gameMap.width,room.gameMap.height)
     unlockedData.AllowList = connUUIDs
     unlockedData.RoomId = r_id
-    unlockedData.RoomType = r_type
     unlockedData.isExistTicker = false
     room.unlockedData = unlockedData
 }
