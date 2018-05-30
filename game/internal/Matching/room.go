@@ -11,8 +11,9 @@ import (
 )
 
 type RoomDataType int //房间类型,匹配类型还是邀请类型
+
 const (
-	Matching RoomDataType = iota
+	SinglePersonMatching RoomDataType = iota
 	Invite
 )
 

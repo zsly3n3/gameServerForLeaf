@@ -1,20 +1,25 @@
 package internal
 
 import (
-	//"fmt"
 	"github.com/name5566/leaf/gate"
 	"server/datastruct"
 )
 
+const SinglePersonMatchingKey="SinglePersonMatching"
+const CloseAgentKey="CloseAgent"
+
+
 func init() {
-	skeleton.RegisterChanRPC("MatchingPlayers", rpcMatchingPlayers)
-	skeleton.RegisterChanRPC("CloseAgent", removeOnlinePlayer)
+	skeleton.RegisterChanRPC(SinglePersonMatchingKey, rpcMatchingPlayers)
+	skeleton.RegisterChanRPC(CloseAgentKey, removeOnlinePlayer)
 }
 
 
 func rpcMatchingPlayers(args []interface{}) {
 	p_uuid := args[0].(string)
-	matchingPlayers(p_uuid)
+	a := args[1].(gate.Agent)
+	uid:= args[2].(int)
+	singlePersonMatchingPlayers(p_uuid,a,uid)
 }
 
 
@@ -25,6 +30,5 @@ func removeOnlinePlayer(args []interface{}){
 		au_data:=u_data.(datastruct.AgentUserData)
 		connUUID:=au_data.ConnUUID
 		removePlayer(connUUID)
-		removeFromMatchActionPool(connUUID)
 	}
 }

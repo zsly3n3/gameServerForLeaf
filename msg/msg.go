@@ -64,6 +64,7 @@ type CS_PlayerCancelMatching struct {
 }
 
 /*发送正在匹配中*/
+const SC_PlayerMatchingKey = "SC_PlayerMatching"
 type SC_PlayerMatching struct {
 	MsgHeader json.MsgHeader
 	MsgContent SC_PlayerMatchingContent
@@ -75,11 +76,13 @@ type SC_PlayerMatchingContent struct {
 
 
 /*已在匹配中*/
+const SC_PlayerAlreadyMatchingKey = "SC_PlayerAlreadyMatching"
 type SC_PlayerAlreadyMatching struct {
 	MsgHeader json.MsgHeader
 }
 
 /*发送匹配成功的信息*/
+const SC_PlayerMatchingEndKey = "SC_PlayerMatchingEnd"
 type SC_PlayerMatchingEnd struct {
 	MsgHeader json.MsgHeader
 	MsgContent SC_PlayerMatchingEndContent
@@ -256,7 +259,7 @@ func GetCreatePlayerMoved(p_id int,x int,y int,speed int) PlayerMoved{
 
 func GetMatchingEndMsg(r_id string) *SC_PlayerMatchingEnd{
 	var msgHeader json.MsgHeader
-    msgHeader.MsgName = "SC_PlayerMatchingEnd"
+    msgHeader.MsgName = SC_PlayerMatchingEndKey
     var msgContent SC_PlayerMatchingEndContent
     msgContent.RoomID =r_id
     
