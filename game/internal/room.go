@@ -57,9 +57,12 @@ type Room struct {
     
     energyData *EnergyPowerData
 
-    //interface{} 历史帧能量消耗事件数据，保存消耗后的能量点数据。 用于计算生产能量数据
     robots *RobotData
+
+    energyExpend *EnergyExpend //历史帧能量消耗事件数据，保存消耗后的能量点数据。 用于计算生产能量数据
 }
+
+
 
 type HistoryFrameData struct {
     Mutex *sync.RWMutex //读写互斥量
@@ -89,8 +92,13 @@ type EnergyPointData struct{
 }
 
 type EnergyPowerData struct {
-     Mutex *sync.Mutex //读写互斥量
      EnableCreateEnergyPower int //当前可以生成的能量
+}
+
+type EnergyExpend struct {
+    Mutex *sync.Mutex //读写互斥量
+    Expended int 
+    ConnUUID string
 }
 
 type PlayersFrameData struct {
@@ -139,11 +147,13 @@ type RobotData struct {
 func createRoom(connUUIDs []string,r_type RoomDataType,r_id string)*Room{
     room := new(Room)
     room.Mutex = new(sync.RWMutex)
+
     room.createGameMap(map_factor)
     room.createRoomUnlockedData(connUUIDs,r_type,r_id)
     room.createHistoryFrameData()
     room.createEnergyPowerData()
-    
+    room.createEnergyExpend()
+
     room.currentFrameIndex = FirstFrameIndex
     room.onlineSyncPlayers = make([]datastruct.Player,0,MaxPeopleInRoom)
     
@@ -153,7 +163,11 @@ func createRoom(connUUIDs []string,r_type RoomDataType,r_id string)*Room{
     switch r_type{
        case Matching:
         log.Debug("create Matching Room")
-        room.createRobotData(LeastPeople-len(connUUIDs),true)
+        
+        //测试
+        room.createRobotData(0,true)
+        //room.createRobotData(LeastPeople-len(connUUIDs),true)
+        
         time.AfterFunc(RoomCloseTime,func(){
             isRemove:=false
             room.Mutex.Lock()
@@ -203,6 +217,8 @@ func (room *Room)createEnergyPointData(width int,height int) *EnergyPointData{
     p_data.quadrant=append(p_data.quadrant,tools.CreateQuadrant(width,height,2))
     p_data.quadrant=append(p_data.quadrant,tools.CreateQuadrant(width,height,3))
     p_data.quadrant=append(p_data.quadrant,tools.CreateQuadrant(width,height,4))
+    
+    
     p_data.firstFramePoint=tools.GetRandomPoint(InitEnergy_A,InitEnergy_B,p_data.quadrant) //第零帧生成能量点
     
     
@@ -347,6 +363,7 @@ func(room *Room)Join(connUUID string,player datastruct.Player,force bool) bool{
     }
     room.Mutex.Unlock()
     if currentFrameIndex==FirstFrameIndex{
+       room.getEnergyExpended(connUUID)
        room.createTicker()
     }
     if isOn&&!syncFinished{
@@ -404,7 +421,7 @@ func(room *Room) selectTicker(){
 	 }
 }
 
-func (room *Room)IsRemoveRoom()(bool,int,[]datastruct.Player,[]datastruct.Player,int,bool){
+func (room *Room)IsRemoveRoom()(bool,int,[]datastruct.Player,[]datastruct.Player,int,bool,string){
  //判断在线玩家
  isRemove:=false
  room.Mutex.Lock()
@@ -412,10 +429,15 @@ func (room *Room)IsRemoveRoom()(bool,int,[]datastruct.Player,[]datastruct.Player
  p_num:=len(room.players)
 
  offlinePlayersUUID:=make([]string,0,p_num)
+ expended_onlineConnUUID:=room.getEnergyExpendedConnUUID()
  for _,connUUID := range room.players{
     tf:=onlinePlayers.IsExist(connUUID)
     if !tf{
         offlinePlayersUUID =append(offlinePlayersUUID,connUUID)
+    }else{
+        if expended_onlineConnUUID == connUUID{
+           expended_onlineConnUUID = datastruct.NULLSTRING
+        }
     }
  }
  offlineNum:=len(offlinePlayersUUID)
@@ -450,6 +472,10 @@ func (room *Room)IsRemoveRoom()(bool,int,[]datastruct.Player,[]datastruct.Player
        }
        online_sync=make([]datastruct.Player,len(room.onlineSyncPlayers))
        copy(online_sync,room.onlineSyncPlayers)
+       if expended_onlineConnUUID != datastruct.NULLSTRING{
+        agentData:=online_sync[0].Agent.UserData().(datastruct.AgentUserData)
+        expended_onlineConnUUID = agentData.ConnUUID 
+       }
     }
 
  syncNotFinishedPlayers:=onlinePlayersInRoom-len(online_sync)
@@ -457,11 +483,14 @@ func (room *Room)IsRemoveRoom()(bool,int,[]datastruct.Player,[]datastruct.Player
  if syncNotFinishedPlayers == 0&&!room.IsOn{
     isRemoveHistory = true
  }
- return isRemove,currentFrameIndex,online_sync,offline_sync,syncNotFinishedPlayers,isRemoveHistory
+ 
+
+
+ return isRemove,currentFrameIndex,online_sync,offline_sync,syncNotFinishedPlayers,isRemoveHistory,expended_onlineConnUUID
 }
 
 func (room *Room)ComputeFrameData(){
-     isRemove,currentFrameIndex,online_sync,offline_sync,syncNotFinishedPlayers,isRemoveHistory:=room.IsRemoveRoom()
+     isRemove,currentFrameIndex,online_sync,offline_sync,syncNotFinishedPlayers,isRemoveHistory,expended_onlineConnUUID:=room.IsRemoveRoom()
      if isRemove{
         room.removeFromRooms()
         return
@@ -482,6 +511,7 @@ func (room *Room)ComputeFrameData(){
     frame_data.PlayerFrameData=make([]interface{},0,len(online_sync)+len(offline_sync))
 
      if currentFrameIndex == FirstFrameIndex{//已保存在历史消息中，清空初始化的能量点
+        
         frame_data.CreateEnergyPoints=room.unlockedData.pointData.firstFramePoint
         room.unlockedData.pointData.firstFramePoint=room.unlockedData.pointData.firstFramePoint[:0]
 
@@ -492,8 +522,11 @@ func (room *Room)ComputeFrameData(){
         default:
          points=nil
         }
+        expended:=room.getEnergyExpended(expended_onlineConnUUID)
+        room.energyData.SetPower(expended)
         if points != nil && len(points)>0 && room.energyData.IsCreatePower(){
-            frame_data.CreateEnergyPoints = points
+            //测试
+            //frame_data.CreateEnergyPoints = points
         }
      }
 
@@ -583,10 +616,10 @@ func (room *Room)createHistoryFrameData(){
 
 func (room *Room)createEnergyPowerData(){
     energyData:=new(EnergyPowerData)
-    energyData.Mutex = new(sync.Mutex)
     energyData.EnableCreateEnergyPower = MaxEnergyPower - InitEnergyPower
     room.energyData = energyData
 }
+
 func (room *Room)createRobotData(num int,isRelive bool){
     robots:=new(RobotData)
     robots.Mutex = new(sync.RWMutex)
@@ -596,6 +629,13 @@ func (room *Room)createRobotData(num int,isRelive bool){
         robots.robots[robot.Id]=robot
     }
     room.robots = robots
+}
+
+func (room *Room)createEnergyExpend(){
+    expend:=new(EnergyExpend)
+    expend.Mutex = new(sync.Mutex)
+    expend.Expended = 0
+    room.energyExpend = expend
 }
 
 func (room *Room)getMovePoint() msg.Point{
@@ -713,22 +753,18 @@ func (data *PlayersFrameData)GetValue(k string,pid int)interface{}{
 
 func (power *EnergyPowerData)IsCreatePower()bool{
      tf:=false
-     power.Mutex.Lock()
      if power.EnableCreateEnergyPower>=PerFramePower{
         power.EnableCreateEnergyPower-=PerFramePower
         tf = true
      }
-     power.Mutex.Unlock()
      return tf
 }
 
 func (power *EnergyPowerData)SetPower(num int){
-    power.Mutex.Lock()
     power.EnableCreateEnergyPower += num
     if power.EnableCreateEnergyPower>MaxEnergyPower{
        power.EnableCreateEnergyPower = MaxEnergyPower 
     }
-    power.Mutex.Unlock()
 }
 
 
@@ -774,4 +810,29 @@ func (room *Room)getRobotAction(robot *datastruct.Robot,currentFrameIndex int)in
               //create player
      }
 	 return rs
+}
+
+func (room *Room)EnergyExpended(uuid string,expended int){
+      room.energyExpend.Mutex.Lock()
+      defer room.energyExpend.Mutex.Unlock()
+      if uuid == room.energyExpend.ConnUUID{
+         room.energyExpend.Expended += expended
+      }
+}
+
+func (room *Room)getEnergyExpended(uuid string) int {
+    room.energyExpend.Mutex.Lock()
+    defer room.energyExpend.Mutex.Unlock()
+    if uuid != datastruct.NULLSTRING{
+       room.energyExpend.ConnUUID = uuid
+    }
+    rs := room.energyExpend.Expended
+    room.energyExpend.Expended = 0
+    return rs
+}
+func (room *Room)getEnergyExpendedConnUUID() string {
+    room.energyExpend.Mutex.Lock()
+    defer room.energyExpend.Mutex.Unlock()
+    connUUID:=room.energyExpend.ConnUUID
+    return connUUID
 }

@@ -59,12 +59,25 @@ func GetCreatePlayerPoint(quad msg.Quadrant,index int) msg.Point {
 }
 
 func GetRandomPoint(num1 int,num2 int,quad []msg.Quadrant)[]msg.EnergyPoint{
-    //  num1,num2:=GetEnergyNum(msg.TypeA,msg.TypeB,num,maxpower)
+    //  num1,num2:=GetEnergyNum(msg.TypeA,msg.TypeB,num,maxpower) 
      slice_point:=make([]msg.EnergyPoint,0,num1+num2)
      slice_point=append(slice_point,getQuadrantPoints(num1,msg.TypeA,quad)...)
      slice_point=append(slice_point,getQuadrantPoints(num2,msg.TypeB,quad)...)
      return slice_point
 }
+
+//测试
+// func GetTestPoint()[]msg.EnergyPoint{
+//      slice_point:=make([]msg.EnergyPoint,0,1)
+//      point:=msg.EnergyPoint{
+//         Type:1,
+//         X:400,
+//         Y:350,
+//      }
+//      slice_point=append(slice_point,point)
+//      return slice_point
+// }
+
 
 func getQuadrantPoints(num int,e_type msg.EnergyPointType,quad []msg.Quadrant)[]msg.EnergyPoint{
     slice_point:=make([]msg.EnergyPoint,0,num)

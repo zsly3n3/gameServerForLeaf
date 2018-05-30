@@ -21,6 +21,24 @@ func init() {
     handleMsg(&msg.CS_PlayerCancelMatching{}, handleCancelMatching)
     handleMsg(&msg.CS_PlayerJoinRoom{}, handlePlayerJoinRoom)
     handleMsg(&msg.CS_MoveData{}, handlePlayerMoveData)
+    handleMsg(&msg.CS_EnergyExpended{}, handleEnergyExpended)
+}
+
+func handleEnergyExpended(args []interface{}){
+    a := args[1].(gate.Agent)
+    if !tools.IsValid(a.UserData()){
+       return
+    }
+    m := args[0].(*msg.CS_EnergyExpended)
+    expended:=m.MsgContent.EnergyExpended
+    if expended>0{
+       agentUserData := a.UserData().(datastruct.AgentUserData)
+       connUUID:=agentUserData.ConnUUID
+       r_id:=agentUserData.RoomID
+       room:=rooms.Get(r_id)
+       room.EnergyExpended(connUUID,expended)
+       log.Debug("m.MsgContent.EnergyExpended:%d",m.MsgContent.EnergyExpended)
+    }
 }
 
 func handlePlayerMoveData(args []interface{}){
