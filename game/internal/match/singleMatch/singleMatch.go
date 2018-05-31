@@ -9,7 +9,11 @@ import (
 	"server/tools"
 	"server/msg"
 	"server/game/internal/match"
+	"github.com/name5566/leaf/log"
 )
+
+const LeastPeople = 10
+
 
 /*单人匹配*/
 type SingleMatch struct {
@@ -51,6 +55,22 @@ func (match *SingleMatch)RemovePlayer(connUUID string){
 	match.actionPool.RemoveFromMatchActionPool(connUUID)
 }
 
+func (match *SingleMatch)RemovePlayerFromMatchingPool(connUUID string){
+	  match.RemovePlayer(connUUID)
+	  match.singleMatchPool.Mutex.Lock()
+	  defer match.singleMatchPool.Mutex.Unlock()
+	  rm_index:=-1
+	  for index,v := range match.singleMatchPool.Pool{
+		  if connUUID == v{
+			  rm_index = index
+			  break
+		  }
+	  }
+	  if rm_index != -1{
+		 match.singleMatchPool.Pool=append(match.singleMatchPool.Pool[:rm_index], match.singleMatchPool.Pool[rm_index+1:]...)
+	  }
+}
+
 func (match *SingleMatch)addOnlinePlayer(connUUID string,a gate.Agent,uid int){
 	match.onlinePlayers.Lock.Lock()
 	 defer match.onlinePlayers.Lock.Unlock()
@@ -79,7 +99,6 @@ func (match *SingleMatch)Matching(connUUID string, a gate.Agent,uid int){
 	   match.singleMatchPool.Mutex.Lock()
 	   defer match.singleMatchPool.Mutex.Unlock()
 	   num:=len(match.singleMatchPool.Pool)
-	   LeastPeople:=match.Pool_Capacity
 	   if num<LeastPeople{
 		match.singleMatchPool.Pool=append(match.singleMatchPool.Pool,connUUID)
 		match.createTicker()
@@ -130,7 +149,6 @@ func (match *SingleMatch)selectTicker(){
 
 func (match *SingleMatch)getOfflinePlayers() ([]int, map[string]datastruct.Player){
     tmp_map:=match.onlinePlayers.Items()
-	LeastPeople:=match.Pool_Capacity
 	
     online_map:=make(map[string]datastruct.Player)
     
@@ -181,7 +199,7 @@ func (match *SingleMatch)cleanPoolAndCreateRoom(){
 func (match *SingleMatch)createMatchingTypeRoom(playerUUID []string){
     r_uuid:=tools.UniqueId()
     players:=match.onlinePlayers.GetsAndUpdateState(playerUUID,datastruct.FromMatchingPool,r_uuid)
-    room:=CreateRoom(playerUUID,r_uuid)
+    room:=CreateRoom(playerUUID,r_uuid,match)
     match.rooms.Set(r_uuid,room)
     for _,play := range players{
         play.Agent.WriteMsg(msg.GetMatchingEndMsg(r_uuid))
@@ -212,6 +230,58 @@ func (match *SingleMatch)computeMatchingTime(){
     }
 }
 
+func (match *SingleMatch)removeRoomWithID(uuid string){
+	match.rooms.Delete(uuid)
+}
+
+func (match *SingleMatch)PlayerMoved(r_id string,connUUID string,uid int,moveData *msg.CS_MoveData){
+	room:=match.rooms.Get(r_id)
+    if v,ok:=room.playersData.CheckValue(connUUID);ok{
+        if v.ActionType == msg.Create{
+            return
+        }
+    }
+    action:=msg.GetCreatePlayerMoved(uid,moveData.MsgContent.X,moveData.MsgContent.Y,moveData.MsgContent.Speed)
+    var actionData PlayerActionData
+    actionData.ActionType = action.Action
+    actionData.Data = action
+    room.playersData.Set(connUUID,actionData)
+}
+
+func (match *SingleMatch)PlayerJoin(connUUID string,joinData *msg.CS_PlayerJoinRoom){
+	player,tf:=match.onlinePlayers.CheckAndCleanState(connUUID,datastruct.EmptyWay,datastruct.NULLSTRING)
+    if tf{
+        r_id := joinData.MsgContent.RoomID
+        if player.GameData.EnterType == datastruct.FreeRoom&&player.GameData.RoomId==r_id{
+           room:=match.rooms.Get(r_id)
+           isOn:=room.Join(connUUID,player,false)
+           if isOn{
+			  log.Debug("通过遍历空闲房间进入")
+			  match.actionPool.RemoveFromMatchActionPool(connUUID)
+           }else{
+              go match.handleRoomOff(player.Agent,connUUID,player.Id)
+           }
+        }else if player.GameData.EnterType == datastruct.FromMatchingPool{
+            room:=match.rooms.Get(r_id)
+            for _,v:=range room.unlockedData.AllowList{
+                if v == connUUID{
+                    log.Debug("通过匹配池进入")
+                    room.Join(connUUID,player,true)
+					match.actionPool.RemoveFromMatchActionPool(connUUID)
+                    break
+                }
+            }
+        }else{
+            player.Agent.WriteMsg(msg.GetJoinInvalidMsg())
+        }
+    }
+}
+
+func (match *SingleMatch)handleRoomOff(a gate.Agent,connUUID string,uid int){
+    a.WriteMsg(msg.GetReMatchMsg())
+    match.Matching(connUUID,a,uid)
+}
+
 
 /*单人匹配池*/
 type SingleMatchingPool struct {
@@ -229,6 +299,9 @@ func (pool *SingleMatchingPool)init(poolCapacity int){
 	  pool.Mutex = new(sync.RWMutex)
 	  pool.Pool = make([]string,0,poolCapacity)
 }
+
+
+
 
 
 

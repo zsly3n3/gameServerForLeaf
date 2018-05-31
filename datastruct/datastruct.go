@@ -26,10 +26,18 @@ const (
 	BeInvited//通过被邀请准备进入
 )
 
+type GameModeType int //玩家进入房间的类型
+
+const (
+	SinglePersonMode GameModeType = iota //单人匹配
+	EndlessMode //无尽模式
+)
+
 type AgentUserData struct {
 	 ConnUUID string //每条连接的uuid
 	 Uid int //对应user表中的Id
-	 RoomID string 
+	 RoomID string
+	 GameMode GameModeType
 }
 
 type Player struct {

@@ -68,6 +68,7 @@ type HistoryFrameData struct {
 }
 
 type RoomUnlockedData struct {
+     parentMatch *SingleMatch
      isExistTicker bool
      ticker *time.Ticker
      points_ch chan []msg.EnergyPoint
@@ -137,11 +138,11 @@ type RobotData struct {
 
 
 
-func CreateRoom(connUUIDs []string,r_id string)*Room{
+func CreateRoom(connUUIDs []string,r_id string,parentMatch *SingleMatch)*Room{
     room := new(Room)
     room.Mutex = new(sync.RWMutex)
     room.createGameMap(map_factor)
-    room.createRoomUnlockedData(connUUIDs,r_id)
+    room.createRoomUnlockedData(connUUIDs,r_id,parentMatch)
     room.createHistoryFrameData()
     room.createEnergyPowerData()
     
@@ -176,9 +177,8 @@ func (room *Room)removeFromRooms(){
      safeCloseRobotMoved(room.unlockedData.rebotMoveAction)
      safeClosePoint(room.unlockedData.points_ch)
      safeCloseSync(room.unlockedData.startSync)
-     rooms.Delete(room.unlockedData.RoomId)
+     room.unlockedData.parentMatch.removeRoomWithID(room.unlockedData.RoomId)
      log.Debug("room removeFromRooms")
-     
 }
 
 func (room *Room)createGameMap(fac int){
@@ -276,7 +276,7 @@ func (room *Room)GetCreateAction(connUUID string,p_id int)msg.CreatePlayer{
 func (room *Room)SendInitRoomDataToAgent(a gate.Agent,content *msg.SC_InitRoomDataContent){
      a.WriteMsg(msg.GetInitRoomDataMsg(*content))
      agentData:=a.UserData().(datastruct.AgentUserData)
-     tools.UpdateAgentUserData(a,agentData.ConnUUID,agentData.Uid,room.unlockedData.RoomId)
+     tools.UpdateAgentUserData(a,agentData.ConnUUID,agentData.Uid,room.unlockedData.RoomId,agentData.GameMode)
 }
 
 func (room *Room)syncData(connUUID string,player datastruct.Player){
@@ -408,7 +408,7 @@ func (room *Room)IsRemoveRoom()(bool,int,[]datastruct.Player,[]datastruct.Player
  room.Mutex.Lock()
  defer room.Mutex.Unlock()
  p_num:=len(room.players)
-
+ onlinePlayers:=room.unlockedData.parentMatch.onlinePlayers
  offlinePlayersUUID:=make([]string,0,p_num)
  for _,connUUID := range room.players{
     tf:=onlinePlayers.IsExist(connUUID)
@@ -558,7 +558,7 @@ func removeOfflineSyncPlayersInRoom(room *Room,removeIndex []int){
 }
 
 
-func (room *Room)createRoomUnlockedData(connUUIDs []string,r_id string){
+func (room *Room)createRoomUnlockedData(connUUIDs []string,r_id string,parentMatch *SingleMatch){
     unlockedData:=new(RoomUnlockedData)
     unlockedData.points_ch = make(chan []msg.EnergyPoint,2)
     unlockedData.rebotMoveAction = make(chan msg.Point,LeastPeople-1+MaxPeopleInRoom-1)
@@ -567,6 +567,7 @@ func (room *Room)createRoomUnlockedData(connUUIDs []string,r_id string){
     unlockedData.AllowList = connUUIDs
     unlockedData.RoomId = r_id
     unlockedData.isExistTicker = false
+    unlockedData.parentMatch = parentMatch
     room.unlockedData = unlockedData
 }
 
