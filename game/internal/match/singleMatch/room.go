@@ -248,7 +248,9 @@ func(room *Room)IsSyncFinished(connUUID string,player datastruct.Player) (bool,i
 
         room.SendInitRoomDataToAgent(player.Agent,&content)
         room.onlineSyncPlayers=append(room.onlineSyncPlayers,player)
+        room.updateRobotRelive(length) 
         
+
         var frame_data msg.FrameData
         var frame_content msg.SC_RoomFrameDataContent
 
@@ -306,12 +308,14 @@ func (room *Room)syncData(connUUID string,player datastruct.Player){
      }
      lastFrameIndex:=copyData[num-1].FramesData[0].FrameIndex
  
+     var length int
      room.Mutex.Lock()
-     
      if lastFrameIndex+1 == room.currentFrameIndex {//数据帧是从0开始，服务器计算帧是从1开始
         room.onlineSyncPlayers=append(room.onlineSyncPlayers,player)
         room.GetCreateAction(connUUID,player.Id)
+        length=len(room.players)
         room.Mutex.Unlock()
+        room.updateRobotRelive(length)
      }else{
         room.Mutex.Unlock()
         ok:=true
@@ -331,9 +335,12 @@ func (room *Room)syncData(connUUID string,player datastruct.Player){
                     isSyncFinished = true
                     room.onlineSyncPlayers=append(room.onlineSyncPlayers,player)
                     room.GetCreateAction(connUUID,player.Id)
+                    length=len(room.players)
                 }
+
                 room.Mutex.Unlock()
                 if isSyncFinished{
+                    room.updateRobotRelive(length)
                     log.Debug("Channel SyncFinished")
                     break
                 }
@@ -493,8 +500,6 @@ func (room *Room)ComputeFrameData(){
      }
     
     
-    
-
     var frame_content msg.SC_RoomFrameDataContent
      
     frame_content.FramesData = make([]msg.FrameData,0,1)
@@ -830,4 +835,17 @@ func (room *Room)getEnergyExpendedConnUUID() string {
     defer room.energyExpend.Mutex.Unlock()
     connUUID:=room.energyExpend.ConnUUID
     return connUUID
+}
+
+func (room *Room)updateRobotRelive(playersNum int){
+      if playersNum > 1&&playersNum<=LeastPeople{
+         room.robots.Mutex.Lock()
+         for _,v := range room.robots.robots{
+             if v.IsRelive{
+                v.IsRelive = false
+                break 
+             }
+         }
+         room.robots.Mutex.Unlock()
+      }
 }
