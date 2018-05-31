@@ -37,7 +37,6 @@ func handlePlayerMoveData(args []interface{}){
     case datastruct.EndlessMode:
 
     }
-   
 }
 
 func handlePlayerJoinRoom(args []interface{}){
@@ -54,19 +53,9 @@ func handlePlayerJoinRoom(args []interface{}){
     case datastruct.EndlessMode:
 
     }
-
-    
 }
 
-func handleRoomOff(a gate.Agent,connUUID string,uid int,mode datastruct.GameModeType){
-    a.WriteMsg(msg.GetReMatchMsg())
-    switch mode{
-     case datastruct.SinglePersonMode:
-         ptr_singleMatch.Matching(connUUID,a,uid)
-     case datastruct.EndlessMode:
-   
-    }
-}
+
 
 func handleCancelMatching(args []interface{}){
     a := args[1].(gate.Agent)
@@ -82,12 +71,8 @@ func handleCancelMatching(args []interface{}){
     case datastruct.EndlessMode:
         
     }
-
 }
  
-
-
-
 
 //收到单人匹配消息的时候加入池，主动离开和自动离开在池中删除，
 //完成单人匹配后，在池中删除

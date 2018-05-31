@@ -10,7 +10,6 @@ import (
 var (
 	skeleton = base.NewSkeleton()
 	ChanRPC  = skeleton.ChanRPCServer
-	//singleMatch = singleMatch.NewSingleMatch()
 	ptr_singleMatch=singleMatch.NewSingleMatch()
 	
 )
