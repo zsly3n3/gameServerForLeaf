@@ -165,9 +165,7 @@ func CreateRoom(connUUIDs []string,r_id string,parentMatch *SingleMatch)*Room{
 
         log.Debug("create Matching Room")
         
-        //测试
-        room.createRobotData(0,true)
-        //room.createRobotData(LeastPeople-len(connUUIDs),true)
+        room.createRobotData(LeastPeople-len(connUUIDs),true)
         
         time.AfterFunc(RoomCloseTime,func(){
             isRemove:=false
@@ -523,8 +521,7 @@ func (room *Room)ComputeFrameData(){
         expended:=room.getEnergyExpended(expended_onlineConnUUID)
         room.energyData.SetPower(expended)
         if points != nil && len(points)>0 && room.energyData.IsCreatePower(){
-            //测试
-            //frame_data.CreateEnergyPoints = points
+            frame_data.CreateEnergyPoints = points
         }
      }
 
