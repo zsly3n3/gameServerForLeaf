@@ -174,11 +174,12 @@ func ReSetAgentUserData(a gate.Agent,uid int){
     })
 }
 
-func UpdateAgentUserData(a gate.Agent,connUUID string,uid int,r_id string){
+func UpdateAgentUserData(a gate.Agent,connUUID string,uid int,r_id string,mode datastruct.GameModeType){
     a.SetUserData(datastruct.AgentUserData{
         ConnUUID:connUUID,
         Uid:uid,
         RoomID:r_id,
+        GameMode:mode,
     })
 }
 

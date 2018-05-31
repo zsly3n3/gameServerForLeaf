@@ -3,7 +3,6 @@ package datastruct
 import (
 	"time"
 	"github.com/name5566/leaf/gate"
-	"sync"
 )
 
 const NULLSTRING = ""
@@ -27,10 +26,18 @@ const (
 	BeInvited//通过被邀请准备进入
 )
 
+type GameModeType int //玩家进入房间的类型
+
+const (
+	SinglePersonMode GameModeType = iota //单人匹配
+	EndlessMode //无尽模式
+)
+
 type AgentUserData struct {
 	 ConnUUID string //每条连接的uuid
 	 Uid int //对应user表中的Id
-	 RoomID string 
+	 RoomID string
+	 GameMode GameModeType
 }
 
 type Player struct {
@@ -61,22 +68,24 @@ type Robot struct {
 	DirectionInterval int //转向的时间间隔
 }
 
-
-
-
-
-
-/*匹配池*/
-type MatchingPool struct {
-	Mutex *sync.RWMutex //读写互斥量
-	Pool  []string //存放玩家uuid
+func CreatePlayer(user *User) *Player{
+	player := new(Player)
+    player.Avatar=user.Avatar
+    player.Id=user.Id
+    player.NickName=user.NickName
+    var game_data PlayerGameData
+    game_data.StartMatchingTime = time.Now()
+    game_data.EnterType = EmptyWay
+    game_data.RoomId = NULLSTRING
+    player.GameData = game_data
+    return player
 }
 
 
-/*匹配动作池*/ //收到匹配消息的时候加入池，主动离开和自动离开在池中删除，完成匹配后，在池中删除
-type MatchActionPool struct {
-	Mutex *sync.RWMutex //读写互斥量
-	Pool  []string //存放玩家uuid
-}
+
+
+
+
+
 
 
