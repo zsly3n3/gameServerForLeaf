@@ -234,30 +234,30 @@ type PlayerMoved struct {//玩家的移动
 	Y int
 }
 
-//测试
-var Test1Point= Point{X:400,Y:320}
-var Test2Point= Point{X:500,Y:50}
+// //测试
+// var Test1Point= Point{X:400,Y:320}
+// var Test2Point= Point{X:500,Y:50}
 
-var num = 0
+// var num = 0
 
 func GetCreatePlayerAction(p_id int,x int,y int) CreatePlayer{
 	  var action CreatePlayer
 	  action.Action = Create
 	  action.PlayerId = p_id
-	  switch num{
-	  case 0:
-		action.X = Test1Point.X
-		action.Y = Test1Point.Y
-	  case 1:
-		action.X = Test2Point.X
-		action.Y = Test2Point.Y
-	  default:
-		action.X = x
-		action.Y = y
-	  }
-	  num++
-	//   action.X = x
-	//   action.Y = y
+	//   switch num{
+	//   case 0:
+	// 	action.X = Test1Point.X
+	// 	action.Y = Test1Point.Y
+	//   case 1:
+	// 	action.X = Test2Point.X
+	// 	action.Y = Test2Point.Y
+	//   default:
+	// 	action.X = x
+	// 	action.Y = y
+	//   }
+	//   num++
+	   action.X = x
+	   action.Y = y
 	  return action
 }
 

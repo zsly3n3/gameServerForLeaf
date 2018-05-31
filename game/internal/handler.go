@@ -27,15 +27,16 @@ func handleEnergyExpended(args []interface{}){
     if !tools.IsValid(a.UserData()){
        return
     }
+    agentUserData := a.UserData().(datastruct.AgentUserData)
     m := args[0].(*msg.CS_EnergyExpended)
     expended:=m.MsgContent.EnergyExpended
     if expended>0{
-       agentUserData := a.UserData().(datastruct.AgentUserData)
-       connUUID:=agentUserData.ConnUUID
-       r_id:=agentUserData.RoomID
-       room:=rooms.Get(r_id)
-       room.EnergyExpended(connUUID,expended)
-       log.Debug("m.MsgContent.EnergyExpended:%d",m.MsgContent.EnergyExpended)
+        switch agentUserData.GameMode{
+        case datastruct.SinglePersonMode:
+             ptr_singleMatch.EnergyExpended(expended,agentUserData)
+        case datastruct.EndlessMode:
+            
+        }
     }
 }
 

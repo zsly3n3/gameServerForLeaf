@@ -282,6 +282,13 @@ func (match *SingleMatch)handleRoomOff(a gate.Agent,connUUID string,uid int){
     match.Matching(connUUID,a,uid)
 }
 
+func (match *SingleMatch)EnergyExpended(expended int,agentUserData datastruct.AgentUserData){
+       connUUID:=agentUserData.ConnUUID
+       r_id:=agentUserData.RoomID
+       room:=match.rooms.Get(r_id)
+       room.EnergyExpended(connUUID,expended)
+}
+
 
 /*单人匹配池*/
 type SingleMatchingPool struct {
