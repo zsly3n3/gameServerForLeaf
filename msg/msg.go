@@ -187,6 +187,10 @@ type CS_MoveDataContent struct {
 }
 
 
+const PlayerIdKey = "PlayerId"
+const PointsKey = "Points"
+const Point_X_Key = "X"
+const Point_Y_Key = "Y"
 type CS_PlayerDied struct {
 	MsgHeader json.MsgHeader
 	MsgContent []map[string]interface{}//{PlayerId:1,Points:[{X:1,Y:1},{X:2,Y:2}]}
@@ -230,8 +234,12 @@ type CreatePlayer struct {//玩家的创建
 }
 
 type PlayerIsDied struct {//玩家的死亡
-	//point Point
+	 PlayerId int
+	 Action ActionType
 }
+
+
+
 
 var DefaultDirection = Point{X:0,Y:1}
 var DefaultSpeed = 1
@@ -249,7 +257,20 @@ type PlayerMoved struct {//玩家的移动
 
 // var num = 0
 
-func GetCreatePlayerAction(p_id int,x int,y int) CreatePlayer{
+
+const DefaultReliveFrameIndex = -1 //当前帧立即复活
+type PlayerRelive struct {//玩家的重生
+    ReLiveFrameIndex int
+    Action CreatePlayer
+}
+
+
+func GetCreatePlayerAction(p_id int,x int,y int,reLiveFrameIndex int) PlayerRelive{
+
+	  var relive PlayerRelive
+	  relive.ReLiveFrameIndex = reLiveFrameIndex
+	  
+     
 	  var action CreatePlayer
 	  action.Action = Create
 	  action.PlayerId = p_id
@@ -267,7 +288,9 @@ func GetCreatePlayerAction(p_id int,x int,y int) CreatePlayer{
 	//   num++
 	   action.X = x
 	   action.Y = y
-	  return action
+	 
+	  relive.Action = action
+	  return relive
 }
 
 func GetCreatePlayerMoved(p_id int,x int,y int,speed int) PlayerMoved{
@@ -327,7 +350,7 @@ func GetRoomFrameDataMsg(content *SC_RoomFrameDataContent) *SC_RoomFrameData{
 }
 
 func GetGameOverMsg(){
-	
+	 
 }
 
 func GetPower(e_type EnergyPointType) int {

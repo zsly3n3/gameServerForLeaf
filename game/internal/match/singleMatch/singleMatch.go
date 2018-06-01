@@ -234,9 +234,9 @@ func (match *SingleMatch)removeRoomWithID(uuid string){
 	match.rooms.Delete(uuid)
 }
 
-func (match *SingleMatch)PlayerMoved(r_id string,connUUID string,uid int,moveData *msg.CS_MoveData){
+func (match *SingleMatch)PlayerMoved(r_id string,uid int,moveData *msg.CS_MoveData){
 	room:=match.rooms.Get(r_id)
-    if v,ok:=room.playersData.CheckValue(connUUID);ok{
+    if v,ok:=room.playersData.CheckValue(uid);ok{
         if v.ActionType == msg.Create{
             return
         }
@@ -245,7 +245,7 @@ func (match *SingleMatch)PlayerMoved(r_id string,connUUID string,uid int,moveDat
     var actionData PlayerActionData
     actionData.ActionType = action.Action
     actionData.Data = action
-    room.playersData.Set(connUUID,actionData)
+    room.playersData.Set(uid,actionData)
 }
 
 func (match *SingleMatch)PlayerJoin(connUUID string,joinData *msg.CS_PlayerJoinRoom){
@@ -287,6 +287,11 @@ func (match *SingleMatch)EnergyExpended(expended int,agentUserData datastruct.Ag
        r_id:=agentUserData.RoomID
        room:=match.rooms.Get(r_id)
        room.EnergyExpended(connUUID,expended)
+}
+
+func (match *SingleMatch)PlayersDied(r_id string,values []map[string]interface{}){
+    room:=match.rooms.Get(r_id)
+    room.diedData.Add(values,room)
 }
 
 

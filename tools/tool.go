@@ -202,22 +202,22 @@ const maxSpeed = 2
 
 
 
-func CreateRobot(index int,isRelive bool,quad []msg.Quadrant) *datastruct.Robot{
+func CreateRobot(index int,isRelive bool,quad []msg.Quadrant,reliveFrameIndex int) *datastruct.Robot{
      robot:=new(datastruct.Robot)
      robot.Id = startIndex+index
      robot.IsRelive = isRelive
      robot.Avatar = fmt.Sprintf("Avatar%d",index)
      robot.NickName = fmt.Sprintf("Robot%d",index)
-     robot.Action = GetCreateRobotAction(robot.Id,quad)
+     robot.Action = GetCreateRobotAction(robot.Id,quad,reliveFrameIndex)
      robot.SpeedInterval = randInt(minSpeedInterval,maxSpeedInterval+1)
      robot.DirectionInterval = randInt(minDirectionInterval,maxDirectionInterval+1)
      return robot
 }
 
-func GetCreateRobotAction(p_id int,quad []msg.Quadrant)msg.CreatePlayer{
+func GetCreateRobotAction(p_id int,quad []msg.Quadrant,reliveFrameIndex int)msg.PlayerRelive{
     randomIndex:=GetRandomQuadrantIndex()
     point:=GetCreatePlayerPoint(quad[randomIndex],randomIndex) 
-    action:=msg.GetCreatePlayerAction(p_id,point.X,point.Y)
+    action:=msg.GetCreatePlayerAction(p_id,point.X,point.Y,reliveFrameIndex)
     return action
 }
 

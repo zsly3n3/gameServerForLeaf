@@ -42,6 +42,8 @@ const PerFrameEnergy_B=1
 
 const offset = 400//出生点偏移量
 
+const offsetFrames = (1000/time_interval)*2 //多少帧复活
+
 type Room struct {
     Mutex *sync.RWMutex //读写互斥量
     IsOn bool //玩家是否能进入的开关
@@ -61,7 +63,27 @@ type Room struct {
     robots *RobotData
 
     energyExpend *EnergyExpend //历史帧能量消耗事件数据，保存消耗后的能量点数据。 用于计算生产能量数据
+
+    diedData *PlayersDiedData
 }
+
+type PlayersDiedData struct {
+    MaxCleanTime time.Duration
+    Mutex *sync.Mutex //读写互斥量
+    Data []PlayersDiedDataForTime
+}
+
+type PlayersDiedDataForTime struct {
+    DiedTime time.Time
+    Players  []int
+}
+
+type PlayerDied struct {//玩家的死亡
+    Points []msg.EnergyPoint
+    Action msg.PlayerIsDied
+}
+
+
 
 
 
@@ -105,7 +127,7 @@ type EnergyExpend struct {
 
 type PlayersFrameData struct {
      Mutex *sync.RWMutex //读写互斥量
-     Data map[string] PlayerActionData
+     Data map[int]PlayerActionData
 }
 
 type PlayerActionData struct {
@@ -155,7 +177,8 @@ func CreateRoom(connUUIDs []string,r_id string,parentMatch *SingleMatch)*Room{
     room.createHistoryFrameData()
     room.createEnergyPowerData()
     room.createEnergyExpend()
-
+    room.createPlayersDiedData()
+    
     room.currentFrameIndex = FirstFrameIndex
     room.onlineSyncPlayers = make([]datastruct.Player,0,MaxPeopleInRoom)
     
@@ -262,7 +285,7 @@ func(room *Room)IsSyncFinished(connUUID string,player datastruct.Player) (bool,i
         frame_data.PlayerFrameData=make([]interface{},0,1)
 
         
-        action:=room.GetCreateAction(connUUID,player.Id)
+        action:=room.GetCreateAction(player.Id,msg.DefaultReliveFrameIndex)
         frame_data.PlayerFrameData = append(frame_data.PlayerFrameData,action)
         
         frame_content.FramesData = append(frame_content.FramesData,frame_data)
@@ -277,14 +300,14 @@ func(room *Room)IsSyncFinished(connUUID string,player datastruct.Player) (bool,i
     return syncFinished,content.CurrentFrameIndex
 }
 
-func (room *Room)GetCreateAction(connUUID string,p_id int)msg.CreatePlayer{
+func (room *Room)GetCreateAction(p_id int,reliveFrameIndex int)msg.PlayerRelive{
      randomIndex:=tools.GetRandomQuadrantIndex()
      point:=tools.GetCreatePlayerPoint(room.unlockedData.pointData.quadrant[randomIndex],randomIndex) 
-     action:=msg.GetCreatePlayerAction(p_id,point.X,point.Y)
+     action:=msg.GetCreatePlayerAction(p_id,point.X,point.Y,reliveFrameIndex)
      var actionData PlayerActionData
-     actionData.ActionType = action.Action
+     actionData.ActionType = action.Action.Action
      actionData.Data = action
-     room.playersData.Set(connUUID,actionData)//添加action 到 lastFrameIndex+1
+     room.playersData.Set(p_id,actionData)//添加action 到 lastFrameIndex+1
      return action
 }
 
@@ -314,7 +337,7 @@ func (room *Room)syncData(connUUID string,player datastruct.Player){
      room.Mutex.Lock()
      if lastFrameIndex+1 == room.currentFrameIndex {//数据帧是从0开始，服务器计算帧是从1开始
         room.onlineSyncPlayers=append(room.onlineSyncPlayers,player)
-        room.GetCreateAction(connUUID,player.Id)
+        room.GetCreateAction(player.Id,msg.DefaultReliveFrameIndex)
         length=len(room.players)
         room.Mutex.Unlock()
         room.updateRobotRelive(length)
@@ -336,7 +359,7 @@ func (room *Room)syncData(connUUID string,player datastruct.Player){
                 if lastFrameIndex+1 == room.currentFrameIndex {
                     isSyncFinished = true
                     room.onlineSyncPlayers=append(room.onlineSyncPlayers,player)
-                    room.GetCreateAction(connUUID,player.Id)
+                    room.GetCreateAction(player.Id,msg.DefaultReliveFrameIndex)
                     length=len(room.players)
                 }
 
@@ -535,16 +558,30 @@ func (room *Room)ComputeFrameData(){
      
      room.robots.Mutex.RLock()
      for _,robot:= range room.robots.robots{
-         action:=room.getRobotAction(robot,currentFrameIndex)
-         frame_data.PlayerFrameData = append(frame_data.PlayerFrameData,action)
+        action_type,action:=room.getRobotAction(robot,currentFrameIndex)
+         if action != nil{
+            if action_type==msg.Death{
+                died:=action.(PlayerDied)
+                action=died.Action
+                frame_data.CreateEnergyPoints = append(frame_data.CreateEnergyPoints,died.Points...)
+             }
+             frame_data.PlayerFrameData = append(frame_data.PlayerFrameData,action)
+         }
+
      }
      room.robots.Mutex.RUnlock()
 
 
      for _,player := range online_sync{
-         connUUID:=player.Agent.UserData().(datastruct.AgentUserData).ConnUUID
-         action:=room.playersData.GetValue(connUUID,player.Id)
-         frame_data.PlayerFrameData = append(frame_data.PlayerFrameData,action)
+         action_type,action:=room.playersData.GetValue(player.Id,currentFrameIndex,room)
+         if action != nil{
+             if action_type==msg.Death{
+                died:=action.(PlayerDied)
+                action=died.Action
+                frame_data.CreateEnergyPoints = append(frame_data.CreateEnergyPoints,died.Points...)
+             }
+             frame_data.PlayerFrameData = append(frame_data.PlayerFrameData,action)
+         }
      }
 
      
@@ -631,7 +668,7 @@ func (room *Room)createRobotData(num int,isRelive bool){
     robots.Mutex = new(sync.RWMutex)
     robots.robots = make(map[int]*datastruct.Robot)
     for i:=0;i<num;i++{
-        robot:=tools.CreateRobot(i,isRelive,room.unlockedData.pointData.quadrant)
+        robot:=tools.CreateRobot(i,isRelive,room.unlockedData.pointData.quadrant,msg.DefaultReliveFrameIndex)
         robots.robots[robot.Id]=robot
     }
     room.robots = robots
@@ -643,6 +680,126 @@ func (room *Room)createEnergyExpend(){
     expend.Expended = 0
     room.energyExpend = expend
 }
+
+func (room *Room)createPlayersDiedData(){
+    diedData:=new(PlayersDiedData)
+    diedData.MaxCleanTime = 2*time.Second//容器间隔清空时间
+    diedData.Mutex = new(sync.Mutex)
+    diedData.Data = make([]PlayersDiedDataForTime,0,2*(1000/time_interval))
+    room.diedData=diedData
+}
+
+func (diedData *PlayersDiedData)Add(values []map[string]interface{},room *Room){
+    now_t := time.Now()
+    diedData.Mutex.Lock()
+    if len(diedData.Data)>0{
+        earliest:=diedData.Data[0].DiedTime
+        rs_sub:=now_t.Sub(earliest)
+        if rs_sub>=diedData.MaxCleanTime{
+            diedData.Data=diedData.Data[:0]
+            diedData.Append(values,now_t)
+        }else{
+            removeIndexs:=make([]int,0,len(values))
+            for index,v := range values{
+                
+                current_pid:=v[msg.PlayerIdKey].(float64)
+                new_pid:=int(current_pid)
+                isRemove:=diedData.isRemovePlayerId(new_pid)
+                if isRemove {
+                   removeIndexs = append(removeIndexs,index)
+                }
+            }
+            rm_count:=0
+            for index,v := range removeIndexs {
+                if index!=0{
+                    v = v-rm_count
+                 }
+                 values=append(values[:v], values[v+1:]...)
+                 rm_count++;
+            }
+            diedData.Append(values,now_t)
+        }
+     }else{
+        diedData.Append(values,now_t)
+     }
+     diedData.Mutex.Unlock()
+     
+
+     for _,v := range values{
+         p_id:=v[msg.PlayerIdKey].(float64)
+         new_pid:=int(p_id)
+      
+         points:=v[msg.PointsKey].([]interface{})
+
+
+         arr:=make([]msg.EnergyPoint,0,len(points))
+
+         for _,point := range points{
+            map_point := point.(map[string]interface{})
+            x:= map_point[msg.Point_X_Key].(float64)
+            y:= map_point[msg.Point_Y_Key].(float64)
+            new_x:=int(x)
+            new_y:=int(y)
+            var e_point msg.EnergyPoint
+            e_point.Type = int(msg.TypeC)
+            e_point.X = new_x
+            e_point.Y = new_y
+            arr = append(arr,e_point)
+         }
+         
+         var action msg.PlayerIsDied
+         action.Action = msg.Death
+         action.PlayerId = new_pid
+
+         var p_died PlayerDied
+         p_died.Points = arr
+         p_died.Action = action
+   
+         var action_data PlayerActionData 
+         action_data.Data = p_died
+         action_data.ActionType = msg.Death
+         room.playersData.Set(new_pid,action_data)
+     }
+}
+
+
+func (diedData *PlayersDiedData)isRemovePlayerId(current_pid int) bool{
+     for _,dataForTime := range diedData.Data{
+        for _,p_id := range dataForTime.Players{
+              if current_pid == p_id{
+                  return true
+              }
+        }
+     }
+     return false
+}
+
+func (diedData *PlayersDiedData)Append(values []map[string]interface{},now_t time.Time){
+    var dataForTime PlayersDiedDataForTime
+    dataForTime.DiedTime = now_t
+    dataForTime.Players = make([]int,0,len(values))
+    for _,v := range values{
+         p_id:=v[msg.PlayerIdKey].(float64)
+         new_pid:=int(p_id)
+         dataForTime.Players = append(dataForTime.Players,new_pid)
+    }
+    diedData.Data=append(diedData.Data,dataForTime)
+}
+
+
+
+// type PlayersDiedData struct {
+//     MaxCleanTime time.Duration
+//     Mutex *sync.Mutex //读写互斥量
+//     Data []PlayersDiedDataForTime
+// }
+
+// type PlayersDiedDataForTime struct {
+//     DiedTime time.Time
+//     Players  []int
+// }
+
+
 
 func (room *Room)getMovePoint() msg.Point{
     var point msg.Point
@@ -719,43 +876,24 @@ func safeCloseSync(ch chan struct{}) (justClosed bool) {
 func NewPlayersFrameData() *PlayersFrameData {
 	return &PlayersFrameData{
 		Mutex: new(sync.RWMutex),
-		Data:   make(map[string]PlayerActionData),
+		Data:   make(map[int]PlayerActionData),
 	}
 }
 
-func (data *PlayersFrameData)Set(k string,v PlayerActionData){
+func (data *PlayersFrameData)Set(k int,v PlayerActionData){
     data.Mutex.Lock()
 	defer data.Mutex.Unlock()
 	data.Data[k] = v
 }
 
-func (data *PlayersFrameData)CheckValue(k string) (PlayerActionData,bool){
+func (data *PlayersFrameData)CheckValue(k int) (PlayerActionData,bool){
     data.Mutex.RLock()
     defer data.Mutex.RUnlock()
     actionData, ok := data.Data[k]
     return actionData,ok
 }
 
-func (data *PlayersFrameData)GetValue(k string,pid int)interface{}{
-    data.Mutex.Lock()
-	defer data.Mutex.Unlock()
-    var v interface{}
-    actionData, ok := data.Data[k]
-    if ok{
-        v=actionData.Data
-        if actionData.ActionType == msg.Create{
-            delete(data.Data, k)
-        }
-    }else{
-      action:=msg.GetCreatePlayerMoved(pid,msg.DefaultDirection.X,msg.DefaultDirection.Y,msg.DefaultSpeed)
-      var actionData PlayerActionData
-      actionData.ActionType = action.Action
-      actionData.Data = action
-      data.Data[k] = actionData
-      v=action
-    }
-    return v
-}
+
 
 func (power *EnergyPowerData)IsCreatePower()bool{
      tf:=false
@@ -773,20 +911,67 @@ func (power *EnergyPowerData)SetPower(num int){
     }
 }
 
+func (data *PlayersFrameData)GetValue(pid int,currentFrameIndex int,room *Room)(msg.ActionType,interface{}){
+    data.Mutex.Lock()
+	defer data.Mutex.Unlock()
+    var v interface{}
+    actionData, ok := data.Data[pid]
+    if ok{
+        switch actionData.ActionType {
+          case msg.Create:
+               p_relive:=actionData.Data.(msg.PlayerRelive)
+               if p_relive.ReLiveFrameIndex == msg.DefaultReliveFrameIndex || p_relive.ReLiveFrameIndex == currentFrameIndex{
+                  v = p_relive.Action
+                  delete(data.Data, pid)
+               }else{
+                  v = nil
+               }
+          case msg.Death:
+             v=actionData.Data
+             randomIndex:=tools.GetRandomQuadrantIndex()
+             point:=tools.GetCreatePlayerPoint(room.unlockedData.pointData.quadrant[randomIndex],randomIndex) 
+             action:=msg.GetCreatePlayerAction(pid,point.X,point.Y,offsetFrames+currentFrameIndex)
+             var actionData PlayerActionData
+             actionData.ActionType = action.Action.Action
+             actionData.Data = action
+             data.Data[pid] = actionData
 
-func (room *Room)getRobotAction(robot *datastruct.Robot,currentFrameIndex int)interface{}{
+          default:
+               v=actionData.Data
+        }
+        
+    }else{
+      action:=msg.GetCreatePlayerMoved(pid,msg.DefaultDirection.X,msg.DefaultDirection.Y,msg.DefaultSpeed)
+      var actionData PlayerActionData
+      actionData.ActionType = action.Action
+      actionData.Data = action
+      data.Data[pid] = actionData
+      v=action
+    }
+    return actionData.ActionType,v
+}
+
+
+func (room *Room)getRobotAction(robot *datastruct.Robot,currentFrameIndex int)(msg.ActionType,interface{}){
      var rs interface{}
      current_action:=robot.Action
-    
+     var rs_type msg.ActionType
      switch current_action.(type){
-       case msg.CreatePlayer:
-            rs=current_action
-            point:=room.getMovePoint()
-            action:=msg.GetCreatePlayerMoved(robot.Id,point.X,point.Y,msg.DefaultSpeed)
-            robot.Action = action
+       case msg.PlayerRelive:
+            p_relive:=current_action.(msg.PlayerRelive)
+            rs_type = p_relive.Action.Action
+            if p_relive.ReLiveFrameIndex == msg.DefaultReliveFrameIndex || p_relive.ReLiveFrameIndex == currentFrameIndex{
+                 rs = p_relive.Action
+                 point:=room.getMovePoint()
+                 action:=msg.GetCreatePlayerMoved(robot.Id,point.X,point.Y,msg.DefaultSpeed)
+                 robot.Action = action
+            }else{
+                rs = nil
+            }  
+
        case msg.PlayerMoved:
             var ptr_action *msg.PlayerMoved
-
+            
             if currentFrameIndex*time_interval % (robot.DirectionInterval*1000) == 0 {
                 lastSpeed:=current_action.(msg.PlayerMoved).Speed
                 point:=room.getMovePoint()
@@ -812,10 +997,15 @@ func (room *Room)getRobotAction(robot *datastruct.Robot,currentFrameIndex int)in
             
             robot.Action=*ptr_action
             rs=robot.Action
-       //case msg.PlayerDied:
-              //create player
+            rs_type = msg.Move
+            
+        case PlayerDied:
+            rs = current_action //PlayerDied
+            action:=tools.GetCreateRobotAction(robot.Id,room.unlockedData.pointData.quadrant,offsetFrames+currentFrameIndex)
+            robot.Action=action
+            rs_type = msg.Death
      }
-	 return rs
+	 return rs_type,rs
 }
 
 func (room *Room)EnergyExpended(uuid string,expended int){

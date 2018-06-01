@@ -20,21 +20,28 @@ func init() {
     handleMsg(&msg.CS_PlayerJoinRoom{}, handlePlayerJoinRoom)
     handleMsg(&msg.CS_MoveData{}, handlePlayerMoveData)
     handleMsg(&msg.CS_EnergyExpended{}, handleEnergyExpended)
-    handleMsg(&msg.CS_PlayerDied{}, handlePlayerDied)
+    handleMsg(&msg.CS_PlayerDied{}, handlePlayersDied)
 }
 
-func handlePlayerDied(args []interface{}){
+func handlePlayersDied(args []interface{}){
     a := args[1].(gate.Agent)
     if !tools.IsValid(a.UserData()){
        return
     }
+    
+    agentUserData := a.UserData().(datastruct.AgentUserData)
     m := args[0].(*msg.CS_PlayerDied)
-    log.Debug("msg.CS_PlayerDied:%v",m.MsgContent)
-    //
     
     //接收玩家死亡坐标,生成指定范围能量点
     //指定某一帧复活
-    
+
+    switch agentUserData.GameMode{
+    case datastruct.SinglePersonMode:
+         ptr_singleMatch.PlayersDied(agentUserData.RoomID,m.MsgContent)
+    case datastruct.EndlessMode:
+
+    }
+   
 }
 
 func handleEnergyExpended(args []interface{}){
@@ -61,13 +68,12 @@ func handlePlayerMoveData(args []interface{}){
        return
     }
     agentUserData := a.UserData().(datastruct.AgentUserData)
-    connUUID:=agentUserData.ConnUUID
     r_id:=agentUserData.RoomID
     m := args[0].(*msg.CS_MoveData)
     
     switch agentUserData.GameMode{
     case datastruct.SinglePersonMode:
-         ptr_singleMatch.PlayerMoved(r_id,connUUID,agentUserData.Uid,m)
+         ptr_singleMatch.PlayerMoved(r_id,agentUserData.Uid,m)
     case datastruct.EndlessMode:
 
     }
