@@ -219,8 +219,8 @@ func (room *Room)createEnergyPointData(width int,height int) *EnergyPointData{
     p_data.firstFramePoint=tools.GetRandomPoint(InitEnergy_A,InitEnergy_B,p_data.quadrant) //第零帧生成能量点
     
     
-    go room.goCreatePoints(1,msg.TypeB)
-    go room.goCreateMovePoint()
+    
+    
     return p_data
 }
 
@@ -297,11 +297,12 @@ func (room *Room)SendInitRoomDataToAgent(a gate.Agent,content *msg.SC_InitRoomDa
 }
 
 func (room *Room)syncData(connUUID string,player datastruct.Player){
-     room.history.Mutex.RLock()
+     
+    room.history.Mutex.RLock()
      copyData:=make([]*msg.SC_RoomFrameDataContent,len(room.history.FramesData))
      copy(copyData,room.history.FramesData)
-    
      room.history.Mutex.RUnlock()
+
      num:=len(copyData)
      
      for _,data := range copyData{
@@ -607,6 +608,8 @@ func (room *Room)createRoomUnlockedData(connUUIDs []string,r_id string,parentMat
     unlockedData.isExistTicker = false
     unlockedData.parentMatch = parentMatch
     room.unlockedData = unlockedData
+    go room.goCreatePoints(1,msg.TypeB)
+    go room.goCreateMovePoint()
 }
 
 func (room *Room)createHistoryFrameData(){
