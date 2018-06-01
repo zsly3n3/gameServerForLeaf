@@ -20,6 +20,21 @@ func init() {
     handleMsg(&msg.CS_PlayerJoinRoom{}, handlePlayerJoinRoom)
     handleMsg(&msg.CS_MoveData{}, handlePlayerMoveData)
     handleMsg(&msg.CS_EnergyExpended{}, handleEnergyExpended)
+    handleMsg(&msg.CS_PlayerDied{}, handlePlayerDied)
+}
+
+func handlePlayerDied(args []interface{}){
+    a := args[1].(gate.Agent)
+    if !tools.IsValid(a.UserData()){
+       return
+    }
+    m := args[0].(*msg.CS_PlayerDied)
+    log.Debug("msg.CS_PlayerDied:%v",m.MsgContent)
+    //
+    
+    //接收玩家死亡坐标,生成指定范围能量点
+    //指定某一帧复活
+    
 }
 
 func handleEnergyExpended(args []interface{}){

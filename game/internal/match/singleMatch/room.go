@@ -164,8 +164,9 @@ func CreateRoom(connUUIDs []string,r_id string,parentMatch *SingleMatch)*Room{
     room.playersData = NewPlayersFrameData()
 
         log.Debug("create Matching Room")
-        
-        room.createRobotData(LeastPeople-len(connUUIDs),true)
+        //测试
+        room.createRobotData(0,true)
+        //room.createRobotData(LeastPeople-len(connUUIDs),true)
         
         time.AfterFunc(RoomCloseTime,func(){
             isRemove:=false
@@ -545,12 +546,14 @@ func (room *Room)ComputeFrameData(){
          frame_data.PlayerFrameData = append(frame_data.PlayerFrameData,action)
      }
 
+     
     //  for _,player := range offline_sync{
     //     point:=room.getMovePoint()
-    //     action:=msg.GetCreatePlayerMoved(player.Id,point.X,point.Y,msg.DefaultSpeed)
+
+    //     //action:=msg.GetCreatePlayerMoved(player.Id,point.X,point.Y,msg.DefaultSpeed)
     //     frame_data.PlayerFrameData = append(frame_data.PlayerFrameData,action)
     //  }
-     
+ 
      frame_content.FramesData = append(frame_content.FramesData,frame_data)
      
      for _,player := range online_sync{
@@ -839,13 +842,13 @@ func (room *Room)getEnergyExpendedConnUUID() string {
 
 func (room *Room)updateRobotRelive(playersNum int){
       if playersNum > 1&&playersNum<=LeastPeople{
-         room.robots.Mutex.Lock()
+         room.robots.Mutex.RLock()
          for _,v := range room.robots.robots{
              if v.IsRelive{
                 v.IsRelive = false
                 break 
              }
          }
-         room.robots.Mutex.Unlock()
+         room.robots.Mutex.RUnlock()
       }
 }

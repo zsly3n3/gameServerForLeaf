@@ -17,4 +17,5 @@ func init() {
     msg.Processor.SetRouter(&msg.CS_PlayerJoinRoom{}, game.ChanRPC)
     msg.Processor.SetRouter(&msg.CS_MoveData{}, game.ChanRPC)
     msg.Processor.SetRouter(&msg.CS_EnergyExpended{}, game.ChanRPC)
+    msg.Processor.SetRouter(&msg.CS_PlayerDied{}, game.ChanRPC)
 }

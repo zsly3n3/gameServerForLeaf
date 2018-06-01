@@ -28,6 +28,7 @@ func init() {
 	Processor.Register(&CS_MoveData{})
 	
 	Processor.Register(&CS_EnergyExpended{})
+	Processor.Register(&CS_PlayerDied{})
 
 }
 
@@ -186,6 +187,14 @@ type CS_MoveDataContent struct {
 }
 
 
+type CS_PlayerDied struct {
+	MsgHeader json.MsgHeader
+	MsgContent []map[string]interface{}//{PlayerId:1,Points:[{X:1,Y:1},{X:2,Y:2}]}
+}
+
+
+
+
 
 /*发送给客户端当前帧数据*/
 type SC_RoomFrameData struct {
@@ -315,6 +324,10 @@ func GetRoomFrameDataMsg(content *SC_RoomFrameDataContent) *SC_RoomFrameData{
 		MsgHeader:msgHeader,
 		MsgContent:content,
 	}
+}
+
+func GetGameOverMsg(){
+	
 }
 
 func GetPower(e_type EnergyPointType) int {
