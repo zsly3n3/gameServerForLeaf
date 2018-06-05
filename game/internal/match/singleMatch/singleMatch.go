@@ -80,9 +80,10 @@ func (match *SingleMatch)addOnlinePlayer(connUUID string,a gate.Agent,uid int){
 		 player:=datastruct.CreatePlayer(user)
 		 player.Agent = a
 		 match.onlinePlayers.Bm[connUUID]=*player
-	 }else{ 
-		 v.GameData.EnterType = datastruct.EmptyWay
+	 }else{
+		 v.GameData.EnterType = datastruct.NULLWay
 		 v.GameData.RoomId = datastruct.NULLSTRING
+		 v.GameData.PlayId = datastruct.NULLID
 	 }
 }
 func (match *SingleMatch)CheckActionPool(connUUID string) bool{
@@ -139,7 +140,7 @@ func (match *SingleMatch)stopTicker(){
 }
 
 func (match *SingleMatch)selectTicker(){
-     for {
+    for{
         select {
          case <-match.ticker.C:
             match.computeMatchingTime()
@@ -209,13 +210,13 @@ func (match *SingleMatch)createMatchingTypeRoom(playerUUID []string){
 
 func (match *SingleMatch)computeMatchingTime(){
 	match.singleMatchPool.Mutex.Lock()
-    defer  match.singleMatchPool.Mutex.Unlock()
+    defer match.singleMatchPool.Mutex.Unlock()
     num:=len(match.singleMatchPool.Pool)
     if num >0{
         removeIndex,online_map:=match.getOfflinePlayers()
         rm_num:=len(removeIndex)
         if rm_num>0{//删除池中离线玩家
-			match.removeOfflinePlayersInPool(removeIndex)
+		   match.removeOfflinePlayersInPool(removeIndex)
         }
         now_t := time.Now()
         for _,player := range online_map{
@@ -234,21 +235,16 @@ func (match *SingleMatch)removeRoomWithID(uuid string){
 	match.rooms.Delete(uuid)
 }
 
-func (match *SingleMatch)PlayerMoved(r_id string,uid int,moveData *msg.CS_MoveData){
+func (match *SingleMatch)PlayerMoved(r_id string,play_id int,moveData *msg.CS_MoveData){
 	ok,room:=match.rooms.Get(r_id)
-    if ok&&room.IsEnableUpdatePlayerAction(uid){
-       action:=msg.GetCreatePlayerMoved(uid,moveData.MsgContent.X,moveData.MsgContent.Y,moveData.MsgContent.Speed)
-       var actionData PlayerActionData
-       actionData.ActionType = action.Action
-       actionData.Data = action
-       room.playersData.Set(uid,actionData)
+    if ok&&room.IsEnableUpdatePlayerAction(play_id){
+       room.GetPlayerMovedMsg(play_id,moveData)
     }
 }
 
 
-
 func (match *SingleMatch)PlayerJoin(connUUID string,joinData *msg.CS_PlayerJoinRoom){
-	player,tf:=match.onlinePlayers.CheckAndCleanState(connUUID,datastruct.EmptyWay,datastruct.NULLSTRING)
+	player,tf:=match.onlinePlayers.CheckAndCleanState(connUUID,datastruct.NULLWay,datastruct.NULLSTRING)
     if tf{
         r_id := joinData.MsgContent.RoomID
         if player.GameData.EnterType == datastruct.FreeRoom&&player.GameData.RoomId==r_id{
@@ -259,7 +255,7 @@ func (match *SingleMatch)PlayerJoin(connUUID string,joinData *msg.CS_PlayerJoinR
 			   log.Debug("通过遍历空闲房间进入")
 			   match.actionPool.RemoveFromMatchActionPool(connUUID)
 			}else{
-			   go match.handleRoomOff(player.Agent,connUUID,player.Id)
+			   go match.handleRoomOff(player.Agent,connUUID,player.Uid)
 			}
 		   }
           
@@ -300,7 +296,6 @@ func (match *SingleMatch)PlayersDied(r_id string,values []map[string]interface{}
 	if ok{
 	  room.diedData.Add(values,room)
 	}
-    
 }
 
 

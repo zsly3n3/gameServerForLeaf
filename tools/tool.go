@@ -28,7 +28,7 @@ func GetCreatePlayerPoint(quad msg.Quadrant,index int) msg.Point {
     x_max:=0
     y_min:=0
     y_max:=0
-    offset:=300
+    offset:=200
     switch index{
     case 0:
          x_min=quad.X_Min
@@ -166,24 +166,17 @@ func IsValid(data interface{}) bool{//判断此连接是否有效
     return tf
 }
 
-func ReSetAgentUserData(a gate.Agent,uid int){
-    str:=UniqueId()
-    a.SetUserData(datastruct.AgentUserData{
-        ConnUUID:str,
-        Uid:uid,
-    })
-}
-
-func UpdateAgentUserData(a gate.Agent,connUUID string,uid int,r_id string,mode datastruct.GameModeType){
+func ReSetAgentUserData(a gate.Agent,connUUID string,uid int,r_id string,mode datastruct.GameModeType,PlayId int){
     a.SetUserData(datastruct.AgentUserData{
         ConnUUID:connUUID,
         Uid:uid,
         RoomID:r_id,
         GameMode:mode,
+        PlayId:PlayId,
     })
 }
 
-const StartIndex = 30000
+
 
 const minDirectionInterval = 5
 const maxDirectionInterval = 10
@@ -204,7 +197,7 @@ const maxSpeed = 2
 
 func CreateRobot(index int,isRelive bool,quad []msg.Quadrant,reliveFrameIndex int) *datastruct.Robot{
      robot:=new(datastruct.Robot)
-     robot.Id = StartIndex+index
+     robot.Id = index+1
      robot.IsRelive = isRelive
      robot.Avatar = fmt.Sprintf("Avatar%d",index)
      robot.NickName = fmt.Sprintf("Robot%d",index)

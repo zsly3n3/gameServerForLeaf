@@ -74,9 +74,11 @@ func handlePlayerMoveData(args []interface{}){
     r_id:=agentUserData.RoomID
     m := args[0].(*msg.CS_MoveData)
     
+    log.Debug("agentUserData.PlayId:%v",agentUserData.PlayId)
+
     switch agentUserData.GameMode{
     case datastruct.SinglePersonMode:
-         ptr_singleMatch.PlayerMoved(r_id,agentUserData.Uid,m)
+         ptr_singleMatch.PlayerMoved(r_id,agentUserData.PlayId,m)
     case datastruct.EndlessMode:
 
     }
@@ -129,16 +131,16 @@ func handleSinglePersonMatching(args []interface{}) {
     
     uid:=agentUserData.Uid
     if uid <= 0{
-        log.Error("uid error : %v",uid)
+        log.Error("Uid error : %v",uid)
         return
     }
     connUUID:=agentUserData.ConnUUID
     var msgHeader json.MsgHeader
     
-    tools.UpdateAgentUserData(a,agentUserData.ConnUUID,agentUserData.Uid,agentUserData.RoomID,datastruct.SinglePersonMode)
+    tools.ReSetAgentUserData(a,connUUID,uid,datastruct.NULLSTRING,datastruct.SinglePersonMode,datastruct.NULLID)
 
     removePlayerFromOtherMatchs(connUUID,datastruct.SinglePersonMode)
-     
+    
     if ptr_singleMatch.CheckActionPool(connUUID){//已在匹配中
         msgHeader.MsgName = msg.SC_PlayerAlreadyMatchingKey
         a.WriteMsg(&msg.SC_PlayerAlreadyMatching{

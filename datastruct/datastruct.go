@@ -6,6 +6,7 @@ import (
 )
 
 const NULLSTRING = ""
+const NULLID = -1
 
 type User struct {
     Id       int       `xorm:"not null pk autoincr INT(11)"`
@@ -20,7 +21,7 @@ type User struct {
 
 type PlayerEnterType int //玩家进入房间的类型
 const (
-	EmptyWay PlayerEnterType = iota
+	NULLWay PlayerEnterType = iota
 	FromMatchingPool//通过匹配池准备进入
 	FreeRoom//通过遍历空闲房间准备进入
 	BeInvited//通过被邀请准备进入
@@ -29,20 +30,22 @@ const (
 type GameModeType int //玩家进入房间的类型
 
 const (
-	SinglePersonMode GameModeType = iota //单人匹配
+	NULLMode GameModeType = iota //默认无模式
+	SinglePersonMode //单人匹配
 	EndlessMode //无尽模式
 )
 
 type AgentUserData struct {
 	 ConnUUID string //每条连接的uuid
 	 Uid int //对应user表中的Id
+	 PlayId   int //在游戏中生成的Id
 	 RoomID string
 	 GameMode GameModeType
 }
 
 type Player struct {
-	Id       int //对应user表中的Id   
-	Avatar   string 
+	Uid       int //对应user表中的Id  
+	Avatar   string
 	NickName string
 	Agent    gate.Agent
     GameData PlayerGameData
@@ -50,6 +53,7 @@ type Player struct {
 
 type PlayerGameData struct{
 	RoomId   string //房间id
+	PlayId   int //在游戏中生成的Id
 	StartMatchingTime  time.Time //开始匹配的时间
 	EnterType PlayerEnterType
 	FrameIndex int //保存 已接收第多少帧，大于0
@@ -71,12 +75,13 @@ type Robot struct {
 func CreatePlayer(user *User) *Player{
 	player := new(Player)
     player.Avatar=user.Avatar
-    player.Id=user.Id
+	player.Uid=user.Id
     player.NickName=user.NickName
     var game_data PlayerGameData
     game_data.StartMatchingTime = time.Now()
-    game_data.EnterType = EmptyWay
-    game_data.RoomId = NULLSTRING
+    game_data.EnterType = NULLWay
+	game_data.RoomId = NULLSTRING
+	game_data.PlayId = NULLID
     player.GameData = game_data
     return player
 }

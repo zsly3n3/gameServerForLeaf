@@ -169,7 +169,8 @@ type SC_InitRoomDataContent struct {
 	 MapHeight int//3000
 	 MapWidth int//4000
 	 CurrentFrameIndex int //游戏进行到当前多少帧,从0开始
-	 Interval int //毫秒单位 比如50,代表50毫秒	 
+	 Interval int //毫秒单位 比如50,代表50毫秒
+	 PlayId int //分配给玩家在游戏中的id 
 }
 
 

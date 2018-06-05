@@ -1,6 +1,7 @@
 package internal
 
 import (
+	"server/datastruct"
 	//"fmt"
 	"reflect"
     "server/msg"
@@ -47,9 +48,12 @@ func handleUserLogin(args []interface{}) {
     var msgContent msg.SC_UserLoginContent
     msgContent.Uid =uid
    
-    
    if uid > 0{
-      tools.ReSetAgentUserData(a,uid)
+      connUUID:=tools.UniqueId()
+      rid:=datastruct.NULLSTRING
+      mode:=datastruct.NULLMode
+      p_id:=datastruct.NULLID
+      tools.ReSetAgentUserData(a,connUUID,uid,rid,mode,p_id)
    }
    
    a.WriteMsg(&msg.SC_UserLogin{
