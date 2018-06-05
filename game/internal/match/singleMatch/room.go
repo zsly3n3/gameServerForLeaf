@@ -276,7 +276,6 @@ func (room *Room)GetCreateAction(play_id int,reliveFrameIndex int)msg.PlayerReli
      if play_id == datastruct.NULLID{
         panic("GetCreateAction play_id error")
      }
-     log.Debug("GetCreateAction.PlayId:%v",play_id)
      randomIndex:=tools.GetRandomQuadrantIndex()
      point:=tools.GetCreatePlayerPoint(room.unlockedData.pointData.quadrant[randomIndex],randomIndex) 
      action:=msg.GetCreatePlayerAction(play_id,point.X,point.Y,reliveFrameIndex)
@@ -570,7 +569,6 @@ func (room *Room)ComputeFrameData(){
                 action=died.Action
                 frame_data.CreateEnergyPoints = append(frame_data.CreateEnergyPoints,died.Points...)
              }
-             log.Debug("action_type:%v,action:%v",action_type,action)
              frame_data.PlayerFrameData = append(frame_data.PlayerFrameData,action)
          }
      }
