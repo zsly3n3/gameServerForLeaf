@@ -30,7 +30,7 @@ const RoomCloseTime = 15.0*time.Second//玩家最大等待时间多少秒
 
 const FirstFrameIndex = 0//第一帧索引
 
-const MaxPlayingTime = 5*time.Minute
+const MaxPlayingTime = 10*time.Second
 
 const MaxEnergyPower = 5000 //全场最大能量值
 const InitEnergyPower = 1000 //地图初始化的能量值
@@ -82,10 +82,6 @@ type PlayerDied struct {//玩家的死亡
     Points []msg.EnergyPoint
     Action msg.PlayerIsDied
 }
-
-
-
-
 
 type HistoryFrameData struct {
     Mutex *sync.RWMutex //读写互斥量
