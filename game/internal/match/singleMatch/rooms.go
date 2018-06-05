@@ -20,13 +20,13 @@ func NewRooms() *Rooms {
 }
 
 // Get from maps return the k's value
-func (m *Rooms) Get(k string) *Room {
+func (m *Rooms) Get(k string) (bool,*Room) {
 	m.lock.RLock()
 	defer m.lock.RUnlock()
 	if val, ok := m.bm[k]; ok {
-		return val
+		return ok,val
 	}
-	return nil
+	return false,nil
 }
 
 

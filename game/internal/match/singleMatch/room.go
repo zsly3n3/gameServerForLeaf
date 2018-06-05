@@ -30,7 +30,7 @@ const RoomCloseTime = 15.0*time.Second//玩家最大等待时间多少秒
 
 const FirstFrameIndex = 0//第一帧索引
 
-const MaxPlayingTime = 5*time.Minute
+const MaxPlayingTime = 10*time.Second
 
 const MaxEnergyPower = 5000 //全场最大能量值
 const InitEnergyPower = 1000 //地图初始化的能量值
@@ -188,7 +188,7 @@ func CreateRoom(connUUIDs []string,r_id string,parentMatch *SingleMatch)*Room{
 
         log.Debug("create Matching Room")
         //测试
-        room.createRobotData(0,true)
+        room.createRobotData(1,true)
         //room.createRobotData(LeastPeople-len(connUUIDs),true)
         
         time.AfterFunc(RoomCloseTime,func(){
@@ -427,6 +427,7 @@ func(room *Room)createTicker(){
         time.AfterFunc(MaxPlayingTime,func(){
             room.removeFromRooms()
             //send over msg
+            log.Debug("----------Game Over----------")
         })
         go room.selectTicker()
     }
@@ -561,11 +562,12 @@ func (room *Room)ComputeFrameData(){
         action_type,action:=room.getRobotAction(robot,currentFrameIndex)
          if action != nil{
             if action_type==msg.Death{
+                
                 died:=action.(PlayerDied)
                 action=died.Action
                 frame_data.CreateEnergyPoints = append(frame_data.CreateEnergyPoints,died.Points...)
-             }
-             frame_data.PlayerFrameData = append(frame_data.PlayerFrameData,action)
+            }
+            frame_data.PlayerFrameData = append(frame_data.PlayerFrameData,action)
          }
 
      }
@@ -574,8 +576,10 @@ func (room *Room)ComputeFrameData(){
 
      for _,player := range online_sync{
          action_type,action:=room.playersData.GetValue(player.Id,currentFrameIndex,room)
+         
          if action != nil{
              if action_type==msg.Death{
+                
                 died:=action.(PlayerDied)
                 action=died.Action
                 frame_data.CreateEnergyPoints = append(frame_data.CreateEnergyPoints,died.Points...)
@@ -597,7 +601,7 @@ func (room *Room)ComputeFrameData(){
      for _,player := range online_sync{
          msg:=msg.GetRoomFrameDataMsg(&frame_content)
          player.Agent.WriteMsg(msg)
-         log.Debug("ComputeFrameData msgHeader:%v,msgContent:%v",msg.MsgHeader,msg.MsgContent)
+         //log.Debug("ComputeFrameData msgHeader:%v,msgContent:%v",msg.MsgHeader,msg.MsgContent)
      }
      
      if !isRemoveHistory{
@@ -697,16 +701,15 @@ func (diedData *PlayersDiedData)Add(values []map[string]interface{},room *Room){
         rs_sub:=now_t.Sub(earliest)
         if rs_sub>=diedData.MaxCleanTime{
             diedData.Data=diedData.Data[:0]
-            diedData.Append(values,now_t)
+            diedData.Append(values,now_t)   
         }else{
             removeIndexs:=make([]int,0,len(values))
             for index,v := range values{
-                
                 current_pid:=v[msg.PlayerIdKey].(float64)
                 new_pid:=int(current_pid)
                 isRemove:=diedData.isRemovePlayerId(new_pid)
                 if isRemove {
-                   removeIndexs = append(removeIndexs,index)
+                   removeIndexs = append(removeIndexs,index)//2秒内死亡
                 }
             }
             rm_count:=0
@@ -724,7 +727,7 @@ func (diedData *PlayersDiedData)Add(values []map[string]interface{},room *Room){
      }
      diedData.Mutex.Unlock()
      
-
+     
      for _,v := range values{
          p_id:=v[msg.PlayerIdKey].(float64)
          new_pid:=int(p_id)
@@ -755,11 +758,20 @@ func (diedData *PlayersDiedData)Add(values []map[string]interface{},room *Room){
          p_died.Points = arr
          p_died.Action = action
    
-         var action_data PlayerActionData 
-         action_data.Data = p_died
-         action_data.ActionType = msg.Death
-         room.playersData.Set(new_pid,action_data)
+        
+         if new_pid >= tools.StartIndex{
+            room.robots.Mutex.RLock()
+            room.robots.robots[new_pid].Action = p_died
+            room.robots.Mutex.RUnlock()
+         }else{
+            var action_data PlayerActionData 
+            action_data.Data = p_died
+            action_data.ActionType = msg.Death
+            room.playersData.Set(new_pid,action_data)
+         }
      }
+     
+
 }
 
 
@@ -927,6 +939,7 @@ func (data *PlayersFrameData)GetValue(pid int,currentFrameIndex int,room *Room)(
                   v = nil
                }
           case msg.Death:
+            
              v=actionData.Data
              randomIndex:=tools.GetRandomQuadrantIndex()
              point:=tools.GetCreatePlayerPoint(room.unlockedData.pointData.quadrant[randomIndex],randomIndex) 
@@ -937,10 +950,12 @@ func (data *PlayersFrameData)GetValue(pid int,currentFrameIndex int,room *Room)(
              data.Data[pid] = actionData
 
           default:
+               
                v=actionData.Data
         }
         
     }else{
+      
       action:=msg.GetCreatePlayerMoved(pid,msg.DefaultDirection.X,msg.DefaultDirection.Y,msg.DefaultSpeed)
       var actionData PlayerActionData
       actionData.ActionType = action.Action
@@ -1044,4 +1059,14 @@ func (room *Room)updateRobotRelive(playersNum int){
          }
          room.robots.Mutex.RUnlock()
       }
+}
+
+func (room *Room)IsEnableUpdatePlayerAction(PlayerId int) bool{
+    log.Debug("room.playersData:%v",room.playersData)
+    if v,ok:=room.playersData.CheckValue(PlayerId);ok{
+        if v.ActionType == msg.Create||v.ActionType == msg.Death{
+           return false
+        }
+    }
+    return true
 }

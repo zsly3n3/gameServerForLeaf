@@ -34,13 +34,15 @@ func handlePlayersDied(args []interface{}){
     
     //接收玩家死亡坐标,生成指定范围能量点
     //指定某一帧复活
-
+    
+    log.Debug("handlePlayersDied:%v",m.MsgContent)
     switch agentUserData.GameMode{
     case datastruct.SinglePersonMode:
          ptr_singleMatch.PlayersDied(agentUserData.RoomID,m.MsgContent)
     case datastruct.EndlessMode:
 
     }
+    
    
 }
 
@@ -63,6 +65,7 @@ func handleEnergyExpended(args []interface{}){
 }
 
 func handlePlayerMoveData(args []interface{}){
+    msg.Num = 0
     a := args[1].(gate.Agent)
     if !tools.IsValid(a.UserData()){
        return

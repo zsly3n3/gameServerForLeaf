@@ -183,7 +183,7 @@ func UpdateAgentUserData(a gate.Agent,connUUID string,uid int,r_id string,mode d
     })
 }
 
-const startIndex = 30000
+const StartIndex = 30000
 
 const minDirectionInterval = 5
 const maxDirectionInterval = 10
@@ -204,7 +204,7 @@ const maxSpeed = 2
 
 func CreateRobot(index int,isRelive bool,quad []msg.Quadrant,reliveFrameIndex int) *datastruct.Robot{
      robot:=new(datastruct.Robot)
-     robot.Id = startIndex+index
+     robot.Id = StartIndex+index
      robot.IsRelive = isRelive
      robot.Avatar = fmt.Sprintf("Avatar%d",index)
      robot.NickName = fmt.Sprintf("Robot%d",index)

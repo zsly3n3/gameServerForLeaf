@@ -235,42 +235,46 @@ func (match *SingleMatch)removeRoomWithID(uuid string){
 }
 
 func (match *SingleMatch)PlayerMoved(r_id string,uid int,moveData *msg.CS_MoveData){
-	room:=match.rooms.Get(r_id)
-    if v,ok:=room.playersData.CheckValue(uid);ok{
-        if v.ActionType == msg.Create{
-            return
-        }
+	ok,room:=match.rooms.Get(r_id)
+    if ok&&room.IsEnableUpdatePlayerAction(uid){
+       action:=msg.GetCreatePlayerMoved(uid,moveData.MsgContent.X,moveData.MsgContent.Y,moveData.MsgContent.Speed)
+       var actionData PlayerActionData
+       actionData.ActionType = action.Action
+       actionData.Data = action
+       room.playersData.Set(uid,actionData)
     }
-    action:=msg.GetCreatePlayerMoved(uid,moveData.MsgContent.X,moveData.MsgContent.Y,moveData.MsgContent.Speed)
-    var actionData PlayerActionData
-    actionData.ActionType = action.Action
-    actionData.Data = action
-    room.playersData.Set(uid,actionData)
 }
+
+
 
 func (match *SingleMatch)PlayerJoin(connUUID string,joinData *msg.CS_PlayerJoinRoom){
 	player,tf:=match.onlinePlayers.CheckAndCleanState(connUUID,datastruct.EmptyWay,datastruct.NULLSTRING)
     if tf{
         r_id := joinData.MsgContent.RoomID
         if player.GameData.EnterType == datastruct.FreeRoom&&player.GameData.RoomId==r_id{
-           room:=match.rooms.Get(r_id)
-           isOn:=room.Join(connUUID,player,false)
-           if isOn{
-			  log.Debug("通过遍历空闲房间进入")
-			  match.actionPool.RemoveFromMatchActionPool(connUUID)
-           }else{
-              go match.handleRoomOff(player.Agent,connUUID,player.Id)
-           }
+		   ok,room:=match.rooms.Get(r_id)
+		   if ok{
+			isOn:=room.Join(connUUID,player,false)
+			if isOn{
+			   log.Debug("通过遍历空闲房间进入")
+			   match.actionPool.RemoveFromMatchActionPool(connUUID)
+			}else{
+			   go match.handleRoomOff(player.Agent,connUUID,player.Id)
+			}
+		   }
+          
         }else if player.GameData.EnterType == datastruct.FromMatchingPool{
-            room:=match.rooms.Get(r_id)
-            for _,v:=range room.unlockedData.AllowList{
-                if v == connUUID{
-                    log.Debug("通过匹配池进入")
-                    room.Join(connUUID,player,true)
-					match.actionPool.RemoveFromMatchActionPool(connUUID)
-                    break
-                }
-            }
+			ok,room:=match.rooms.Get(r_id)
+			if ok{
+				for _,v:=range room.unlockedData.AllowList{
+					if v == connUUID{
+						log.Debug("通过匹配池进入")
+						room.Join(connUUID,player,true)
+						match.actionPool.RemoveFromMatchActionPool(connUUID)
+						break
+					}
+				}
+			}
         }else{
             player.Agent.WriteMsg(msg.GetJoinInvalidMsg())
         }
@@ -284,14 +288,19 @@ func (match *SingleMatch)handleRoomOff(a gate.Agent,connUUID string,uid int){
 
 func (match *SingleMatch)EnergyExpended(expended int,agentUserData datastruct.AgentUserData){
        connUUID:=agentUserData.ConnUUID
-       r_id:=agentUserData.RoomID
-       room:=match.rooms.Get(r_id)
-       room.EnergyExpended(connUUID,expended)
+	   r_id:=agentUserData.RoomID
+	   ok,room:=match.rooms.Get(r_id)
+	   if ok{
+		room.EnergyExpended(connUUID,expended)
+	   }
 }
 
 func (match *SingleMatch)PlayersDied(r_id string,values []map[string]interface{}){
-    room:=match.rooms.Get(r_id)
-    room.diedData.Add(values,room)
+	ok,room:=match.rooms.Get(r_id)
+	if ok{
+	  room.diedData.Add(values,room)
+	}
+    
 }
 
 
