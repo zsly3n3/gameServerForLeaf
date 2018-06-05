@@ -30,6 +30,7 @@ func init() {
 	Processor.Register(&CS_EnergyExpended{})
 	Processor.Register(&CS_PlayerDied{})
 
+	Processor.Register(&SC_GameOverData{})
 }
 
 /*接收消耗的能量值*/
@@ -174,6 +175,7 @@ type SC_InitRoomDataContent struct {
 
 
 
+
 /*接收客户端的帧数据*/
 type CS_MoveData struct {
 	MsgHeader json.MsgHeader
@@ -265,6 +267,16 @@ type PlayerRelive struct {//玩家的重生
 }
 
 
+/*发送给客户端游戏结束数据*/
+type SC_GameOverData struct {
+	MsgHeader json.MsgHeader
+	MsgContent *SC_GameOverDataContent
+}
+type SC_GameOverDataContent struct {
+    RoomId string 
+}
+
+
 func GetCreatePlayerAction(p_id int,x int,y int,reLiveFrameIndex int) PlayerRelive{
 
 	  var relive PlayerRelive
@@ -349,8 +361,13 @@ func GetRoomFrameDataMsg(content *SC_RoomFrameDataContent) *SC_RoomFrameData{
 	}
 }
 
-func GetGameOverMsg(){
-	 
+func GetGameOverMsg(content *SC_GameOverDataContent)*SC_GameOverData{
+	var msgHeader json.MsgHeader
+    msgHeader.MsgName = "SC_GameOverData"
+    return &SC_GameOverData{
+		MsgHeader:msgHeader,
+		MsgContent:content,
+	} 
 }
 
 func GetPower(e_type EnergyPointType) int {

@@ -30,7 +30,7 @@ const RoomCloseTime = 15.0*time.Second//玩家最大等待时间多少秒
 
 const FirstFrameIndex = 0//第一帧索引
 
-const MaxPlayingTime = 10*time.Second
+const MaxPlayingTime = 5*time.Minute
 
 const MaxEnergyPower = 5000 //全场最大能量值
 const InitEnergyPower = 1000 //地图初始化的能量值
@@ -425,8 +425,19 @@ func(room *Room)createTicker(){
         room.unlockedData.isExistTicker = true
         room.unlockedData.ticker = time.NewTicker(time_interval*time.Millisecond)
         time.AfterFunc(MaxPlayingTime,func(){
+            
+            content:=new(msg.SC_GameOverDataContent)
+            content.RoomId = room.unlockedData.RoomId
+            msg:=msg.GetGameOverMsg(content)
+            
+            room.Mutex.RLock()
+            for _,player := range room.onlineSyncPlayers{
+                player.Agent.WriteMsg(msg)
+            }
+            room.Mutex.RUnlock()
+
             room.removeFromRooms()
-            //send over msg
+
             log.Debug("----------Game Over----------")
         })
         go room.selectTicker()
@@ -597,9 +608,8 @@ func (room *Room)ComputeFrameData(){
     //  }
  
      frame_content.FramesData = append(frame_content.FramesData,frame_data)
-     
+     msg:=msg.GetRoomFrameDataMsg(&frame_content)
      for _,player := range online_sync{
-         msg:=msg.GetRoomFrameDataMsg(&frame_content)
          player.Agent.WriteMsg(msg)
          //log.Debug("ComputeFrameData msgHeader:%v,msgContent:%v",msg.MsgHeader,msg.MsgContent)
      }
@@ -797,20 +807,6 @@ func (diedData *PlayersDiedData)Append(values []map[string]interface{},now_t tim
     }
     diedData.Data=append(diedData.Data,dataForTime)
 }
-
-
-
-// type PlayersDiedData struct {
-//     MaxCleanTime time.Duration
-//     Mutex *sync.Mutex //读写互斥量
-//     Data []PlayersDiedDataForTime
-// }
-
-// type PlayersDiedDataForTime struct {
-//     DiedTime time.Time
-//     Players  []int
-// }
-
 
 
 func (room *Room)getMovePoint() msg.Point{
@@ -1062,7 +1058,6 @@ func (room *Room)updateRobotRelive(playersNum int){
 }
 
 func (room *Room)IsEnableUpdatePlayerAction(PlayerId int) bool{
-    log.Debug("room.playersData:%v",room.playersData)
     if v,ok:=room.playersData.CheckValue(PlayerId);ok{
         if v.ActionType == msg.Create||v.ActionType == msg.Death{
            return false
