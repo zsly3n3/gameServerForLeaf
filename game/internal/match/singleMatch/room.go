@@ -606,6 +606,7 @@ func (room *Room)ComputeFrameData(){
          player.Agent.WriteMsg(msg)
      }
      
+     log.Debug("Compute FramesData:%v,",frame_content.FramesData)
      if !isRemoveHistory{
         room.history.Mutex.Lock()
         room.history.FramesData = append(room.history.FramesData,&frame_content)
