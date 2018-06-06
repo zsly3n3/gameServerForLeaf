@@ -190,17 +190,17 @@ type CS_MoveDataContent struct {
 }
 
 
-const PlayerIdKey = "PlayerId"
-const PointsKey = "Points"
-const Point_X_Key = "X"
-const Point_Y_Key = "Y"
+
 type CS_PlayerDied struct {
 	MsgHeader json.MsgHeader
-	MsgContent []map[string]interface{}//{PlayerId:1,Points:[{X:1,Y:1},{X:2,Y:2}]}
+	MsgContent []PlayerDiedData//{PlayerId:1,Points:[{X:1,Y:1},{X:2,Y:2}]}
 }
 
-
-
+type PlayerDiedData struct {
+	 PlayerId int
+	 Points []Point
+	 Power int
+}
 
 
 /*发送给客户端当前帧数据*/
@@ -265,11 +265,11 @@ type OfflinePlayerMoved struct {//离线玩家的移动
 
 
 
-//测试
-var Test1Point= Point{X:400,Y:320}
-var Test2Point= Point{X:400,Y:120}
+// //测试
+// var Test1Point= Point{X:400,Y:320}
+// var Test2Point= Point{X:400,Y:120}
 
-var Num = 0
+// var Num = 0
 
 
 const DefaultReliveFrameIndex = -1 //当前帧立即复活
@@ -298,20 +298,20 @@ func GetCreatePlayerAction(p_id int,x int,y int,reLiveFrameIndex int) PlayerReli
 	  var action CreatePlayer
 	  action.Action = Create
 	  action.PlayerId = p_id
-	  switch Num{
-	  case 0:
-		action.X = Test1Point.X
-		action.Y = Test1Point.Y
-	  case 1:
-		action.X = Test2Point.X
-		action.Y = Test2Point.Y
-	  default:
-		action.X = x
-		action.Y = y
-	  }
-	  Num++
-	//    action.X = x
-	//    action.Y = y
+	//   switch Num{
+	//   case 0:
+	// 	action.X = Test1Point.X
+	// 	action.Y = Test1Point.Y
+	//   case 1:
+	// 	action.X = Test2Point.X
+	// 	action.Y = Test2Point.Y
+	//   default:
+	// 	action.X = x
+	// 	action.Y = y
+	//   }
+	//   Num++
+	   action.X = x
+	   action.Y = y
 	 
 	  relive.Action = action
 	  return relive

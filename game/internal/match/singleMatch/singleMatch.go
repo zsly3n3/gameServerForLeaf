@@ -291,7 +291,7 @@ func (match *SingleMatch)EnergyExpended(expended int,agentUserData datastruct.Ag
 	   }
 }
 
-func (match *SingleMatch)PlayersDied(r_id string,values []map[string]interface{}){
+func (match *SingleMatch)PlayersDied(r_id string,values []msg.PlayerDiedData){
 	ok,room:=match.rooms.Get(r_id)
 	if ok{
 	  room.diedData.Add(values,room)

@@ -691,7 +691,7 @@ func (room *Room)createPlayersDiedData(){
     room.diedData=diedData
 }
 
-func (diedData *PlayersDiedData)Add(values []map[string]interface{},room *Room){
+func (diedData *PlayersDiedData)Add(values []msg.PlayerDiedData,room *Room){
     now_t := time.Now()
     diedData.Mutex.Lock()
     if len(diedData.Data)>0{
@@ -703,9 +703,8 @@ func (diedData *PlayersDiedData)Add(values []map[string]interface{},room *Room){
         }else{
             removeIndexs:=make([]int,0,len(values))
             for index,v := range values{
-                current_pid:=v[msg.PlayerIdKey].(float64)
-                new_pid:=int(current_pid)
-                isRemove:=diedData.isRemovePlayerId(new_pid)
+                current_pid:=v.PlayerId
+                isRemove:=diedData.isRemovePlayerId(current_pid)
                 if isRemove {
                    removeIndexs = append(removeIndexs,index)//2秒内死亡,去重
                 }
@@ -727,18 +726,15 @@ func (diedData *PlayersDiedData)Add(values []map[string]interface{},room *Room){
      
      
      for _,v := range values{
-         p_id:=v[msg.PlayerIdKey].(float64)
-         new_pid:=int(p_id)
-      
-         points:=v[msg.PointsKey].([]interface{})
-
+         p_id:=v.PlayerId
+        
+         points:=v.Points
 
          arr:=make([]msg.EnergyPoint,0,len(points))
 
          for _,point := range points{
-            map_point := point.(map[string]interface{})
-            x:= map_point[msg.Point_X_Key].(float64)
-            y:= map_point[msg.Point_Y_Key].(float64)
+            x:= point.X
+            y:= point.Y
             new_x:=int(x)
             new_y:=int(y)
             var e_point msg.EnergyPoint
@@ -750,22 +746,22 @@ func (diedData *PlayersDiedData)Add(values []map[string]interface{},room *Room){
          
          var action msg.PlayerIsDied
          action.Action = msg.Death
-         action.PlayerId = new_pid
+         action.PlayerId = p_id
 
          var p_died PlayerDied
          p_died.Points = arr
          p_died.Action = action
    
         
-         if new_pid <= room.unlockedData.rebotsNum{
+         if p_id <= room.unlockedData.rebotsNum{
             room.robots.Mutex.RLock()
-            room.robots.robots[new_pid].Action = p_died
+            room.robots.robots[p_id].Action = p_died
             room.robots.Mutex.RUnlock()
          }else{
             var action_data PlayerActionData 
             action_data.Data = p_died
             action_data.ActionType = msg.Death
-            room.playersData.Set(new_pid,action_data)
+            room.playersData.Set(p_id,action_data)
          }
      }
      
@@ -784,14 +780,13 @@ func (diedData *PlayersDiedData)isRemovePlayerId(current_pid int) bool{
      return false
 }
 
-func (diedData *PlayersDiedData)Append(values []map[string]interface{},now_t time.Time){
+func (diedData *PlayersDiedData)Append(values []msg.PlayerDiedData,now_t time.Time){
     var dataForTime PlayersDiedDataForTime
     dataForTime.DiedTime = now_t
     dataForTime.Players = make([]int,0,len(values))
     for _,v := range values{
-         p_id:=v[msg.PlayerIdKey].(float64)
-         new_pid:=int(p_id)
-         dataForTime.Players = append(dataForTime.Players,new_pid)
+         p_id:=v.PlayerId
+         dataForTime.Players = append(dataForTime.Players,p_id)
     }
     diedData.Data=append(diedData.Data,dataForTime)
 }

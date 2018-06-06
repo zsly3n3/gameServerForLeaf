@@ -65,7 +65,8 @@ func handleEnergyExpended(args []interface{}){
 }
 
 func handlePlayerMoveData(args []interface{}){
-    msg.Num = 0
+    //测试
+    //msg.Num = 0
     a := args[1].(gate.Agent)
     if !tools.IsValid(a.UserData()){
        return
