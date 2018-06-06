@@ -760,7 +760,10 @@ func (diedData *PlayersDiedData)Add(values []msg.PlayerDiedData,room *Room){
         
          if p_id <= room.unlockedData.rebotsNum{
             room.robots.Mutex.RLock()
-            room.robots.robots[p_id].Action = p_died
+            robot,ok:=room.robots.robots[p_id]
+            if ok{
+                robot.Action = p_died 
+            }
             room.robots.Mutex.RUnlock()
          }else{
             var action_data PlayerActionData 
