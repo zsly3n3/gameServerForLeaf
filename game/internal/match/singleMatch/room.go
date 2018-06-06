@@ -51,6 +51,7 @@ type Room struct {
     
     currentFrameIndex int//记录当前第几帧
     onlineSyncPlayers []datastruct.Player//同步完成的在线玩家列表,第0帧进来的玩家就已存在同步列表中
+    offlineSyncPlayers []datastruct.Player//同步完成的离线玩家列表
     playersData *PlayersFrameData//玩家数据
 
     gameMap *GameMap //游戏地图
@@ -82,6 +83,10 @@ type PlayerDied struct {//玩家的死亡
     Points []msg.EnergyPoint
     Action msg.PlayerIsDied
 }
+
+
+
+
 
 type HistoryFrameData struct {
     Mutex *sync.RWMutex //读写互斥量
@@ -157,6 +162,7 @@ func CreateRoom(connUUIDs []string,r_id string,parentMatch *SingleMatch)*Room{
     
     room.currentFrameIndex = FirstFrameIndex
     room.onlineSyncPlayers = make([]datastruct.Player,0,MaxPeopleInRoom)
+    room.offlineSyncPlayers = make([]datastruct.Player,0,MaxPeopleInRoom-1)
     
     room.IsOn = true
     room.players = make([]string,0,MaxPeopleInRoom)
@@ -219,7 +225,7 @@ func (room *Room)createEnergyPointData(width int,height int) *EnergyPointData{
     return p_data
 }
 
-func(room *Room)IsSyncFinished(connUUID string,player datastruct.Player) (bool,int){
+func(room *Room)IsSyncFinished(connUUID string,player *datastruct.Player) (bool,int){
     length:=len(room.players)
     if length == MaxPeopleInRoom - 1 {
        room.IsOn = false
@@ -235,6 +241,8 @@ func(room *Room)IsSyncFinished(connUUID string,player datastruct.Player) (bool,i
     
     play_id:=len(room.players)+room.unlockedData.rebotsNum
 
+
+
     content.PlayId = play_id
 
     if room.currentFrameIndex == FirstFrameIndex{
@@ -242,9 +250,9 @@ func(room *Room)IsSyncFinished(connUUID string,player datastruct.Player) (bool,i
         content.CurrentFrameIndex = FirstFrameIndex
         
        
-        room.SendInitRoomDataToAgent(&player,&content,play_id)
+        room.SendInitRoomDataToAgent(player,&content,play_id)
 
-        room.onlineSyncPlayers=append(room.onlineSyncPlayers,player)
+        room.onlineSyncPlayers=append(room.onlineSyncPlayers,*player)
         room.updateRobotRelive(length) 
         
 
@@ -267,7 +275,7 @@ func(room *Room)IsSyncFinished(connUUID string,player datastruct.Player) (bool,i
 
     }else{
         content.CurrentFrameIndex = room.currentFrameIndex-1
-        room.SendInitRoomDataToAgent(&player,&content,play_id)
+        room.SendInitRoomDataToAgent(player,&content,play_id)
     }
     return syncFinished,content.CurrentFrameIndex
 }
@@ -297,7 +305,7 @@ func (room *Room)SendInitRoomDataToAgent(player *datastruct.Player,content *msg.
      tools.ReSetAgentUserData(player.Agent,connUUID,uid,rid,mode,play_id)
 }
 
-func (room *Room)syncData(connUUID string,player datastruct.Player){
+func (room *Room)syncData(connUUID string,player *datastruct.Player){
      
     room.history.Mutex.RLock()
      copyData:=make([]*msg.SC_RoomFrameDataContent,len(room.history.FramesData))
@@ -314,7 +322,8 @@ func (room *Room)syncData(connUUID string,player datastruct.Player){
      var length int
      room.Mutex.Lock()
      if lastFrameIndex+1 == room.currentFrameIndex {//数据帧是从0开始，服务器计算帧是从1开始
-        room.onlineSyncPlayers=append(room.onlineSyncPlayers,player)
+        room.onlineSyncPlayers=append(room.onlineSyncPlayers,*player)
+        
         room.GetCreateAction(player.GameData.PlayId,msg.DefaultReliveFrameIndex)
         length=len(room.players)
         room.Mutex.Unlock()
@@ -336,7 +345,8 @@ func (room *Room)syncData(connUUID string,player datastruct.Player){
                 room.Mutex.Lock()
                 if lastFrameIndex+1 == room.currentFrameIndex {
                     isSyncFinished = true
-                    room.onlineSyncPlayers=append(room.onlineSyncPlayers,player)
+                    room.onlineSyncPlayers=append(room.onlineSyncPlayers,*player)
+                   
                     room.GetCreateAction(player.GameData.PlayId,msg.DefaultReliveFrameIndex)
                     length=len(room.players)
                 }
@@ -358,12 +368,12 @@ func(room *Room)Join(connUUID string,player datastruct.Player,force bool) bool{
     currentFrameIndex:=-1
     room.Mutex.Lock()
     if force{
-       syncFinished,currentFrameIndex=room.IsSyncFinished(connUUID,player)
+       syncFinished,currentFrameIndex=room.IsSyncFinished(connUUID,&player)
        isOn = true
     }else{
        isOn=room.IsOn
        if isOn{
-          syncFinished,currentFrameIndex=room.IsSyncFinished(connUUID,player)
+          syncFinished,currentFrameIndex=room.IsSyncFinished(connUUID,&player)
        }
     }
     room.Mutex.Unlock()
@@ -372,7 +382,7 @@ func(room *Room)Join(connUUID string,player datastruct.Player,force bool) bool{
        room.createTicker()
     }
     if isOn&&!syncFinished{
-       go room.syncData(connUUID,player)
+       go room.syncData(connUUID,&player)
     }
     return isOn
 }
@@ -457,6 +467,7 @@ func (room *Room)IsRemoveRoom()(bool,int,[]datastruct.Player,[]datastruct.Player
         }
     }
  }
+
  offlineNum:=len(offlinePlayersUUID)
  onlinePlayersInRoom:=p_num-offlineNum
 
@@ -467,8 +478,8 @@ func (room *Room)IsRemoveRoom()(bool,int,[]datastruct.Player,[]datastruct.Player
     
     var currentFrameIndex int
     var online_sync []datastruct.Player
-    offline_sync:= make([]datastruct.Player,0,MaxPeopleInRoom)
-
+    var offline_sync []datastruct.Player
+    
     if !isRemove{
        currentFrameIndex = room.currentFrameIndex //服务器帧是从1开始
        room.currentFrameIndex++
@@ -482,13 +493,15 @@ func (room *Room)IsRemoveRoom()(bool,int,[]datastruct.Player,[]datastruct.Player
              agentData:=player.Agent.UserData().(datastruct.AgentUserData)
              if agentData.ConnUUID == uuid{
               offlineSyncPlayersIndex = append(offlineSyncPlayersIndex,index)
-              offline_sync=append(offline_sync,player) 
+              room.offlineSyncPlayers = append(room.offlineSyncPlayers,player)
              }
            }
-          removeOfflineSyncPlayersInRoom(room,offlineSyncPlayersIndex)//remove offline players
+           removeOfflineSyncPlayersInRoom(room,offlineSyncPlayersIndex)//remove offline players
        }
        online_sync=make([]datastruct.Player,len(room.onlineSyncPlayers))
        copy(online_sync,room.onlineSyncPlayers)
+       offline_sync=make([]datastruct.Player,len(room.offlineSyncPlayers))
+       copy(offline_sync,room.offlineSyncPlayers)
        if expended_onlineConnUUID != datastruct.NULLSTRING{
         agentData:=online_sync[0].Agent.UserData().(datastruct.AgentUserData)
         expended_onlineConnUUID = agentData.ConnUUID 
@@ -520,9 +533,6 @@ func (room *Room)ComputeFrameData(){
     var frame_data msg.FrameData
     frame_data.FrameIndex = currentFrameIndex
 
-    
-  
-    
     frame_data.PlayerFrameData=make([]interface{},0,len(online_sync)+len(offline_sync))
 
      if currentFrameIndex == FirstFrameIndex{//已保存在历史消息中，清空初始化的能量点
@@ -572,20 +582,24 @@ func (room *Room)ComputeFrameData(){
              frame_data.PlayerFrameData = append(frame_data.PlayerFrameData,action)
          }
      }
-
      
-    //  for _,player := range offline_sync{
-    //     point:=room.getMovePoint()
-
-    //     //action:=msg.GetCreatePlayerMoved(player.Id,point.X,point.Y,msg.DefaultSpeed)
-    //     frame_data.PlayerFrameData = append(frame_data.PlayerFrameData,action)
-    //  }
+     for _,player := range offline_sync{
+        
+        action_type,action:=room.playersData.GetOfflineAction(player.GameData.PlayId,currentFrameIndex,room)
+        if action != nil{
+            if action_type==msg.Death{
+               died:=action.(PlayerDied)
+               action=died.Action
+               frame_data.CreateEnergyPoints = append(frame_data.CreateEnergyPoints,died.Points...)
+            }
+            frame_data.PlayerFrameData = append(frame_data.PlayerFrameData,action)
+        }
+     }
  
      frame_content.FramesData = append(frame_content.FramesData,frame_data)
      msg:=msg.GetRoomFrameDataMsg(&frame_content)
      for _,player := range online_sync{
          player.Agent.WriteMsg(msg)
-         
      }
      
      if !isRemoveHistory{
@@ -607,7 +621,6 @@ func (room *Room)ComputeFrameData(){
             room.history = nil
         }
      }
-     
 }
 
 func removeOfflineSyncPlayersInRoom(room *Room,removeIndex []int){
@@ -909,7 +922,6 @@ func (data *PlayersFrameData)GetValue(pid int,currentFrameIndex int,room *Room)(
                   v = nil
                }
           case msg.Death:
-            
              v=actionData.Data
              randomIndex:=tools.GetRandomQuadrantIndex()
              point:=tools.GetCreatePlayerPoint(room.unlockedData.pointData.quadrant[randomIndex],randomIndex) 
@@ -918,14 +930,11 @@ func (data *PlayersFrameData)GetValue(pid int,currentFrameIndex int,room *Room)(
              actionData.ActionType = action.Action.Action
              actionData.Data = action
              data.Data[pid] = actionData
-
-          default:
-               
-               v=actionData.Data
+          case msg.Move:
+             v=actionData.Data          
         }
         
     }else{
-      
       action:=msg.GetCreatePlayerMoved(pid,msg.DefaultDirection.X,msg.DefaultDirection.Y,msg.DefaultSpeed)
       var actionData PlayerActionData
       actionData.ActionType = action.Action
@@ -935,6 +944,100 @@ func (data *PlayersFrameData)GetValue(pid int,currentFrameIndex int,room *Room)(
     }
     return actionData.ActionType,v
 }
+
+func (data *PlayersFrameData)GetOfflineAction(pid int,currentFrameIndex int,room *Room)(msg.ActionType,interface{}){
+    data.Mutex.Lock()
+	defer data.Mutex.Unlock()
+    var v interface{}
+    actionData, ok := data.Data[pid]
+    if ok{
+        switch actionData.ActionType {
+          case msg.Create:
+               p_relive:=actionData.Data.(msg.PlayerRelive)
+               if p_relive.ReLiveFrameIndex == msg.DefaultReliveFrameIndex || p_relive.ReLiveFrameIndex == currentFrameIndex{
+                  v = p_relive.Action
+                  point:=room.getMovePoint()
+                  action:=msg.GetCreatePlayerMoved(pid,point.X,point.Y,msg.DefaultSpeed)
+                  var actionData PlayerActionData
+                  actionData.ActionType = action.Action
+                  actionData.Data = action
+                  data.Data[pid]=actionData
+               }else{
+                  v = nil
+               }
+          case msg.Death:
+             v=actionData.Data
+             randomIndex:=tools.GetRandomQuadrantIndex()
+             point:=tools.GetCreatePlayerPoint(room.unlockedData.pointData.quadrant[randomIndex],randomIndex) 
+             action:=msg.GetCreatePlayerAction(pid,point.X,point.Y,offsetFrames+currentFrameIndex)
+             var actionData PlayerActionData
+             actionData.ActionType = action.Action.Action
+             actionData.Data = action
+             data.Data[pid] = actionData
+          case msg.Move:
+            
+            switch actionData.Data.(type){
+            case msg.PlayerMoved:
+                 v=actionData.Data
+                 move_action:=actionData.Data.(msg.PlayerMoved)
+                 offlinemove_action:=tools.CreateOfflinePlayerMoved(currentFrameIndex,&move_action)
+                 var actionData PlayerActionData
+                 actionData.ActionType = offlinemove_action.Action.Action
+                 actionData.Data = *offlinemove_action
+                 data.Data[pid] = actionData
+                 
+            case msg.OfflinePlayerMoved:
+                 
+                 offlinemove_action:=actionData.Data.(msg.OfflinePlayerMoved)
+                 startIndex:=offlinemove_action.StartFrameIndex
+                 directionInterval:=offlinemove_action.DirectionInterval
+                 speedInterval:=offlinemove_action.SpeedInterval
+
+                 var ptr_action *msg.PlayerMoved
+                 
+                 if (currentFrameIndex-startIndex)*time_interval % (directionInterval*1000) == 0 {
+                     lastSpeed:=offlinemove_action.Action.Speed
+                     point:=room.getMovePoint()
+                     action:=msg.GetCreatePlayerMoved(pid,point.X,point.Y,lastSpeed)
+                     ptr_action = &action
+                 }else{
+                     action:=offlinemove_action.Action
+                     ptr_action = &action
+                 }
+
+                 if (currentFrameIndex-startIndex)*time_interval % (speedInterval*1000) == 0{
+                    speedDuration:= tools.GetRandomSpeedDuration()
+                    offlinemove_action.StopSpeedFrameIndex = currentFrameIndex-startIndex+speedDuration*(1000/time_interval)
+                    ptr_action.Speed = tools.GetRandomSpeed()
+                }
+    
+                if offlinemove_action.StopSpeedFrameIndex != 0 && currentFrameIndex-startIndex == offlinemove_action.StopSpeedFrameIndex{
+                    offlinemove_action.StopSpeedFrameIndex = 0
+                    ptr_action.Speed = msg.DefaultSpeed
+                }
+                
+                offlinemove_action.Action = *ptr_action
+                var actionData PlayerActionData
+                actionData.ActionType = ptr_action.Action
+                actionData.Data = offlinemove_action
+                data.Data[pid]=actionData
+                v = *ptr_action
+            }
+        }
+        
+    }else{
+      action:=msg.GetCreatePlayerMoved(pid,msg.DefaultDirection.X,msg.DefaultDirection.Y,msg.DefaultSpeed)
+      var actionData PlayerActionData
+      actionData.ActionType = action.Action
+      actionData.Data = action
+      data.Data[pid] = actionData
+      v=action
+    }
+    return actionData.ActionType,v
+}
+
+
+
 
 
 func (room *Room)getRobotAction(robot *datastruct.Robot,currentFrameIndex int)(msg.ActionType,interface{}){
@@ -960,8 +1063,7 @@ func (room *Room)getRobotAction(robot *datastruct.Robot,currentFrameIndex int)(m
             if currentFrameIndex*time_interval % (robot.DirectionInterval*1000) == 0 {
                 lastSpeed:=current_action.(msg.PlayerMoved).Speed
                 point:=room.getMovePoint()
-                action:=msg.GetCreatePlayerMoved(robot.Id,point.X,point.Y,msg.DefaultSpeed)
-                action.Speed=lastSpeed
+                action:=msg.GetCreatePlayerMoved(robot.Id,point.X,point.Y,lastSpeed)
                 ptr_action = &action
                 
             }else{

@@ -254,6 +254,17 @@ type PlayerMoved struct {//玩家的移动
 	Y int
 }
 
+type OfflinePlayerMoved struct {//离线玩家的移动
+    Action PlayerMoved
+    StartFrameIndex int //从多少帧开始记录的
+    SpeedInterval int //加速的时间间隔
+	StopSpeedFrameIndex int //持续到多少帧结束 
+	DirectionInterval int //转向的时间间隔
+}
+
+
+
+
 //测试
 var Test1Point= Point{X:400,Y:320}
 var Test2Point= Point{X:400,Y:120}

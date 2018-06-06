@@ -194,6 +194,15 @@ const minSpeed = 2
 const maxSpeed = 2
 
 
+func CreateOfflinePlayerMoved(currentFrameIndex int,action *msg.PlayerMoved) *msg.OfflinePlayerMoved{
+    offlineMoved:=new(msg.OfflinePlayerMoved)
+    offlineMoved.Action = *action
+    offlineMoved.StartFrameIndex = currentFrameIndex
+    offlineMoved.DirectionInterval=randInt(minDirectionInterval,maxDirectionInterval-2)
+    offlineMoved.SpeedInterval = randInt(minSpeedInterval,maxSpeedInterval+1)
+    offlineMoved.StopSpeedFrameIndex = 0
+    return offlineMoved
+}
 
 func CreateRobot(index int,isRelive bool,quad []msg.Quadrant,reliveFrameIndex int) *datastruct.Robot{
      robot:=new(datastruct.Robot)
@@ -204,6 +213,7 @@ func CreateRobot(index int,isRelive bool,quad []msg.Quadrant,reliveFrameIndex in
      robot.Action = GetCreateRobotAction(robot.Id,quad,reliveFrameIndex)
      robot.SpeedInterval = randInt(minSpeedInterval,maxSpeedInterval+1)
      robot.DirectionInterval = randInt(minDirectionInterval,maxDirectionInterval+1)
+     robot.StopSpeedFrameIndex = 0
      return robot
 }
 
