@@ -331,7 +331,7 @@ func (room *Room)syncData(connUUID string,player *datastruct.Player){
      }else{
         room.Mutex.Unlock()
         ok:=true
-        for ok {  
+        for ok {
             if _, ok = <-room.unlockedData.startSync; ok {
                 room.history.Mutex.RLock()
                 copyData:=room.history.FramesData[lastFrameIndex+1:]
@@ -514,8 +514,6 @@ func (room *Room)IsRemoveRoom()(bool,int,[]datastruct.Player,[]datastruct.Player
     isRemoveHistory = true
  }
  
-
-
  return isRemove,currentFrameIndex,online_sync,offline_sync,syncNotFinishedPlayers,isRemoveHistory,expended_onlineConnUUID
 }
 
@@ -555,7 +553,8 @@ func (room *Room)ComputeFrameData(){
      }
 
      
-     room.robots.Mutex.RLock()
+     room.robots.Mutex.Lock()
+     removeRobotsId:=make([]int,0,len(room.robots.robots))
      for _,robot:= range room.robots.robots{
         action_type,action:=room.getRobotAction(robot,currentFrameIndex)
          if action != nil{
@@ -563,13 +562,19 @@ func (room *Room)ComputeFrameData(){
                 died:=action.(PlayerDied)
                 action=died.Action
                 frame_data.CreateEnergyPoints = append(frame_data.CreateEnergyPoints,died.Points...)
+                if !robot.IsRelive{
+                   removeRobotsId=append(removeRobotsId,robot.Id)
+                }
             }
             frame_data.PlayerFrameData = append(frame_data.PlayerFrameData,action)
          }
 
      }
-     room.robots.Mutex.RUnlock()
-
+     for _,v:= range removeRobotsId{
+        delete(room.robots.robots,v)
+     }
+     room.robots.Mutex.Unlock()
+     
 
      for _,player := range online_sync{
          action_type,action:=room.playersData.GetValue(player.GameData.PlayId,currentFrameIndex,room)
@@ -584,7 +589,6 @@ func (room *Room)ComputeFrameData(){
      }
      
      for _,player := range offline_sync{
-        
         action_type,action:=room.playersData.GetOfflineAction(player.GameData.PlayId,currentFrameIndex,room)
         if action != nil{
             if action_type==msg.Death{
@@ -764,8 +768,6 @@ func (diedData *PlayersDiedData)Add(values []msg.PlayerDiedData,room *Room){
             room.playersData.Set(p_id,action_data)
          }
      }
-     
-
 }
 
 
@@ -1050,7 +1052,7 @@ func (room *Room)getRobotAction(robot *datastruct.Robot,currentFrameIndex int)(m
                  robot.Action = action
             }else{
                 rs = nil
-            }  
+            }
 
        case msg.PlayerMoved:
             var ptr_action *msg.PlayerMoved
@@ -1083,9 +1085,11 @@ func (room *Room)getRobotAction(robot *datastruct.Robot,currentFrameIndex int)(m
             
         case PlayerDied:
             rs = current_action //PlayerDied
-            action:=tools.GetCreateRobotAction(robot.Id,room.unlockedData.pointData.quadrant,offsetFrames+currentFrameIndex)
-            robot.Action=action
             rs_type = msg.Death
+            if robot.IsRelive {
+                action:=tools.GetCreateRobotAction(robot.Id,room.unlockedData.pointData.quadrant,offsetFrames+currentFrameIndex)
+                robot.Action=action
+            }
      }
 	 return rs_type,rs
 }
@@ -1139,9 +1143,26 @@ func (room *Room)IsEnableUpdatePlayerAction(PlayerId int) bool{
 }
 
 func (room *Room)GetPlayerMovedMsg(PlayerId int,moveData *msg.CS_MoveData){
+      
       action:=msg.GetCreatePlayerMoved(PlayerId,moveData.MsgContent.X,moveData.MsgContent.Y,moveData.MsgContent.Speed)
       var actionData PlayerActionData
       actionData.ActionType = action.Action
+      
+      room.playersData.Mutex.Lock()
+      defer room.playersData.Mutex.Unlock()
+      if action.X == 0 && action.Y == 0{
+          last_actionData:=room.playersData.Data[PlayerId]
+          switch last_actionData.Data.(type){
+                 case msg.PlayerMoved:
+                      last_action:=last_actionData.Data.(msg.PlayerMoved)
+                      action.X = last_action.X
+                      action.Y = last_action.Y
+                 default:
+                    action.X = msg.DefaultDirection.X
+                    action.Y = msg.DefaultDirection.Y
+          }
+         
+      }
       actionData.Data = action
-      room.playersData.Set(PlayerId,actionData)
+      room.playersData.Data[PlayerId] = actionData
 }
