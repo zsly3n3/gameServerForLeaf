@@ -193,15 +193,16 @@ type CS_MoveDataContent struct {
 
 type CS_PlayerDied struct {
 	MsgHeader json.MsgHeader
-	MsgContent []PlayerDiedData//{PlayerId:1,Points:[{X:1,Y:1},{X:2,Y:2}]}
+	MsgContent []PlayerDiedData
 }
+
 
 type PlayerDiedData struct {
 	 PlayerId int
 	 Points []Point
 	 Power int
+	 FrameIndex int
 }
-
 
 /*发送给客户端当前帧数据*/
 type SC_RoomFrameData struct {

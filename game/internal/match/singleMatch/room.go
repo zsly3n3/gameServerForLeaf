@@ -69,15 +69,11 @@ type Room struct {
 }
 
 type PlayersDiedData struct {
-    MaxCleanTime time.Duration
     Mutex *sync.Mutex //读写互斥量
-    Data []PlayersDiedDataForTime
+    Data map[int]int //key:PlayerId,value:FrameIndex
 }
 
-type PlayersDiedDataForTime struct {
-    DiedTime time.Time
-    Players  []int //play_id
-}
+
 
 type PlayerDied struct {//玩家的死亡
     Points []msg.EnergyPoint
@@ -690,26 +686,25 @@ func (room *Room)createEnergyExpend(){
 
 func (room *Room)createPlayersDiedData(){
     diedData:=new(PlayersDiedData)
-    diedData.MaxCleanTime = 2*time.Second//容器间隔清空时间
     diedData.Mutex = new(sync.Mutex)
-    diedData.Data = make([]PlayersDiedDataForTime,0,2*(1000/time_interval))
+    diedData.Data = make(map[int]int)
     room.diedData=diedData
 }
 
 func (diedData *PlayersDiedData)Add(values []msg.PlayerDiedData,room *Room){
-    now_t := time.Now()
     diedData.Mutex.Lock()
     if len(diedData.Data)>0{
-        earliest:=diedData.Data[0].DiedTime
-        rs_sub:=now_t.Sub(earliest)
-        if rs_sub>=diedData.MaxCleanTime{
-            diedData.Data=diedData.Data[:0]
-            diedData.Append(values,now_t)   
-        }else{
             removeIndexs:=make([]int,0,len(values))
+            room.Mutex.RLock()
+            currentFrameIndex:=room.currentFrameIndex-1
+            room.Mutex.RUnlock()
             for index,v := range values{
-                current_pid:=v.PlayerId
-                isRemove:=diedData.isRemovePlayerId(current_pid)
+                isRemove:=false
+                if v.FrameIndex>currentFrameIndex||(v.FrameIndex<currentFrameIndex && v.FrameIndex<currentFrameIndex-offsetFrames){
+                   isRemove = true
+                }else{
+                   isRemove =diedData.isRemovePlayerId(v.PlayerId,v.FrameIndex)
+                }
                 if isRemove {
                    removeIndexs = append(removeIndexs,index)//2秒内死亡,去重
                 }
@@ -722,10 +717,9 @@ func (diedData *PlayersDiedData)Add(values []msg.PlayerDiedData,room *Room){
                  values=append(values[:v], values[v+1:]...)
                  rm_count++;
             }
-            diedData.Append(values,now_t)
-        }
+            diedData.Append(values)
      }else{
-        diedData.Append(values,now_t)
+        diedData.Append(values)
      }
      diedData.Mutex.Unlock()
      
@@ -775,26 +769,22 @@ func (diedData *PlayersDiedData)Add(values []msg.PlayerDiedData,room *Room){
 }
 
 
-func (diedData *PlayersDiedData)isRemovePlayerId(current_pid int) bool{
-     for _,dataForTime := range diedData.Data{
-        for _,p_id := range dataForTime.Players{
-              if current_pid == p_id{
-                  return true
-              }
-        }
+func (diedData *PlayersDiedData)isRemovePlayerId(current_pid int,frameIndex int) bool{
+     last_frameIndex,ok:=diedData.Data[current_pid]
+     if ok{
+            if frameIndex<last_frameIndex||(frameIndex>last_frameIndex&&frameIndex-offsetFrames<last_frameIndex){
+               return true
+            }
      }
      return false
 }
 
-func (diedData *PlayersDiedData)Append(values []msg.PlayerDiedData,now_t time.Time){
-    var dataForTime PlayersDiedDataForTime
-    dataForTime.DiedTime = now_t
-    dataForTime.Players = make([]int,0,len(values))
+func (diedData *PlayersDiedData)Append(values []msg.PlayerDiedData){
     for _,v := range values{
          p_id:=v.PlayerId
-         dataForTime.Players = append(dataForTime.Players,p_id)
+         frameIndex:=v.FrameIndex
+         diedData.Data[p_id]=frameIndex
     }
-    diedData.Data=append(diedData.Data,dataForTime)
 }
 
 
