@@ -217,7 +217,7 @@ func CreateRobot(index int,isRelive bool,quad []msg.Quadrant,reliveFrameIndex in
      return robot
 }
 
-func GetCreateRobotAction(p_id int,quad []msg.Quadrant,reliveFrameIndex int)msg.PlayerRelive{
+func GetCreateRobotAction(p_id int,quad []msg.Quadrant,reliveFrameIndex int)*msg.PlayerRelive{
     randomIndex:=GetRandomQuadrantIndex()
     point:=GetCreatePlayerPoint(quad[randomIndex],randomIndex) 
     action:=msg.GetCreatePlayerAction(p_id,point.X,point.Y,reliveFrameIndex)

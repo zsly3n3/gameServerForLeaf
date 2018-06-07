@@ -290,9 +290,9 @@ type SC_GameOverDataContent struct {
 }
 
 
-func GetCreatePlayerAction(p_id int,x int,y int,reLiveFrameIndex int) PlayerRelive{
+func GetCreatePlayerAction(p_id int,x int,y int,reLiveFrameIndex int) *PlayerRelive{
 
-	  var relive PlayerRelive
+	  relive:=new(PlayerRelive)
 	  relive.ReLiveFrameIndex = reLiveFrameIndex
 	  
       
@@ -318,14 +318,19 @@ func GetCreatePlayerAction(p_id int,x int,y int,reLiveFrameIndex int) PlayerReli
 	  return relive
 }
 
-func GetCreatePlayerMoved(p_id int,x int,y int,speed int) PlayerMoved{
-	var action PlayerMoved
+func GetCreatePlayerMoved(p_id int,x int,y int,speed int) *PlayerMoved{
+	action:=new(PlayerMoved)
 	action.Action = Move
 	action.PlayerId = p_id
 	action.X = x
 	action.Y = y
 	action.Speed = speed
 	return action
+}
+func UpdatePlayerMoved(move *PlayerMoved,x int,y int,speed int){
+	move.X = x
+	move.Y = y
+	move.Speed = speed
 }
 
 func GetMatchingEndMsg(r_id string) *SC_PlayerMatchingEnd{
