@@ -193,7 +193,7 @@ func (match *SingleMatch)cleanPoolAndCreateRoom(){
 	match.stopTicker()
     arr:=make([]string,len(match.singleMatchPool.Pool))
     copy(arr,match.singleMatchPool.Pool)
-    match.singleMatchPool.Pool=match.singleMatchPool.Pool[:0]//clean pool
+	match.singleMatchPool.Pool=match.singleMatchPool.Pool[:0]//clean pool
     go match.createMatchingTypeRoom(arr)
 }
 

@@ -14,7 +14,7 @@ const LeastPeople = 10
 
 /*无尽模式*/
 type EndlessModeMatch struct {
-	//rooms *Rooms 注释
+	rooms *Rooms
 	onlinePlayers *datastruct.OnlinePlayers
 }
 
@@ -26,7 +26,7 @@ func NewEndlessModeMatch()*EndlessModeMatch{
 
 func (endlessModeMatch *EndlessModeMatch)init(){
 	endlessModeMatch.onlinePlayers = datastruct.NewOnlinePlayers()
-	//endlessModeMatch.rooms = NewRooms() 注释
+	endlessModeMatch.rooms = NewRooms()
 }
 
 func (match *EndlessModeMatch)addPlayer(connUUID string,a gate.Agent,uid int){
@@ -37,7 +37,7 @@ func (match *EndlessModeMatch)RemovePlayer(connUUID string){
 	match.onlinePlayers.Delete(connUUID)
 }
 
-func (match *SingleMatch)addOnlinePlayer(connUUID string,a gate.Agent,uid int){
+func (match *EndlessModeMatch)addOnlinePlayer(connUUID string,a gate.Agent,uid int){
 	match.onlinePlayers.Lock.Lock()
 	 defer match.onlinePlayers.Lock.Unlock()
 	 v, ok := match.onlinePlayers.Bm[connUUID];
@@ -54,83 +54,26 @@ func (match *SingleMatch)addOnlinePlayer(connUUID string,a gate.Agent,uid int){
 }
 
 
-func (match *SingleMatch)Matching(connUUID string, a gate.Agent,uid int){
-	  match.addPlayer(connUUID,a,uid)
+func (match *EndlessModeMatch)Matching(connUUID string, a gate.Agent,uid int){
 	
-	//willEnterRoom 是否将要加入了房间
+	match.addPlayer(connUUID,a,uid)
+	
+	//lock
 	r_id,willEnterRoom:=match.rooms.GetFreeRoomId()
-    
 	if !willEnterRoom{
-	   match.singleMatchPool.Mutex.Lock()
-	   defer match.singleMatchPool.Mutex.Unlock()
-	   num:=len(match.singleMatchPool.Pool)
-	   if num<LeastPeople{
-		match.singleMatchPool.Pool=append(match.singleMatchPool.Pool,connUUID)
-		match.createTicker()
-		if num == LeastPeople-1{
-			//check player is online or offline
-			//offline player is removed from pool
-			//if all online create room
-			removeIndex,_:=match.getOfflinePlayers()
-			rm_num:=len(removeIndex)
-			if rm_num<=0{//池中没有离线玩家,则创建房间
-				match.cleanPoolAndCreateRoom()
-			}else{
-				match.removeOfflinePlayersInPool(removeIndex)
-			}
+	    match.createRoom()
+	}
+	//unlock
+	
+	if willEnterRoom{
+		player,tf:=match.onlinePlayers.GetAndUpdateState(connUUID,datastruct.FreeRoom,r_id)
+		if tf{
+			player.Agent.WriteMsg(msg.GetMatchingEndMsg(r_id))
 		}
-	   }
-	}else{
-		 player,tf:=match.onlinePlayers.GetAndUpdateState(connUUID,datastruct.FreeRoom,r_id)
-		 if tf{
-		 	player.Agent.WriteMsg(msg.GetMatchingEndMsg(r_id))
-		 }
 	}
 }
 
-
-
-func (match *SingleMatch)getOfflinePlayers() ([]int, map[string]datastruct.Player){
-    tmp_map:=match.onlinePlayers.Items()
-	
-    online_map:=make(map[string]datastruct.Player)
-    
-    removeIndex:=make([]int,0,LeastPeople)
-    
-    var online_player datastruct.Player
-    online_key:=datastruct.NULLSTRING
-    
-    for index,v := range match.singleMatchPool.Pool{
-        isOnline:=false
-        for key,player :=range tmp_map{
-            if key == v{
-                isOnline=true
-                online_key = key
-                online_player = player
-                break
-            }
-        }
-        if isOnline{
-            online_map[online_key]= online_player
-            delete(tmp_map, online_key)//移除对比过的数据,减少空间复杂度
-        }else{
-            removeIndex=append(removeIndex,index)//保存离线玩家
-        }
-    }
-    return removeIndex,online_map
-}
-
-
-
-func (match *SingleMatch)cleanPoolAndCreateRoom(){
-	match.stopTicker()
-    arr:=make([]string,len(match.singleMatchPool.Pool))
-    copy(arr,match.singleMatchPool.Pool)
-    match.singleMatchPool.Pool=match.singleMatchPool.Pool[:0]//clean pool
-    go match.createMatchingTypeRoom(arr)
-}
-
-func (match *SingleMatch)createMatchingTypeRoom(playerUUID []string){
+func (match *EndlessModeMatch)createRoom(playerUUID []string){
     r_uuid:=tools.UniqueId()
     players:=match.onlinePlayers.GetsAndUpdateState(playerUUID,datastruct.FromMatchingPool,r_uuid)
     room:=CreateRoom(playerUUID,r_uuid,match)
