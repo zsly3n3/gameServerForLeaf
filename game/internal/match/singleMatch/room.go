@@ -29,7 +29,7 @@ const RoomCloseTime = 15.0*time.Second//房间入口关闭时间
 
 const FirstFrameIndex = 0//第一帧索引
 
-const MaxPlayingTime = 5*time.Minute
+const MaxPlayingTime = 30*time.Second
 
 const MaxEnergyPower = 5000 //全场最大能量值
 const InitEnergyPower = 1000 //地图初始化的能量值

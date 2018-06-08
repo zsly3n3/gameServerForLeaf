@@ -178,9 +178,9 @@ func singlePersonMatchingPlayers(p_uuid string, a gate.Agent,uid int){
 func removePlayer(key string,mode datastruct.GameModeType){
     switch mode{
       case datastruct.SinglePersonMode:
+           log.Debug("SinglePersonMode removePlayer:%v",key)
            ptr_singleMatch.RemovePlayer(key)
       case datastruct.EndlessMode:
-     
     }
     //在其他匹配模式中删除玩家
 }
