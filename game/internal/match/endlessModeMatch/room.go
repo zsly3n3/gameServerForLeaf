@@ -90,7 +90,7 @@ type HistoryFrameData struct {
 }
 
 type RoomUnlockedData struct {
-     parentMatch *SingleMatch
+     parentMatch *EndlessModeMatch
      isExistTicker bool
      ticker *time.Ticker
      points_ch chan []msg.EnergyPoint

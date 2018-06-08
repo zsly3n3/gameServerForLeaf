@@ -1,6 +1,7 @@
 package endlessModeMatch
 
 import (
+	"sync"
 	"server/datastruct"
 	"github.com/name5566/leaf/gate"
 	"server/db"
@@ -16,6 +17,7 @@ const LeastPeople = 10
 type EndlessModeMatch struct {
 	rooms *Rooms
 	onlinePlayers *datastruct.OnlinePlayers
+	mutex *sync.Mutex
 }
 
 func NewEndlessModeMatch()*EndlessModeMatch{
@@ -27,6 +29,7 @@ func NewEndlessModeMatch()*EndlessModeMatch{
 func (endlessModeMatch *EndlessModeMatch)init(){
 	endlessModeMatch.onlinePlayers = datastruct.NewOnlinePlayers()
 	endlessModeMatch.rooms = NewRooms()
+	endlessModeMatch.mutex = new(sync.Mutex)
 }
 
 func (match *EndlessModeMatch)addPlayer(connUUID string,a gate.Agent,uid int){
@@ -58,34 +61,30 @@ func (match *EndlessModeMatch)Matching(connUUID string, a gate.Agent,uid int){
 	
 	match.addPlayer(connUUID,a,uid)
 	
-	//lock
+	match.mutex.Lock()
 	r_id,willEnterRoom:=match.rooms.GetFreeRoomId()
 	if !willEnterRoom{
-	    match.createRoom()
+	    r_id=match.createRoom(connUUID)
 	}
-	//unlock
+	match.mutex.Unlock()
 	
-	if willEnterRoom{
-		player,tf:=match.onlinePlayers.GetAndUpdateState(connUUID,datastruct.FreeRoom,r_id)
-		if tf{
+	player,tf:=match.onlinePlayers.GetAndUpdateState(connUUID,datastruct.FreeRoom,r_id)
+	if tf{
 			player.Agent.WriteMsg(msg.GetMatchingEndMsg(r_id))
-		}
 	}
+
 }
 
-func (match *EndlessModeMatch)createRoom(playerUUID []string){
-    r_uuid:=tools.UniqueId()
-    players:=match.onlinePlayers.GetsAndUpdateState(playerUUID,datastruct.FromMatchingPool,r_uuid)
-    room:=CreateRoom(playerUUID,r_uuid,match)
-    match.rooms.Set(r_uuid,room)
-    for _,play := range players{
-        play.Agent.WriteMsg(msg.GetMatchingEndMsg(r_uuid))
-    }
+func (match *EndlessModeMatch)createRoom(connUUID string)string{
+	r_uuid:=tools.UniqueId()
+    room:=CreateRoom([]string{connUUID},r_uuid,match)
+    match.rooms.Set(r_uuid,room) 
+	return r_uuid
 }
 
 
 
-func (match *SingleMatch)removeRoomWithID(uuid string){
+func (match *EndlessModeMatch)removeRoomWithID(uuid string){
 	match.rooms.Delete(uuid)
 }
 
