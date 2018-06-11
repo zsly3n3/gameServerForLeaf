@@ -18,4 +18,6 @@ func init() {
     msg.Processor.SetRouter(&msg.CS_MoveData{}, game.ChanRPC)
     msg.Processor.SetRouter(&msg.CS_EnergyExpended{}, game.ChanRPC)
     msg.Processor.SetRouter(&msg.CS_PlayerDied{}, game.ChanRPC)
+    msg.Processor.SetRouter(&msg.CS_PlayerLeftRoom{}, game.ChanRPC)
+    msg.Processor.SetRouter(&msg.CS_EndlessModeMatching{}, game.ChanRPC)
 }

@@ -16,11 +16,31 @@ func handleMsg(m interface{}, h interface{}) {
 
 func init() {
     handleMsg(&msg.CS_PlayerMatching{}, handleSinglePersonMatching)
+    handleMsg(&msg.CS_EndlessModeMatching{},handleEndlessModeMatching)
+
+
     handleMsg(&msg.CS_PlayerCancelMatching{}, handleCancelMatching)
     handleMsg(&msg.CS_PlayerJoinRoom{}, handlePlayerJoinRoom)
     handleMsg(&msg.CS_MoveData{}, handlePlayerMoveData)
     handleMsg(&msg.CS_EnergyExpended{}, handleEnergyExpended)
     handleMsg(&msg.CS_PlayerDied{}, handlePlayersDied)
+    handleMsg(&msg.CS_PlayerLeftRoom{}, handlePlayerLeftRoom)
+}
+
+
+func handlePlayerLeftRoom(args []interface{}){
+    a := args[1].(gate.Agent)
+    if !tools.IsValid(a.UserData()){
+       return
+    }    
+    agentUserData := a.UserData().(datastruct.AgentUserData)
+    switch agentUserData.GameMode{
+    case datastruct.SinglePersonMode:
+         ptr_singleMatch.PlayerLeftRoom(agentUserData.RoomID,agentUserData.ConnUUID)
+    case datastruct.EndlessMode:
+
+    }
+
 }
 
 func handlePlayersDied(args []interface{}){
@@ -101,8 +121,6 @@ func handlePlayerJoinRoom(args []interface{}){
     }
 }
 
-
-
 func handleCancelMatching(args []interface{}){
     a := args[1].(gate.Agent)
     if !tools.IsValid(a.UserData()){
@@ -115,7 +133,7 @@ func handleCancelMatching(args []interface{}){
     case datastruct.SinglePersonMode:
          ptr_singleMatch.RemovePlayerFromMatchingPool(connUUID)
     case datastruct.EndlessMode:
-        
+         
     }
 }
  
@@ -123,45 +141,12 @@ func handleCancelMatching(args []interface{}){
 //收到单人匹配消息的时候加入池，主动离开和自动离开在池中删除，
 //完成单人匹配后，在池中删除
 func handleSinglePersonMatching(args []interface{}) {
-    
-    a := args[1].(gate.Agent)
-    if !tools.IsValid(a.UserData()){
-       return
-    }
-    agentUserData := a.UserData().(datastruct.AgentUserData)
-    
-    uid:=agentUserData.Uid
-    if uid <= 0{
-        log.Error("Uid error : %v",uid)
-        return
-    }
-    connUUID:=agentUserData.ConnUUID
-    var msgHeader json.MsgHeader
-    
-    tools.ReSetAgentUserData(a,connUUID,uid,datastruct.NULLSTRING,datastruct.SinglePersonMode,datastruct.NULLID)
+     startMatching(args,datastruct.SinglePersonMode)   
+}
 
-    removePlayerFromOtherMatchs(connUUID,datastruct.SinglePersonMode)
-    
-    if ptr_singleMatch.CheckActionPool(connUUID){//已在匹配中
-        msgHeader.MsgName = msg.SC_PlayerAlreadyMatchingKey
-        a.WriteMsg(&msg.SC_PlayerAlreadyMatching{
-            MsgHeader:msgHeader,
-        })
-        return
-    }
-    
-    ChanRPC.Go(SinglePersonMatchingKey,connUUID,a,uid) //玩家匹配
-    
-    msgHeader.MsgName = msg.SC_PlayerMatchingKey
-
-    var msgContent msg.SC_PlayerMatchingContent
-    msgContent.IsMatching =true
-
-    a.WriteMsg(&msg.SC_PlayerMatching{  
-        MsgHeader:msgHeader,
-        MsgContent:msgContent,
-    })
-} 
+func handleEndlessModeMatching(args []interface{}){
+     startMatching(args,datastruct.EndlessMode)
+}
 
 func removePlayerFromOtherMatchs(connUUID string,mode datastruct.GameModeType){
      switch mode{
@@ -183,4 +168,68 @@ func removePlayer(key string,mode datastruct.GameModeType){
      
     }
     //在其他匹配模式中删除玩家
+}
+
+func startMatching(args []interface{},mode datastruct.GameModeType){
+    a := args[1].(gate.Agent)
+    if !tools.IsValid(a.UserData()){
+       return
+    }
+    agentUserData := a.UserData().(datastruct.AgentUserData)
+    
+    uid:=agentUserData.Uid
+    if uid <= 0{
+        log.Error("Uid error : %v",uid)
+        return
+    }
+    connUUID:=agentUserData.ConnUUID
+    
+    
+    tools.ReSetAgentUserData(a,connUUID,uid,datastruct.NULLSTRING,mode,datastruct.NULLID)
+    removePlayerFromOtherMatchs(connUUID,mode)
+    
+    if checkActionPool(connUUID,mode,a){
+       return
+    } 
+    
+    matchingChanRPC(mode,connUUID,a,uid)
+    
+    var msgHeader json.MsgHeader
+    msgHeader.MsgName = msg.SC_PlayerMatchingKey
+
+    var msgContent msg.SC_PlayerMatchingContent
+    msgContent.IsMatching =true
+
+    a.WriteMsg(&msg.SC_PlayerMatching{  
+        MsgHeader:msgHeader,
+        MsgContent:msgContent,
+    })
+}
+
+func checkActionPool(connUUID string,mode datastruct.GameModeType,a gate.Agent) bool {
+    isMatching:=false
+    switch mode{
+    case datastruct.SinglePersonMode:
+        if ptr_singleMatch.CheckActionPool(connUUID){//已在匹配中
+            var msgHeader json.MsgHeader
+            msgHeader.MsgName = msg.SC_PlayerAlreadyMatchingKey
+            a.WriteMsg(&msg.SC_PlayerAlreadyMatching{
+                MsgHeader:msgHeader,
+            })
+            isMatching = true
+        }
+     case datastruct.EndlessMode:
+      
+    }
+    return isMatching
+}
+func matchingChanRPC(mode datastruct.GameModeType,connUUID string,a gate.Agent,uid int){
+    key:=datastruct.NULLSTRING
+    switch mode{
+     case  datastruct.SinglePersonMode:
+         key = SinglePersonMatchingKey
+     case datastruct.EndlessMode:
+      
+    }
+    ChanRPC.Go(key,connUUID,a,uid)//玩家匹配
 }

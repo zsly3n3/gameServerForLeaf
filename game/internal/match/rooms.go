@@ -1,4 +1,4 @@
-package singleMatch
+package match
 
 import (
 	"sync"

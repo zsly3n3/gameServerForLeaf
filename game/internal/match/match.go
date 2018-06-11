@@ -1,7 +1,8 @@
 package match
 
 import (
-	"sync"
+    "sync"
+    "server/datastruct"
 )
 
 
@@ -59,3 +60,10 @@ func (actionPool *MatchActionPool)Check(p_uuid string) bool{
     }
     return tf
 }
+
+type ParentMatch interface {
+     RemoveRoomWithID(r_id string)
+     GetOnlinePlayersPtr() *datastruct.OnlinePlayers
+}
+
+
