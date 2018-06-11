@@ -703,7 +703,7 @@ func (diedData *PlayersDiedData)Add(values []msg.PlayerDiedData,room *Room){
                 if v.FrameIndex>currentFrameIndex||(v.FrameIndex<currentFrameIndex && v.FrameIndex<currentFrameIndex-offsetFrames){
                    isRemove = true
                 }else{
-                   isRemove =diedData.isRemovePlayerId(v.PlayerId,v.FrameIndex)
+                   isRemove =diedData.isRemovePlayerId(v.PlayerId,v.FrameIndex,room)
                 }
                 if isRemove {
                    removeIndexs = append(removeIndexs,index)//2秒内死亡,去重
@@ -772,12 +772,32 @@ func (diedData *PlayersDiedData)Add(values []msg.PlayerDiedData,room *Room){
 }
 
 
-func (diedData *PlayersDiedData)isRemovePlayerId(current_pid int,frameIndex int) bool{
-     last_frameIndex,ok:=diedData.Data[current_pid]
-     if ok{
-            if frameIndex<last_frameIndex||(frameIndex>last_frameIndex&&frameIndex-offsetFrames<last_frameIndex){
-               return true
-            }
+func (diedData *PlayersDiedData)isRemovePlayerId(current_pid int,frameIndex int,room *Room) bool{
+     tf:=false
+     if current_pid <= room.unlockedData.rebotsNum{
+        room.robots.Mutex.RLock()
+        _,ok:=room.robots.robots[current_pid]
+        if !ok{
+           tf = true
+        }
+        room.robots.Mutex.RUnlock()
+     }else{
+        room.playersData.Mutex.RLock()
+        _,ok:=room.playersData.Data[current_pid]
+        if !ok{
+            tf = true
+         }
+        room.playersData.Mutex.RUnlock()
+     }
+     if tf{
+        return tf
+     }else{
+        last_frameIndex,ok:=diedData.Data[current_pid]
+        if ok{
+               if frameIndex<last_frameIndex||(frameIndex>last_frameIndex&&frameIndex-offsetFrames<last_frameIndex){
+                  return true
+               }
+        }
      }
      return false
 }
