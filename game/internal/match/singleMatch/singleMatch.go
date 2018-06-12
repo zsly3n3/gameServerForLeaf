@@ -22,7 +22,7 @@ type SingleMatch struct {
 	Pool_Capacity int
 	ticker *time.Ticker
 	isExistTicker bool
-	rooms *Rooms
+	rooms *match.Rooms
 	onlinePlayers *datastruct.OnlinePlayers
 	singleMatchPool *SingleMatchingPool
 	actionPool *match.MatchActionPool
@@ -42,7 +42,7 @@ func (singleMatch *SingleMatch)init(){
 	singleMatch.onlinePlayers = datastruct.NewOnlinePlayers()
 	singleMatch.singleMatchPool = newSingleMatchingPool(singleMatch.Pool_Capacity)
 	singleMatch.actionPool = match.NewMatchActionPool(singleMatch.Pool_Capacity)
-	singleMatch.rooms = NewRooms()
+	singleMatch.rooms = match.NewRooms()
 }
 
 func (match *SingleMatch)addPlayer(connUUID string,a gate.Agent,uid int){
@@ -84,6 +84,7 @@ func (match *SingleMatch)addOnlinePlayer(connUUID string,a gate.Agent,uid int){
 		 v.GameData.EnterType = datastruct.NULLWay
 		 v.GameData.RoomId = datastruct.NULLSTRING
 		 v.GameData.PlayId = datastruct.NULLID
+		 match.onlinePlayers.Bm[connUUID]=v
 	 }
 }
 func (match *SingleMatch)CheckActionPool(connUUID string) bool{
@@ -91,7 +92,7 @@ func (match *SingleMatch)CheckActionPool(connUUID string) bool{
 }
 
 func (match *SingleMatch)Matching(connUUID string, a gate.Agent,uid int){
-	  match.addPlayer(connUUID,a,uid)
+	match.addPlayer(connUUID,a,uid)
 	
 	//willEnterRoom 是否将要加入了房间
 	r_id,willEnterRoom:=match.rooms.GetFreeRoomId()
@@ -101,9 +102,9 @@ func (match *SingleMatch)Matching(connUUID string, a gate.Agent,uid int){
 	   defer match.singleMatchPool.Mutex.Unlock()
 	   num:=len(match.singleMatchPool.Pool)
 	   if num<LeastPeople{
-		match.singleMatchPool.Pool=append(match.singleMatchPool.Pool,connUUID)
-		match.createTicker()
-		if num == LeastPeople-1{
+		  match.singleMatchPool.Pool=append(match.singleMatchPool.Pool,connUUID)
+		  match.createTicker()
+		  if num == LeastPeople-1{
 			//check player is online or offline
 			//offline player is removed from pool
 			//if all online create room
@@ -114,7 +115,7 @@ func (match *SingleMatch)Matching(connUUID string, a gate.Agent,uid int){
 			}else{
 				match.removeOfflinePlayersInPool(removeIndex)
 			}
-		}
+		  }
 	   }
 	}else{
 		 player,tf:=match.onlinePlayers.GetAndUpdateState(connUUID,datastruct.FreeRoom,r_id)
@@ -193,20 +194,19 @@ func (match *SingleMatch)cleanPoolAndCreateRoom(){
 	match.stopTicker()
     arr:=make([]string,len(match.singleMatchPool.Pool))
     copy(arr,match.singleMatchPool.Pool)
-    match.singleMatchPool.Pool=match.singleMatchPool.Pool[:0]//clean pool
+	match.singleMatchPool.Pool=match.singleMatchPool.Pool[:0]//clean pool
     go match.createMatchingTypeRoom(arr)
 }
 
-func (match *SingleMatch)createMatchingTypeRoom(playerUUID []string){
+func (singleMatch *SingleMatch)createMatchingTypeRoom(playerUUID []string){
     r_uuid:=tools.UniqueId()
-    players:=match.onlinePlayers.GetsAndUpdateState(playerUUID,datastruct.FromMatchingPool,r_uuid)
-    room:=CreateRoom(playerUUID,r_uuid,match)
-    match.rooms.Set(r_uuid,room)
+	players:=singleMatch.onlinePlayers.GetsAndUpdateState(playerUUID,datastruct.FromMatchingPool,r_uuid)
+    room:=match.CreateRoom(match.SinglePersonMatching,playerUUID,r_uuid,singleMatch,LeastPeople)
+    singleMatch.rooms.Set(r_uuid,room)
     for _,play := range players{
         play.Agent.WriteMsg(msg.GetMatchingEndMsg(r_uuid))
     }
 }
-
 
 func (match *SingleMatch)computeMatchingTime(){
 	match.singleMatchPool.Mutex.Lock()
@@ -231,9 +231,6 @@ func (match *SingleMatch)computeMatchingTime(){
     }
 }
 
-func (match *SingleMatch)removeRoomWithID(uuid string){
-	match.rooms.Delete(uuid)
-}
 
 func (match *SingleMatch)PlayerMoved(r_id string,play_id int,moveData *msg.CS_MoveData){
 	ok,room:=match.rooms.Get(r_id)
@@ -242,31 +239,30 @@ func (match *SingleMatch)PlayerMoved(r_id string,play_id int,moveData *msg.CS_Mo
     }
 }
 
-
-func (match *SingleMatch)PlayerJoin(connUUID string,joinData *msg.CS_PlayerJoinRoom){
-	player,tf:=match.onlinePlayers.CheckAndCleanState(connUUID,datastruct.NULLWay,datastruct.NULLSTRING)
+func (singleMatch *SingleMatch)PlayerJoin(connUUID string,joinData *msg.CS_PlayerJoinRoom){
+	player,tf:=singleMatch.onlinePlayers.CheckAndCleanState(connUUID,datastruct.NULLWay,datastruct.NULLSTRING)
     if tf{
         r_id := joinData.MsgContent.RoomID
         if player.GameData.EnterType == datastruct.FreeRoom&&player.GameData.RoomId==r_id{
-		   ok,room:=match.rooms.Get(r_id)
+		   ok,room:=singleMatch.rooms.Get(r_id)
 		   if ok{
 			isOn:=room.Join(connUUID,player,false)
 			if isOn{
 			   log.Debug("通过遍历空闲房间进入")
-			   match.actionPool.RemoveFromMatchActionPool(connUUID)
+			   singleMatch.actionPool.RemoveFromMatchActionPool(connUUID)
 			}else{
-			   go match.handleRoomOff(player.Agent,connUUID,player.Uid)
+			   go singleMatch.handleRoomOff(player.Agent,connUUID,player.Uid)
 			}
 		   }
           
         }else if player.GameData.EnterType == datastruct.FromMatchingPool{
-			ok,room:=match.rooms.Get(r_id)
+			ok,room:=singleMatch.rooms.Get(r_id)
 			if ok{
-				for _,v:=range room.unlockedData.AllowList{
+				for _,v:=range room.GetAllowList(){
 					if v == connUUID{
 						log.Debug("通过匹配池进入")
 						room.Join(connUUID,player,true)
-						match.actionPool.RemoveFromMatchActionPool(connUUID)
+						singleMatch.actionPool.RemoveFromMatchActionPool(connUUID)
 						break
 					}
 				}
@@ -291,10 +287,24 @@ func (match *SingleMatch)EnergyExpended(expended int,agentUserData datastruct.Ag
 	   }
 }
 
-func (match *SingleMatch)PlayersDied(r_id string,values []msg.PlayerDiedData){
+func (singleMatch *SingleMatch)PlayersDied(r_id string,values []msg.PlayerDiedData){
+	ok,room:=singleMatch.rooms.Get(r_id)
+	if ok{
+		room.HandleDiedData(values)
+	}
+}
+
+func (match *SingleMatch)RemoveRoomWithID(uuid string){
+	match.rooms.Delete(uuid)
+}
+func (match *SingleMatch)GetOnlinePlayersPtr() *datastruct.OnlinePlayers{
+     return match.onlinePlayers
+}
+
+func (match *SingleMatch)PlayerLeftRoom(r_id string,connUUID string){
 	ok,room:=match.rooms.Get(r_id)
 	if ok{
-	  room.diedData.Add(values,room)
+		room.AddPlayerleft(connUUID)
 	}
 }
 
@@ -315,19 +325,3 @@ func (pool *SingleMatchingPool)init(poolCapacity int){
 	  pool.Mutex = new(sync.RWMutex)
 	  pool.Pool = make([]string,0,poolCapacity)
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

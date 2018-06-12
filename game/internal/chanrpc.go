@@ -6,6 +6,7 @@ import (
 )
 
 const SinglePersonMatchingKey="SinglePersonMatching"
+const EndlessModeMatchingKey="EndlessModeMatching"
 const CloseAgentKey="CloseAgent"
 
 

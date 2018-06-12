@@ -76,7 +76,7 @@ func CreatePlayer(user *User) *Player{
 	player := new(Player)
     player.Avatar=user.Avatar
 	player.Uid=user.Id
-    player.NickName=user.NickName
+	player.NickName=user.NickName
     var game_data PlayerGameData
     game_data.StartMatchingTime = time.Now()
     game_data.EnterType = NULLWay

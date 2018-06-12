@@ -14,6 +14,7 @@ func init() {
 	Processor.Register(&CS_UserLogin{})
 	Processor.Register(&SC_UserLogin{})
 	Processor.Register(&CS_PlayerMatching{})
+	Processor.Register(&CS_EndlessModeMatching{})
 	Processor.Register(&SC_PlayerMatching{})
 	Processor.Register(&SC_PlayerAlreadyMatching{})
 	Processor.Register(&SC_PlayerMatchingEnd{})
@@ -30,7 +31,12 @@ func init() {
 	Processor.Register(&CS_EnergyExpended{})
 	Processor.Register(&CS_PlayerDied{})
 
+	Processor.Register(&CS_PlayerLeftRoom{})
+
+	Processor.Register(&CS_PlayerRelive{})
+
 	Processor.Register(&SC_GameOverData{})
+	
 }
 
 /*接收消耗的能量值*/
@@ -74,6 +80,11 @@ type CS_PlayerMatching struct {
 	MsgHeader json.MsgHeader
 }
 
+/*无尽模式匹配*/
+type CS_EndlessModeMatching struct {
+	MsgHeader json.MsgHeader
+}
+
 /*玩家取消匹配*/
 type CS_PlayerCancelMatching struct {
 	MsgHeader json.MsgHeader
@@ -88,7 +99,6 @@ type SC_PlayerMatching struct {
 type SC_PlayerMatchingContent struct {
 	IsMatching bool
 }
-
 
 
 /*已在匹配中*/
@@ -116,6 +126,9 @@ type CS_PlayerJoinRoom struct {
 type CS_PlayerJoinRoomContent struct {
 	RoomID string
 }
+
+
+
 
 /*玩家加入房间无效*/
 type SC_PlayerJoinInvalid struct {
@@ -189,19 +202,24 @@ type CS_MoveDataContent struct {
 	Speed int
 }
 
-
-
 type CS_PlayerDied struct {
 	MsgHeader json.MsgHeader
 	MsgContent []PlayerDiedData
 }
-
-
 type PlayerDiedData struct {
 	 PlayerId int
 	 Points []Point
 	 Power int
 	 FrameIndex int
+}
+
+type CS_PlayerLeftRoom struct { //玩家离开房间
+	MsgHeader json.MsgHeader
+}
+
+/*玩家发送请求来复活*/
+type CS_PlayerRelive struct {
+	MsgHeader json.MsgHeader
 }
 
 /*发送给客户端当前帧数据*/
@@ -278,6 +296,8 @@ type PlayerRelive struct {//玩家的重生
     ReLiveFrameIndex int
     Action CreatePlayer
 }
+
+
 
 
 /*发送给客户端游戏结束数据*/
