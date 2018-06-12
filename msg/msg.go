@@ -33,6 +33,7 @@ func init() {
 
 	Processor.Register(&CS_PlayerLeftRoom{})
 
+	Processor.Register(&CS_PlayerRelive{})
 
 	Processor.Register(&SC_GameOverData{})
 	
@@ -126,6 +127,9 @@ type CS_PlayerJoinRoomContent struct {
 	RoomID string
 }
 
+
+
+
 /*玩家加入房间无效*/
 type SC_PlayerJoinInvalid struct {
 	MsgHeader json.MsgHeader
@@ -210,6 +214,11 @@ type PlayerDiedData struct {
 }
 
 type CS_PlayerLeftRoom struct { //玩家离开房间
+	MsgHeader json.MsgHeader
+}
+
+/*玩家发送请求来复活*/
+type CS_PlayerRelive struct {
 	MsgHeader json.MsgHeader
 }
 

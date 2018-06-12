@@ -835,8 +835,9 @@ func (data *PlayersFrameData)GetValue(pid int,currentFrameIndex int,room *Room)(
     data.Mutex.Lock()
 	defer data.Mutex.Unlock()
     var v interface{}
-    actionData, ok := data.Data[pid]
+    actionData,ok:= data.Data[pid]
     rs_actionType:=msg.NullAction
+    v = nil
     if ok{
         switch actionData.ActionType {
           case msg.Create:
@@ -844,34 +845,30 @@ func (data *PlayersFrameData)GetValue(pid int,currentFrameIndex int,room *Room)(
                if p_relive.ReLiveFrameIndex == msg.DefaultReliveFrameIndex || p_relive.ReLiveFrameIndex == currentFrameIndex{
                   v = p_relive.Action
                   rs_actionType = msg.Create
-                  delete(data.Data, pid)
+                  point:=room.getMovePoint()
+                  action:=msg.GetCreatePlayerMoved(pid,point.X,point.Y,msg.DefaultSpeed)
+                  actionData.ActionType = action.Action
+                  actionData.Data = action
                }else{
                   v = nil
-                  
                }
           case msg.Death:
              v=actionData.Data
              rs_actionType = msg.Death
-             randomIndex:=tools.GetRandomQuadrantIndex()
-             point:=tools.GetCreatePlayerPoint(room.unlockedData.pointData.quadrant[randomIndex],randomIndex) 
-             action:=msg.GetCreatePlayerAction(pid,point.X,point.Y,offsetFrames+currentFrameIndex)
-
-             actionData.ActionType = action.Action.Action
-             actionData.Data = action
-             
+             isCreate:=false
+             switch room.unlockedData.roomType{
+             case SinglePersonMatching:
+                  isCreate = true
+             case EndlessMode:
+                  delete(data.Data,pid)
+             }
+             if isCreate{
+                room.relive(actionData,pid,currentFrameIndex)
+             }
           case msg.Move:
              v= *(actionData.Data.(*msg.PlayerMoved))
              rs_actionType = msg.Move    
         }
-        
-    }else{
-      action:=msg.GetCreatePlayerMoved(pid,msg.DefaultDirection.X,msg.DefaultDirection.Y,msg.DefaultSpeed)
-      actionData=new(PlayerActionData)
-      actionData.ActionType = action.Action
-      rs_actionType = msg.Move
-      actionData.Data = action
-      data.Data[pid] = actionData
-      v=*action
     }
     return rs_actionType,v
 }
@@ -880,8 +877,9 @@ func (data *PlayersFrameData)GetOfflineAction(pid int,currentFrameIndex int,room
     data.Mutex.Lock()
 	defer data.Mutex.Unlock()
     var v interface{}
-    actionData, ok := data.Data[pid]
+    actionData,ok:= data.Data[pid]
     rs_actionType:=msg.NullAction
+    v = nil
     if ok{
         switch actionData.ActionType {
           case msg.Create:
@@ -907,16 +905,10 @@ func (data *PlayersFrameData)GetOfflineAction(pid int,currentFrameIndex int,room
                     isExist:=room.CheckLeftlist(connUUID)
                     if isExist{
                        room.removePlayer(connUUID)
-                    }else{
-                       isCreate = true
                     }
              }
              if isCreate{
-                randomIndex:=tools.GetRandomQuadrantIndex()
-                point:=tools.GetCreatePlayerPoint(room.unlockedData.pointData.quadrant[randomIndex],randomIndex) 
-                action:=msg.GetCreatePlayerAction(pid,point.X,point.Y,offsetFrames+currentFrameIndex)
-                actionData.ActionType = action.Action.Action
-                actionData.Data = action 
+                room.relive(actionData,pid,currentFrameIndex)
              }
           case msg.Move:
             rs_actionType = msg.Move
@@ -964,15 +956,6 @@ func (data *PlayersFrameData)GetOfflineAction(pid int,currentFrameIndex int,room
             }
 
         }
-        
-    }else{
-      action:=msg.GetCreatePlayerMoved(pid,msg.DefaultDirection.X,msg.DefaultDirection.Y,msg.DefaultSpeed)
-      actionData:=new(PlayerActionData)
-      actionData.ActionType = action.Action
-      rs_actionType = msg.Move
-      actionData.Data = action
-      data.Data[pid] = actionData
-      v=action
     }
     return rs_actionType,v
 }
@@ -1249,4 +1232,21 @@ func (room *Room)removePlayer(connUUID string){
     if rm_index!=datastruct.NULLID{
         room.players=append(room.players[:rm_index], room.players[rm_index+1:]...)
     }
+}
+
+func (room *Room)PlayerRelive(pid int){
+     actionData,tf:=room.playersData.CheckValue(pid)
+     if !tf{
+        room.Mutex.RLock()
+        currentFrameIndex:=room.currentFrameIndex
+        room.Mutex.RUnlock()
+        room.relive(actionData,pid,currentFrameIndex)
+     }
+}
+func (room *Room)relive(actionData *PlayerActionData,pid int,currentFrameIndex int){
+     randomIndex:=tools.GetRandomQuadrantIndex()
+     point:=tools.GetCreatePlayerPoint(room.unlockedData.pointData.quadrant[randomIndex],randomIndex) 
+     action:=msg.GetCreatePlayerAction(pid,point.X,point.Y,offsetFrames+currentFrameIndex)
+     actionData.ActionType = action.Action.Action
+     actionData.Data = action
 }

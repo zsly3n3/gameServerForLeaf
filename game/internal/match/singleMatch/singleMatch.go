@@ -84,6 +84,7 @@ func (match *SingleMatch)addOnlinePlayer(connUUID string,a gate.Agent,uid int){
 		 v.GameData.EnterType = datastruct.NULLWay
 		 v.GameData.RoomId = datastruct.NULLSTRING
 		 v.GameData.PlayId = datastruct.NULLID
+		 match.onlinePlayers.Bm[connUUID]=v
 	 }
 }
 func (match *SingleMatch)CheckActionPool(connUUID string) bool{
