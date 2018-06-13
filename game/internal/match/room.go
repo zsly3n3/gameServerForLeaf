@@ -318,6 +318,7 @@ func (room *Room)timeSleepWriteMsg(player *datastruct.Player,startIndex int) int
         i:=1
         for {
             len_chan:=player.Agent.GetWriteChanlen()
+            
             if len_chan < minLen{
                if i>=num/per{
                   //log.Debug("timeSleepWriteMsg_/ end,i=%v , num/per=%v",i,num/per)
@@ -329,6 +330,9 @@ func (room *Room)timeSleepWriteMsg(player *datastruct.Player,startIndex int) int
                }
                i++
             }
+            // else{
+            //     log.Debug("len_chan %v",len_chan)
+            // }
         }
         if num%per!=0{
            lastIndex:=num-num%per
