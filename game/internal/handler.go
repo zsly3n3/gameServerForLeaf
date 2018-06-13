@@ -7,6 +7,7 @@ import (
     "github.com/name5566/leaf/log"
     "github.com/name5566/leaf/network/json"
     "server/tools"
+    "server/game/internal/match"
 )
 
 // 异步处理  
@@ -159,20 +160,12 @@ func handleEndlessModeMatching(args []interface{}){
 func removePlayerFromOtherMatchs(connUUID string,mode datastruct.GameModeType){
      switch mode{
       case datastruct.SinglePersonMode:
-           log.Debug("remove connUUID from other matchs")
+           log.Debug("SinglePersonMode remove connUUID from other matchs")
            removePlayer(connUUID,datastruct.EndlessMode)
       case datastruct.EndlessMode:
-           log.Debug("remove connUUID from other matchs")
+           log.Debug("EndlessMode remove connUUID from other matchs")
            removePlayer(connUUID,datastruct.SinglePersonMode)
      }
-}
-
-func singlePersonMatchingPlayers(p_uuid string, a gate.Agent,uid int){
-     ptr_singleMatch.Matching(p_uuid,a,uid)
-}
-
-func endlessModeMatchingPlayers(p_uuid string, a gate.Agent,uid int){
-     ptr_endlessModeMatch.Matching(p_uuid,a,uid)
 }
 
 func removePlayer(key string,mode datastruct.GameModeType){
@@ -244,12 +237,12 @@ func checkActionPool(connUUID string,mode datastruct.GameModeType,a gate.Agent) 
 }
 
 func matchingChanRPC(mode datastruct.GameModeType,connUUID string,a gate.Agent,uid int){
-    key:=datastruct.NULLSTRING
+    var match match.ParentMatch
     switch mode{
      case  datastruct.SinglePersonMode:
-         key = SinglePersonMatchingKey
+         match = ptr_singleMatch
      case datastruct.EndlessMode:
-         key = EndlessModeMatchingKey
+         match = ptr_endlessModeMatch
     }
-    ChanRPC.Go(key,connUUID,a,uid)//玩家匹配
+    ChanRPC.Go(MatchingKey,match,connUUID,a,uid)//玩家匹配
 }

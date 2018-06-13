@@ -120,7 +120,7 @@ func (match *SingleMatch)Matching(connUUID string, a gate.Agent,uid int){
 	}else{
 		 player,tf:=match.onlinePlayers.GetAndUpdateState(connUUID,datastruct.FreeRoom,r_id)
 		 if tf{
-		 	player.Agent.WriteMsg(msg.GetMatchingEndMsg(r_id))
+		 	player.Agent.WriteMsg(msg.GetMatchingEndMsg(r_id,datastruct.SinglePersonMode))
 		 }
 	}
 }
@@ -186,7 +186,7 @@ func (match *SingleMatch)removeOfflinePlayersInPool(removeIndex []int){
            v = v-rm_count
         }
         match.singleMatchPool.Pool=append(match.singleMatchPool.Pool[:v], match.singleMatchPool.Pool[v+1:]...)
-        rm_count++;
+        rm_count++
     }
 }
 
@@ -199,12 +199,13 @@ func (match *SingleMatch)cleanPoolAndCreateRoom(){
 }
 
 func (singleMatch *SingleMatch)createMatchingTypeRoom(playerUUID []string){
+	log.Debug("单人匹配完成，创建房间")
     r_uuid:=tools.UniqueId()
 	players:=singleMatch.onlinePlayers.GetsAndUpdateState(playerUUID,datastruct.FromMatchingPool,r_uuid)
     room:=match.CreateRoom(match.SinglePersonMatching,playerUUID,r_uuid,singleMatch,LeastPeople)
     singleMatch.rooms.Set(r_uuid,room)
     for _,play := range players{
-        play.Agent.WriteMsg(msg.GetMatchingEndMsg(r_uuid))
+        play.Agent.WriteMsg(msg.GetMatchingEndMsg(r_uuid,datastruct.SinglePersonMode))
     }
 }
 
@@ -302,10 +303,7 @@ func (match *SingleMatch)GetOnlinePlayersPtr() *datastruct.OnlinePlayers{
 }
 
 func (match *SingleMatch)PlayerLeftRoom(r_id string,connUUID string){
-	ok,room:=match.rooms.Get(r_id)
-	if ok{
-		room.AddPlayerleft(connUUID)
-	}
+	 match.RemovePlayer(connUUID)
 }
 
 

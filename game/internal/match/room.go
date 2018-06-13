@@ -26,11 +26,11 @@ var map_factor = 5*40
 
 
 const MaxPeopleInRoom = 20 //每个房间最大人数
-const RoomCloseTime = 15.0*time.Second//房间入口关闭时间
+const RoomCloseTime = 15*time.Second//房间入口关闭时间
 
 const FirstFrameIndex = 0//第一帧索引
 
-const MaxPlayingTime = 30*time.Second
+const MaxPlayingTime = 50*time.Minute
 
 const MaxEnergyPower = 5000 //全场最大能量值
 const InitEnergyPower = 1000 //地图初始化的能量值
@@ -179,19 +179,7 @@ func CreateRoom(r_type RoomDataType,connUUIDs []string,r_id string,parentMatch P
         room.createRobotData(1,true)
         //room.createRobotData(rebotsNum,true)
         
-        time.AfterFunc(RoomCloseTime,func(){
-            isRemove:=false
-            room.Mutex.Lock()
-            room.IsOn = false
-            length:= len(room.players)
-            if length <=0{
-                isRemove = true
-            }
-            room.Mutex.Unlock()
-            if isRemove{
-                room.removeFromRooms()
-            }
-        })
+       
       
     return room
 }
@@ -270,7 +258,7 @@ func(room *Room)IsSyncFinished(connUUID string,player *datastruct.Player) (bool,
         frame_data.PlayerFrameData=make([]interface{},0,1)
 
         
-        action:=room.GetCreateAction(play_id,msg.DefaultReliveFrameIndex)
+        action:=room.GetCreateAction(play_id,datastruct.DefaultReliveFrameIndex)
         frame_data.PlayerFrameData = append(frame_data.PlayerFrameData,action)
         
         frame_content.FramesData = append(frame_content.FramesData,frame_data)
@@ -309,61 +297,125 @@ func (room *Room)sendInitRoomDataToAgent(player *datastruct.Player,content *msg.
      tools.ReSetAgentUserData(player.Agent,connUUID,uid,rid,mode,play_id)
 }
 
-func (room *Room)syncData(connUUID string,player *datastruct.Player){
-     
-    room.history.Mutex.RLock()
-     copyData:=make([]*msg.SC_RoomFrameDataContent,len(room.history.FramesData))
-     copy(copyData,room.history.FramesData)
-     room.history.Mutex.RUnlock()
+func (room *Room)timeSleepWriteMsg(player *datastruct.Player,startIndex int) int {
+      room.history.Mutex.RLock()
+      var copyData []*msg.SC_RoomFrameDataContent
+      if startIndex == 0{
+         copyData=make([]*msg.SC_RoomFrameDataContent,len(room.history.FramesData))
+         copy(copyData,room.history.FramesData)
+      }else{
+         copyData=room.history.FramesData[startIndex:]
+      }
+      room.history.Mutex.RUnlock()
+      
+      num:=len(copyData)
+      lastFrameIndex:=copyData[num-1].FramesData[0].FrameIndex
 
-     num:=len(copyData)
-     
-     for _,data := range copyData{
-        player.Agent.WriteMsg(msg.GetRoomFrameDataMsg(data))
-     }
-     lastFrameIndex:=copyData[num-1].FramesData[0].FrameIndex
- 
-     var length int
-     room.Mutex.Lock()
-     if lastFrameIndex+1 == room.currentFrameIndex {//数据帧是从0开始，服务器计算帧是从1开始
-        room.onlineSyncPlayers=append(room.onlineSyncPlayers,*player)
-        
-        room.GetCreateAction(player.GameData.PlayId,msg.DefaultReliveFrameIndex)
-        length=len(room.players)
-        room.Mutex.Unlock()
-        room.updateRobotRelive(length)
-     }else{
-        room.Mutex.Unlock()
-        ok:=true
-        for ok {
-            if _, ok = <-room.unlockedData.startSync; ok {
-                room.history.Mutex.RLock()
-                copyData:=room.history.FramesData[lastFrameIndex+1:]
-                room.history.Mutex.RUnlock()
-                num:=len(copyData)
-                for _,data := range copyData{
-                   player.Agent.WriteMsg(msg.GetRoomFrameDataMsg(data))
-                }
-                lastFrameIndex:=copyData[num-1].FramesData[0].FrameIndex
-                isSyncFinished:=false
-                room.Mutex.Lock()
-                if lastFrameIndex+1 == room.currentFrameIndex {
-                    isSyncFinished = true
-                    room.onlineSyncPlayers=append(room.onlineSyncPlayers,*player)
-                   
-                    room.GetCreateAction(player.GameData.PlayId,msg.DefaultReliveFrameIndex)
-                    length=len(room.players)
-                }
+      per:=1500
 
-                room.Mutex.Unlock()
-                if isSyncFinished{
-                    room.updateRobotRelive(length)
-                    log.Debug("Channel SyncFinished")
-                    break
-                }
+      if num>per{
+        minLen:=10
+        for i:=0;i<per;i++{
+            player.Agent.WriteMsg(msg.GetRoomFrameDataMsg(copyData[i]))
+        }
+        // sync_chan:=make(chan struct{})
+        // go func(){
+        //   for {
+        //       len_chan:=player.Agent.GetWriteChanlen()
+        //       if len_chan < minLen{
+        //         sync_chan <- struct{}{}  
+        //       }
+        //       log.Debug("len_chan:%v",len_chan)
+        //   }
+        // }()
+        // for i:=1;i<num/per;i++{
+        //    select {
+        //       case <- sync_chan:
+        //           len_chan:=player.Agent.GetWriteChanlen()
+        //           log.Debug("start sync_chan,len_chan:%v",player.Agent.GetWriteChanlen())
+        //           if len_chan < minLen{
+        //              for j:=0;j<per;j++{
+        //                 player.Agent.WriteMsg(msg.GetRoomFrameDataMsg(copyData[i*per+j]))
+        //              }  
+        //           }
+        //    }
+        // }
+        i:=1
+        for {
+            len_chan:=player.Agent.GetWriteChanlen()
+            if len_chan < minLen{
+               if i>=num/per{
+                  break
+               }
+               for j:=0;j<per;j++{
+                  player.Agent.WriteMsg(msg.GetRoomFrameDataMsg(copyData[i*per+j]))
+               }
+               i++
             }
         }
-     }
+        if num%per!=0{
+           lastIndex:=num-num%per
+        //    select {
+        //     case <- sync_chan:
+             for j:=0;j<num%per;j++{
+                 player.Agent.WriteMsg(msg.GetRoomFrameDataMsg(copyData[lastIndex+j]))
+             }
+           //}
+        }
+      }else{
+          for i:=0;i<num;i++{
+              player.Agent.WriteMsg(msg.GetRoomFrameDataMsg(copyData[i]))
+          }
+      }
+      return lastFrameIndex
+}
+
+func (room *Room)syncData(connUUID string,player *datastruct.Player){
+     
+    
+     lastFrameIndex:=room.timeSleepWriteMsg(player,0)
+      
+      var length int
+      room.Mutex.Lock()
+      if lastFrameIndex+1 == room.currentFrameIndex {//数据帧是从0开始，服务器计算帧是从1开始
+               room.onlineSyncPlayers=append(room.onlineSyncPlayers,*player)
+               
+               room.GetCreateAction(player.GameData.PlayId,datastruct.DefaultReliveFrameIndex)
+               length=len(room.players)
+               room.Mutex.Unlock()
+               room.updateRobotRelive(length)
+      }else{
+               room.Mutex.Unlock()
+               ok:=true
+               for ok {
+                   if _, ok = <-room.unlockedData.startSync; ok {
+                    //    room.history.Mutex.RLock()
+                    //    copyData:=room.history.FramesData[lastFrameIndex+1:]
+                    //    room.history.Mutex.RUnlock()
+                    //    num:=len(copyData)
+                    //    for _,data := range copyData{
+                    //       player.Agent.WriteMsg(msg.GetRoomFrameDataMsg(data))
+                    //    }
+                    //    lastFrameIndex:=copyData[num-1].FramesData[0].FrameIndex
+                       startIndex:=lastFrameIndex+1
+                       lastFrameIndex:=room.timeSleepWriteMsg(player,startIndex)
+                       isSyncFinished:=false
+                       room.Mutex.Lock()
+                       if lastFrameIndex+1 == room.currentFrameIndex {
+                           isSyncFinished = true
+                           room.onlineSyncPlayers=append(room.onlineSyncPlayers,*player)
+                           room.GetCreateAction(player.GameData.PlayId,datastruct.DefaultReliveFrameIndex)
+                           length=len(room.players)
+                       }
+                       room.Mutex.Unlock()
+                       if isSyncFinished{
+                           room.updateRobotRelive(length)
+                           log.Debug("Channel SyncFinished")
+                           break
+                       }
+                   }
+               }
+            }
 }
 
 func(room *Room)Join(connUUID string,player datastruct.Player,force bool) bool{
@@ -439,9 +491,12 @@ func(room *Room) selectTicker(){
 
 func (room *Room)IsRemoveRoom()(bool,int,[]datastruct.Player,[]datastruct.Player,int,bool,string){
  //判断在线玩家
- isRemove:=false
+
+ isRemove:=false  
+
  room.Mutex.Lock()
  defer room.Mutex.Unlock()
+ 
  p_num:=len(room.players)
  onlinePlayers:=room.unlockedData.parentMatch.GetOnlinePlayersPtr()
  offlinePlayersUUID:=make([]string,0,p_num)
@@ -587,11 +642,13 @@ func (room *Room)ComputeFrameData(){
  
      frame_content.FramesData = append(frame_content.FramesData,frame_data)
      msg:=msg.GetRoomFrameDataMsg(&frame_content)
+
+   
      for _,player := range online_sync{
          player.Agent.WriteMsg(msg)
      }
      
-     //log.Debug("Compute FramesData:%v,",frame_content.FramesData)
+    
      if !isRemoveHistory{
         room.history.Mutex.Lock()
         room.history.FramesData = append(room.history.FramesData,&frame_content)
@@ -611,6 +668,7 @@ func (room *Room)ComputeFrameData(){
             room.history = nil
         }
      }
+     //log.Debug("Compute FramesData:%v,",frame_content.FramesData)
 }
 
 func removeOfflineSyncPlayersInRoom(room *Room,removeIndex []int){
@@ -662,7 +720,7 @@ func (room *Room)createRobotData(num int,isRelive bool){
     robots.Mutex = new(sync.RWMutex)
     robots.robots = make(map[int]*datastruct.Robot)
     for i:=0;i<num;i++{
-        robot:=tools.CreateRobot(i,isRelive,room.unlockedData.pointData.quadrant,msg.DefaultReliveFrameIndex)
+        robot:=tools.CreateRobot(i,isRelive,room.unlockedData.pointData.quadrant,datastruct.DefaultReliveFrameIndex)
         robots.robots[robot.Id]=robot
     }
     room.robots = robots
@@ -690,6 +748,7 @@ func (diedData *PlayersDiedData)isRemovePlayerId(current_pid int,frameIndex int,
         _,ok:=room.robots.robots[current_pid]
         if !ok{
            tf = true
+          
         }
         room.robots.Mutex.RUnlock()
      }else{
@@ -697,6 +756,7 @@ func (diedData *PlayersDiedData)isRemovePlayerId(current_pid int,frameIndex int,
         _,ok:=room.playersData.Data[current_pid]
         if !ok{
             tf = true
+            
          }
         room.playersData.Mutex.RUnlock()
      }
@@ -842,11 +902,10 @@ func (data *PlayersFrameData)GetValue(pid int,currentFrameIndex int,room *Room)(
         switch actionData.ActionType {
           case msg.Create:
                p_relive:=actionData.Data.(*msg.PlayerRelive)
-               if p_relive.ReLiveFrameIndex == msg.DefaultReliveFrameIndex || p_relive.ReLiveFrameIndex == currentFrameIndex{
+               if p_relive.ReLiveFrameIndex == datastruct.DefaultReliveFrameIndex || p_relive.ReLiveFrameIndex == currentFrameIndex{
                   v = p_relive.Action
                   rs_actionType = msg.Create
-                  point:=room.getMovePoint()
-                  action:=msg.GetCreatePlayerMoved(pid,point.X,point.Y,msg.DefaultSpeed)
+                  action:=msg.GetCreatePlayerMoved(pid,msg.DefaultDirection.X,msg.DefaultDirection.Y,msg.DefaultSpeed)
                   actionData.ActionType = action.Action
                   actionData.Data = action
                }else{
@@ -884,7 +943,7 @@ func (data *PlayersFrameData)GetOfflineAction(pid int,currentFrameIndex int,room
         switch actionData.ActionType {
           case msg.Create:
                p_relive:=actionData.Data.(*msg.PlayerRelive)
-               if p_relive.ReLiveFrameIndex == msg.DefaultReliveFrameIndex || p_relive.ReLiveFrameIndex == currentFrameIndex{
+               if p_relive.ReLiveFrameIndex == datastruct.DefaultReliveFrameIndex || p_relive.ReLiveFrameIndex == currentFrameIndex{
                   v = p_relive.Action
                   rs_actionType = msg.Create
                   point:=room.getMovePoint()
@@ -973,7 +1032,7 @@ func (room *Room)getRobotAction(robot *datastruct.Robot,currentFrameIndex int)(m
        case *msg.PlayerRelive:
             p_relive:=current_action.(*msg.PlayerRelive)
             
-            if p_relive.ReLiveFrameIndex == msg.DefaultReliveFrameIndex || p_relive.ReLiveFrameIndex == currentFrameIndex{
+            if p_relive.ReLiveFrameIndex == datastruct.DefaultReliveFrameIndex || p_relive.ReLiveFrameIndex == currentFrameIndex{
                  rs = p_relive.Action
                  rs_type = msg.Create
                  point:=room.getMovePoint()
@@ -1099,7 +1158,7 @@ func (room *Room)HandleDiedData(values []msg.PlayerDiedData){
             room.Mutex.RUnlock()
             for index,v := range values{
                 isRemove:=false
-                if v.FrameIndex>currentFrameIndex||(v.FrameIndex<currentFrameIndex && v.FrameIndex<currentFrameIndex-offsetFrames){
+                if v.FrameIndex>currentFrameIndex{
                    isRemove = true
                 }else{
                    isRemove =room.diedData.isRemovePlayerId(v.PlayerId,v.FrameIndex,room)
@@ -1190,6 +1249,11 @@ func (room *Room)gameStart(){
 
             log.Debug("----------Game Over----------")
         })
+        time.AfterFunc(RoomCloseTime,func(){
+            room.Mutex.Lock()
+            room.IsOn = false
+            room.Mutex.Unlock()
+        })
     }
 }
 
@@ -1208,13 +1272,18 @@ func (room *Room)AddPlayerleft(connUUID string){
 
 func (room *Room)CheckLeftlist(connUUID string)bool{
     isExist:=false
+    rm_index:=-1
     room.leftList.Mutex.Lock()
     defer room.leftList.Mutex.Unlock()
-    for _,v := range room.leftList.Data{
+    for index,v := range room.leftList.Data{
         if connUUID == v{
+            rm_index = index
             isExist = true
             break
         }
+    }
+    if isExist{
+        room.leftList.Data=append(room.leftList.Data[:rm_index], room.leftList.Data[rm_index+1:]...)
     }
     return isExist
 }
@@ -1240,13 +1309,15 @@ func (room *Room)PlayerRelive(pid int){
         room.Mutex.RLock()
         currentFrameIndex:=room.currentFrameIndex
         room.Mutex.RUnlock()
+        actionData=new(PlayerActionData)
         room.relive(actionData,pid,currentFrameIndex)
+        room.playersData.Set(pid,actionData)
      }
 }
 func (room *Room)relive(actionData *PlayerActionData,pid int,currentFrameIndex int){
      randomIndex:=tools.GetRandomQuadrantIndex()
      point:=tools.GetCreatePlayerPoint(room.unlockedData.pointData.quadrant[randomIndex],randomIndex) 
-     action:=msg.GetCreatePlayerAction(pid,point.X,point.Y,offsetFrames+currentFrameIndex)
+     action:=msg.GetCreatePlayerAction(pid,point.X,point.Y,datastruct.DefaultReliveFrameIndex)
      actionData.ActionType = action.Action.Action
      actionData.Data = action
 }

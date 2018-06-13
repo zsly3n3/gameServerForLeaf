@@ -68,7 +68,7 @@ func (match *EndlessModeMatch)addOnlinePlayer(connUUID string,a gate.Agent,uid i
 
 
 func (match *EndlessModeMatch)Matching(connUUID string, a gate.Agent,uid int){
-	
+	log.Debug("无尽模式匹配开始")
 	match.addPlayer(connUUID,a,uid)
 	
 	match.mutex.Lock()
@@ -80,12 +80,13 @@ func (match *EndlessModeMatch)Matching(connUUID string, a gate.Agent,uid int){
 	
 	player,tf:=match.onlinePlayers.GetAndUpdateState(connUUID,datastruct.FreeRoom,r_id)
 	if tf{
-		player.Agent.WriteMsg(msg.GetMatchingEndMsg(r_id))
+		player.Agent.WriteMsg(msg.GetMatchingEndMsg(r_id,datastruct.EndlessMode))
 	}
 
 }
 
 func (endlessModeMatch *EndlessModeMatch)createRoom(connUUID string)string{
+	log.Debug("无尽模式匹配完成，创建房间")
 	r_uuid:=tools.UniqueId()
 	room:=match.CreateRoom(match.EndlessMode,[]string{connUUID},r_uuid,endlessModeMatch,LeastPeople)
     endlessModeMatch.rooms.Set(r_uuid,room)
@@ -168,6 +169,7 @@ func (match *EndlessModeMatch)GetOnlinePlayersPtr() *datastruct.OnlinePlayers{
 }
 
 func (match *EndlessModeMatch)PlayerLeftRoom(r_id string,connUUID string){
+	match.RemovePlayer(connUUID)
 	ok,room:=match.rooms.Get(r_id)
 	if ok{
 		room.AddPlayerleft(connUUID)

@@ -2,6 +2,7 @@ package msg
 
 import (
 	"github.com/name5566/leaf/network/json"
+	"server/datastruct"
 )
 
 const PC_Platform ="pc"  //pc端
@@ -75,7 +76,7 @@ type SC_UserLoginContent struct {
 }
 
 
-/*玩家开始匹配*/
+/*玩家开始单人匹配模式*/
 type CS_PlayerMatching struct {
 	MsgHeader json.MsgHeader
 }
@@ -116,6 +117,7 @@ type SC_PlayerMatchingEnd struct {
 
 type SC_PlayerMatchingEndContent struct {
 	RoomID string
+	GameMode datastruct.GameModeType
 }
 
 /*客户端发送来加入房间*/
@@ -291,7 +293,7 @@ type OfflinePlayerMoved struct {//离线玩家的移动
 // var Num = 0
 
 
-const DefaultReliveFrameIndex = -1 //当前帧立即复活
+
 type PlayerRelive struct {//玩家的重生
     ReLiveFrameIndex int
     Action CreatePlayer
@@ -353,12 +355,12 @@ func UpdatePlayerMoved(move *PlayerMoved,x int,y int,speed int){
 	move.Speed = speed
 }
 
-func GetMatchingEndMsg(r_id string) *SC_PlayerMatchingEnd{
+func GetMatchingEndMsg(r_id string,mode datastruct.GameModeType) *SC_PlayerMatchingEnd{
 	var msgHeader json.MsgHeader
     msgHeader.MsgName = SC_PlayerMatchingEndKey
     var msgContent SC_PlayerMatchingEndContent
     msgContent.RoomID =r_id
-    
+    msgContent.GameMode = mode
     return &SC_PlayerMatchingEnd{
 		MsgHeader:msgHeader,
 		MsgContent:msgContent,

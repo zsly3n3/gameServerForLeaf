@@ -3,6 +3,7 @@ package match
 import (
     "sync"
     "server/datastruct"
+    "github.com/name5566/leaf/gate"
 )
 
 
@@ -64,6 +65,7 @@ func (actionPool *MatchActionPool)Check(p_uuid string) bool{
 type ParentMatch interface {
      RemoveRoomWithID(r_id string)
      GetOnlinePlayersPtr() *datastruct.OnlinePlayers
+     Matching(connUUID string, a gate.Agent,uid int)
 }
 
 

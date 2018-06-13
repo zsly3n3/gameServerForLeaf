@@ -86,7 +86,7 @@ func CreatePlayer(user *User) *Player{
     return player
 }
 
-
+const DefaultReliveFrameIndex = -1 //当前帧立即复活
 
 
 

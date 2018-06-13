@@ -3,24 +3,26 @@ package internal
 import (
 	"github.com/name5566/leaf/gate"
 	"server/datastruct"
+	"server/game/internal/match"
 )
 
-const SinglePersonMatchingKey="SinglePersonMatching"
-const EndlessModeMatchingKey="EndlessModeMatching"
+const MatchingKey="Matching"
 const CloseAgentKey="CloseAgent"
 
 
+
+
 func init() {
-	skeleton.RegisterChanRPC(SinglePersonMatchingKey, rpcMatchingPlayers)
+	skeleton.RegisterChanRPC(MatchingKey, rpcMatchingPlayers)
 	skeleton.RegisterChanRPC(CloseAgentKey, removeOnlinePlayer)
 }
 
-
 func rpcMatchingPlayers(args []interface{}) {
-	p_uuid := args[0].(string)
-	a := args[1].(gate.Agent)
-	uid:= args[2].(int)
-	singlePersonMatchingPlayers(p_uuid,a,uid)
+	ptr_match := args[0].(match.ParentMatch)
+	connUUID := args[1].(string)
+	a := args[2].(gate.Agent)
+	uid:= args[3].(int)
+	ptr_match.Matching(connUUID,a,uid)
 }
 
 
@@ -32,4 +34,5 @@ func removeOnlinePlayer(args []interface{}){
 		connUUID:=au_data.ConnUUID
 		removePlayer(connUUID,au_data.GameMode)
 	}
+	a.Destroy()
 }
