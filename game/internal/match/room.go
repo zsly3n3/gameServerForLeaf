@@ -307,7 +307,7 @@ func (room *Room)timeSleepWriteMsg(player *datastruct.Player,startIndex int) int
       
       num:=len(copyData)
       lastFrameIndex:=copyData[num-1].FramesData[0].FrameIndex
-
+      //log.Debug("timeSleepWriteMsg_0 num:%v",num)
       per:=1500
 
       if num>per{
@@ -320,8 +320,10 @@ func (room *Room)timeSleepWriteMsg(player *datastruct.Player,startIndex int) int
             len_chan:=player.Agent.GetWriteChanlen()
             if len_chan < minLen{
                if i>=num/per{
+                  //log.Debug("timeSleepWriteMsg_/ end,i=%v , num/per=%v",i,num/per)
                   break
                }
+               
                for j:=0;j<per;j++{
                   player.Agent.WriteMsg(msg.GetRoomFrameDataMsg(copyData[i*per+j]))
                }
@@ -330,9 +332,12 @@ func (room *Room)timeSleepWriteMsg(player *datastruct.Player,startIndex int) int
         }
         if num%per!=0{
            lastIndex:=num-num%per
-             for j:=0;j<num%per;j++{
-                 player.Agent.WriteMsg(msg.GetRoomFrameDataMsg(copyData[lastIndex+j]))
-             }
+           for j:=0;j<num%per;j++{
+               player.Agent.WriteMsg(msg.GetRoomFrameDataMsg(copyData[lastIndex+j]))
+               if j==num%per-1{
+                  //log.Debug("timeSleepWriteMsg_mod end")
+               }
+           }
         }
       }else{
           for i:=0;i<num;i++{
