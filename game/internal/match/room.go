@@ -173,7 +173,7 @@ func CreateRoom(r_type RoomDataType,connUUIDs []string,r_id string,parentMatch P
 
       
     //测试
-    room.createRobotData(1,true)
+    room.createRobotData(0,true)
     //room.createRobotData(rebotsNum,true)
         
     room.gameStart()   
@@ -315,28 +315,6 @@ func (room *Room)timeSleepWriteMsg(player *datastruct.Player,startIndex int) int
         for i:=0;i<per;i++{
             player.Agent.WriteMsg(msg.GetRoomFrameDataMsg(copyData[i]))
         }
-        // sync_chan:=make(chan struct{})
-        // go func(){
-        //   for {
-        //       len_chan:=player.Agent.GetWriteChanlen()
-        //       if len_chan < minLen{
-        //         sync_chan <- struct{}{}  
-        //       }
-        //       log.Debug("len_chan:%v",len_chan)
-        //   }
-        // }()
-        // for i:=1;i<num/per;i++{
-        //    select {
-        //       case <- sync_chan:
-        //           len_chan:=player.Agent.GetWriteChanlen()
-        //           log.Debug("start sync_chan,len_chan:%v",player.Agent.GetWriteChanlen())
-        //           if len_chan < minLen{
-        //              for j:=0;j<per;j++{
-        //                 player.Agent.WriteMsg(msg.GetRoomFrameDataMsg(copyData[i*per+j]))
-        //              }  
-        //           }
-        //    }
-        // }
         i:=1
         for {
             len_chan:=player.Agent.GetWriteChanlen()
@@ -352,12 +330,9 @@ func (room *Room)timeSleepWriteMsg(player *datastruct.Player,startIndex int) int
         }
         if num%per!=0{
            lastIndex:=num-num%per
-        //    select {
-        //     case <- sync_chan:
              for j:=0;j<num%per;j++{
                  player.Agent.WriteMsg(msg.GetRoomFrameDataMsg(copyData[lastIndex+j]))
              }
-           //}
         }
       }else{
           for i:=0;i<num;i++{
@@ -376,7 +351,7 @@ func (room *Room)syncData(connUUID string,player *datastruct.Player){
       room.Mutex.Lock()
       if lastFrameIndex+1 == room.currentFrameIndex {//数据帧是从0开始，服务器计算帧是从1开始
                room.onlineSyncPlayers=append(room.onlineSyncPlayers,*player)
-               
+               log.Debug("syncData GetCreateAction")
                room.GetCreateAction(player.GameData.PlayId,datastruct.DefaultReliveFrameIndex)
                length=len(room.players)
                room.Mutex.Unlock()
@@ -386,14 +361,6 @@ func (room *Room)syncData(connUUID string,player *datastruct.Player){
                ok:=true
                for ok {
                    if _, ok = <-room.unlockedData.startSync; ok {
-                    //    room.history.Mutex.RLock()
-                    //    copyData:=room.history.FramesData[lastFrameIndex+1:]
-                    //    room.history.Mutex.RUnlock()
-                    //    num:=len(copyData)
-                    //    for _,data := range copyData{
-                    //       player.Agent.WriteMsg(msg.GetRoomFrameDataMsg(data))
-                    //    }
-                    //    lastFrameIndex:=copyData[num-1].FramesData[0].FrameIndex
                        startIndex:=lastFrameIndex+1
                        lastFrameIndex:=room.timeSleepWriteMsg(player,startIndex)
                        isSyncFinished:=false
@@ -401,6 +368,7 @@ func (room *Room)syncData(connUUID string,player *datastruct.Player){
                        if lastFrameIndex+1 == room.currentFrameIndex {
                            isSyncFinished = true
                            room.onlineSyncPlayers=append(room.onlineSyncPlayers,*player)
+                           log.Debug("syncData Channel GetCreateAction")
                            room.GetCreateAction(player.GameData.PlayId,datastruct.DefaultReliveFrameIndex)
                            length=len(room.players)
                        }
@@ -761,7 +729,7 @@ func (diedData *PlayersDiedData)isRemovePlayerId(current_pid int,frameIndex int,
         last_frameIndex,ok:=diedData.Data[current_pid]
         if ok{
                if frameIndex<last_frameIndex||(frameIndex>last_frameIndex&&frameIndex-offsetFrames<last_frameIndex){
-                  log.Debug("HandleDiedData_1 last_frameIndex:%v,frameIndex:%v",last_frameIndex,frameIndex)
+                  //log.Debug("HandleDiedData_1 last_frameIndex:%v,frameIndex:%v",last_frameIndex,frameIndex)
                   return true
                }
         }

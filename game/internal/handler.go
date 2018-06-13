@@ -46,7 +46,6 @@ func handlePlayerLeftRoom(args []interface{}){
        return
     }    
     agentUserData := a.UserData().(datastruct.AgentUserData)
-    
     playerLeftRoom(agentUserData.ConnUUID,agentUserData.GameMode,agentUserData.RoomID)
 }
 
