@@ -32,7 +32,9 @@ func removeOnlinePlayer(args []interface{}){
 	if u_data != nil{
 		au_data:=u_data.(datastruct.AgentUserData)
 		connUUID:=au_data.ConnUUID
-		removePlayer(connUUID,au_data.GameMode)
+		mode:=au_data.GameMode
+		r_id:=au_data.RoomID
+		playerLeftRoom(connUUID,mode,r_id)
 	}
 	a.Destroy()
 }

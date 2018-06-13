@@ -32,7 +32,7 @@ func handlePlayerRelive(args []interface{}){
     a := args[1].(gate.Agent)
     if !tools.IsValid(a.UserData()){
        return
-    }    
+    }
     agentUserData := a.UserData().(datastruct.AgentUserData)
     switch agentUserData.GameMode{
        case datastruct.EndlessMode:
@@ -46,13 +46,8 @@ func handlePlayerLeftRoom(args []interface{}){
        return
     }    
     agentUserData := a.UserData().(datastruct.AgentUserData)
-    switch agentUserData.GameMode{
-    case datastruct.SinglePersonMode:
-         ptr_singleMatch.PlayerLeftRoom(agentUserData.RoomID,agentUserData.ConnUUID)
-    case datastruct.EndlessMode:
-         ptr_endlessModeMatch.PlayerLeftRoom(agentUserData.RoomID,agentUserData.ConnUUID)
-    }
-
+    
+    playerLeftRoom(agentUserData.ConnUUID,agentUserData.GameMode,agentUserData.RoomID)
 }
 
 func handlePlayersDied(args []interface{}){
@@ -176,6 +171,15 @@ func removePlayer(key string,mode datastruct.GameModeType){
            ptr_endlessModeMatch.RemovePlayer(key)
     }
     //在其他匹配模式中删除玩家
+}
+
+func playerLeftRoom(connUUID string,mode datastruct.GameModeType,r_id string){
+    switch mode{
+    case datastruct.SinglePersonMode:
+         ptr_singleMatch.PlayerLeftRoom(connUUID)
+    case datastruct.EndlessMode:
+         ptr_endlessModeMatch.PlayerLeftRoom(r_id,connUUID)
+    }
 }
 
 func startMatching(args []interface{},mode datastruct.GameModeType){

@@ -302,7 +302,7 @@ func (match *SingleMatch)GetOnlinePlayersPtr() *datastruct.OnlinePlayers{
      return match.onlinePlayers
 }
 
-func (match *SingleMatch)PlayerLeftRoom(r_id string,connUUID string){
+func (match *SingleMatch)PlayerLeftRoom(connUUID string){
 	 match.RemovePlayer(connUUID)
 }
 

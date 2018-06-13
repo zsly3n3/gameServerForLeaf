@@ -17,16 +17,13 @@ const (
 	Invite
 )
 
-
 const min_MapWidth = 20
 const min_MapHeight = 15
 const time_interval = 50//50毫秒
 var map_factor = 5*40
 
-
-
 const MaxPeopleInRoom = 20 //每个房间最大人数
-const RoomCloseTime = 15*time.Second//房间入口关闭时间
+const RoomCloseTime = 40*time.Minute//房间入口关闭时间
 
 const FirstFrameIndex = 0//第一帧索引
 
@@ -174,12 +171,12 @@ func CreateRoom(r_type RoomDataType,connUUIDs []string,r_id string,parentMatch P
     room.players = make([]string,0,MaxPeopleInRoom)
     room.playersData = NewPlayersFrameData()
 
-        log.Debug("create Matching Room")
-        //测试
-        room.createRobotData(1,true)
-        //room.createRobotData(rebotsNum,true)
+      
+    //测试
+    room.createRobotData(1,true)
+    //room.createRobotData(rebotsNum,true)
         
-       
+    room.gameStart()   
       
     return room
 }
@@ -467,7 +464,6 @@ func(room *Room)createTicker(){
 	if !room.unlockedData.isExistTicker{
         room.unlockedData.isExistTicker = true
         room.unlockedData.ticker = time.NewTicker(time_interval*time.Millisecond)
-        room.gameStart()
         go room.selectTicker()
     }
     
@@ -748,7 +744,6 @@ func (diedData *PlayersDiedData)isRemovePlayerId(current_pid int,frameIndex int,
         _,ok:=room.robots.robots[current_pid]
         if !ok{
            tf = true
-          
         }
         room.robots.Mutex.RUnlock()
      }else{
@@ -766,6 +761,7 @@ func (diedData *PlayersDiedData)isRemovePlayerId(current_pid int,frameIndex int,
         last_frameIndex,ok:=diedData.Data[current_pid]
         if ok{
                if frameIndex<last_frameIndex||(frameIndex>last_frameIndex&&frameIndex-offsetFrames<last_frameIndex){
+                  log.Debug("HandleDiedData_1 last_frameIndex:%v,frameIndex:%v",last_frameIndex,frameIndex)
                   return true
                }
         }
@@ -915,14 +911,16 @@ func (data *PlayersFrameData)GetValue(pid int,currentFrameIndex int,room *Room)(
              v=actionData.Data
              rs_actionType = msg.Death
              isCreate:=false
+             reliveFrameIndex:=datastruct.DefaultReliveFrameIndex
              switch room.unlockedData.roomType{
              case SinglePersonMatching:
                   isCreate = true
+                  reliveFrameIndex=currentFrameIndex+offsetFrames
              case EndlessMode:
                   delete(data.Data,pid)
              }
              if isCreate{
-                room.relive(actionData,pid,currentFrameIndex)
+                room.relive(actionData,pid,reliveFrameIndex)
              }
           case msg.Move:
              v= *(actionData.Data.(*msg.PlayerMoved))
@@ -957,9 +955,11 @@ func (data *PlayersFrameData)GetOfflineAction(pid int,currentFrameIndex int,room
              v=actionData.Data
              rs_actionType = msg.Death
              isCreate:=false
+             reliveFrameIndex:=datastruct.DefaultReliveFrameIndex
              switch room.unlockedData.roomType{
                case SinglePersonMatching:
                     isCreate = true
+                    reliveFrameIndex=currentFrameIndex+offsetFrames
                case EndlessMode:
                     isExist:=room.CheckLeftlist(connUUID)
                     if isExist{
@@ -967,7 +967,7 @@ func (data *PlayersFrameData)GetOfflineAction(pid int,currentFrameIndex int,room
                     }
              }
              if isCreate{
-                room.relive(actionData,pid,currentFrameIndex)
+                room.relive(actionData,pid,reliveFrameIndex)
              }
           case msg.Move:
             rs_actionType = msg.Move
@@ -1150,6 +1150,7 @@ func (room *Room)GetPlayerMovedMsg(PlayerId int,moveData *msg.CS_MoveData){
       }
 }
 func (room *Room)HandleDiedData(values []msg.PlayerDiedData){
+    
     room.diedData.Mutex.Lock()
     if len(room.diedData.Data)>0{
             removeIndexs:=make([]int,0,len(values))
@@ -1160,8 +1161,10 @@ func (room *Room)HandleDiedData(values []msg.PlayerDiedData){
                 isRemove:=false
                 if v.FrameIndex>currentFrameIndex{
                    isRemove = true
+                   log.Debug("HandleDiedData_0 v.FrameIndex:%v,currentFrameIndex:%v",v.FrameIndex,currentFrameIndex)
                 }else{
                    isRemove =room.diedData.isRemovePlayerId(v.PlayerId,v.FrameIndex,room)
+
                 }
                 if isRemove {
                    removeIndexs = append(removeIndexs,index)//2秒内死亡,去重
@@ -1249,12 +1252,12 @@ func (room *Room)gameStart(){
 
             log.Debug("----------Game Over----------")
         })
-        time.AfterFunc(RoomCloseTime,func(){
-            room.Mutex.Lock()
-            room.IsOn = false
-            room.Mutex.Unlock()
-        })
     }
+    time.AfterFunc(RoomCloseTime,func(){
+        room.Mutex.Lock()
+        room.IsOn = false
+        room.Mutex.Unlock()
+    })
 }
 
 func (room *Room)createLeftList(cap int){
@@ -1306,18 +1309,15 @@ func (room *Room)removePlayer(connUUID string){
 func (room *Room)PlayerRelive(pid int){
      actionData,tf:=room.playersData.CheckValue(pid)
      if !tf{
-        room.Mutex.RLock()
-        currentFrameIndex:=room.currentFrameIndex
-        room.Mutex.RUnlock()
         actionData=new(PlayerActionData)
-        room.relive(actionData,pid,currentFrameIndex)
+        room.relive(actionData,pid,datastruct.DefaultReliveFrameIndex)
         room.playersData.Set(pid,actionData)
      }
 }
-func (room *Room)relive(actionData *PlayerActionData,pid int,currentFrameIndex int){
+func (room *Room)relive(actionData *PlayerActionData,pid int,reliveFrameIndex int){
      randomIndex:=tools.GetRandomQuadrantIndex()
      point:=tools.GetCreatePlayerPoint(room.unlockedData.pointData.quadrant[randomIndex],randomIndex) 
-     action:=msg.GetCreatePlayerAction(pid,point.X,point.Y,datastruct.DefaultReliveFrameIndex)
+     action:=msg.GetCreatePlayerAction(pid,point.X,point.Y,reliveFrameIndex)
      actionData.ActionType = action.Action.Action
      actionData.Data = action
 }
