@@ -38,6 +38,11 @@ func (m *Module) UserLogin (arg interface{}) int{
 	return handleUserLogin(arg)
 }
 
-
+func (m *Module) GetRobotNames(num int)map[int]string{
+	return handleGetRobotNames(num,dbEngine)
+}
+func (m *Module) UpdateRobotNamesState(names map[int]string){
+	 handleUpdateRobotNamesState(names,dbEngine)
+}
 
 

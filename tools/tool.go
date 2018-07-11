@@ -12,6 +12,7 @@ import (
     "server/datastruct"
     "github.com/name5566/leaf/gate"
     "server/msg"
+    "github.com/360EntSecGroup-Skylar/excelize"
 )
 
 func randInt(min int,max int) int {
@@ -204,12 +205,12 @@ func CreateOfflinePlayerMoved(currentFrameIndex int,action *msg.PlayerMoved) *ms
     return offlineMoved
 }
 
-func CreateRobot(index int,isRelive bool,quad []msg.Quadrant,reliveFrameIndex int) *datastruct.Robot{
+func CreateRobot(name string,index int,isRelive bool,quad []msg.Quadrant,reliveFrameIndex int) *datastruct.Robot{
      robot:=new(datastruct.Robot)
-     robot.Id = index+1
+     robot.Id = index
      robot.IsRelive = isRelive
      robot.Avatar = fmt.Sprintf("Avatar%d",index)
-     robot.NickName = fmt.Sprintf("Robot%d",index)
+     robot.NickName = name
      robot.Action = GetCreateRobotAction(robot.Id,quad,reliveFrameIndex)
      robot.SpeedInterval = randInt(minSpeedInterval,maxSpeedInterval+1)
      robot.DirectionInterval = randInt(minDirectionInterval,maxDirectionInterval+1)
@@ -239,4 +240,43 @@ func GetRandomSpeed()int{
 
 func GetRandomSpeedDuration()int{
     return randInt(minSpeedDuration,maxSpeedDuration+1)
+}
+
+func GetRobotNames()[]datastruct.RobotName{
+    xlsx, err := excelize.OpenFile("conf/robotNames.xlsx")
+    if err != nil {
+        fmt.Println(err)
+        log.Fatal("Excel error is %v", err.Error())
+    }
+    index:=1
+    names:=make([]datastruct.RobotName, 0)
+    for {
+        cell_index:= fmt.Sprintf("A%d",index)
+        cell := xlsx.GetCellValue("Sheet1", cell_index)
+        if cell == "" {
+            break
+        }
+        var robotName datastruct.RobotName
+        robotName.Name = cell
+        robotName.State = 0
+        names = append(names,robotName)
+        index++
+    }
+    return names
+}
+
+func GetRandID(names []datastruct.RobotName,count int) int {
+    rand:=randInt(1,count+1)
+    isExist:=false
+    for _,v := range names{
+        if rand == v.Id{
+           isExist = true
+           break
+        }
+    }
+    if !isExist{
+       return rand
+    }else{
+       return GetRandID(names,count)
+    }
 }

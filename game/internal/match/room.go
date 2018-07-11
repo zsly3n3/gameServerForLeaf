@@ -1,6 +1,7 @@
 package match
 
 import (
+	"server/db"
 	"server/msg"
 	"server/datastruct"
 	"sync"
@@ -23,11 +24,11 @@ const time_interval = 50//50毫秒
 var map_factor = 5*40
 
 const MaxPeopleInRoom = 20 //每个房间最大人数
-const RoomCloseTime = 40*time.Minute//房间入口关闭时间
+const RoomCloseTime = 15*time.Second//房间入口关闭时间
 
 const FirstFrameIndex = 0//第一帧索引
 
-const MaxPlayingTime = 50*time.Minute
+const MaxPlayingTime = 5*time.Minute
 
 const MaxEnergyPower = 5000 //全场最大能量值
 const InitEnergyPower = 1000 //地图初始化的能量值
@@ -142,10 +143,11 @@ type PlayerActionData struct {
 type RobotData struct {
     Mutex *sync.RWMutex //读写互斥量
     robots map[int]*datastruct.Robot//机器人列表map[string]
+    names map[int]string//key:robotNameId,value:robotName
+
     //for map , create actions ,  read
     //isrelive false,remove,  write
     //get robot, set isrelive = false, write
-    
 }
 
 
@@ -173,8 +175,8 @@ func CreateRoom(r_type RoomDataType,connUUIDs []string,r_id string,parentMatch P
 
       
     //测试
-    room.createRobotData(0,true)
-    //room.createRobotData(rebotsNum,true)
+    //room.createRobotData(0,true)
+    room.createRobotData(rebotsNum,true)
         
     room.gameStart()   
       
@@ -187,6 +189,7 @@ func (room *Room)removeFromRooms(){
      safeClosePoint(room.unlockedData.points_ch)
      safeCloseSync(room.unlockedData.startSync)
      room.unlockedData.parentMatch.RemoveRoomWithID(room.unlockedData.roomId)
+     db.Module.UpdateRobotNamesState(room.robots.names)
      log.Debug("room removeFromRooms")
 }
 
@@ -218,6 +221,9 @@ func (room *Room)createEnergyPointData(width int,height int) *EnergyPointData{
 
 func(room *Room)IsSyncFinished(connUUID string,player *datastruct.Player) (bool,int){
     length:=len(room.players)
+
+    play_id:=length+room.unlockedData.rebotsNum
+    
     if length == MaxPeopleInRoom - 1 {
        room.IsOn = false
     }
@@ -230,9 +236,6 @@ func(room *Room)IsSyncFinished(connUUID string,player *datastruct.Player) (bool,
     
     syncFinished:=false
     
-    play_id:=len(room.players)+room.unlockedData.rebotsNum
-
-
     content.PlayId = play_id
 
     if room.currentFrameIndex == FirstFrameIndex{
@@ -254,7 +257,6 @@ func(room *Room)IsSyncFinished(connUUID string,player *datastruct.Player) (bool,
         
         frame_data.PlayerFrameData=make([]interface{},0,1)
 
-        
         action:=room.GetCreateAction(play_id,datastruct.DefaultReliveFrameIndex)
         frame_data.PlayerFrameData = append(frame_data.PlayerFrameData,action)
         
@@ -353,8 +355,8 @@ func (room *Room)timeSleepWriteMsg(player *datastruct.Player,startIndex int) int
 
 func (room *Room)syncData(connUUID string,player *datastruct.Player){
      
-    
-     lastFrameIndex:=room.timeSleepWriteMsg(player,0)
+      
+      lastFrameIndex:=room.timeSleepWriteMsg(player,0)
       
       var length int
       room.Mutex.Lock()
@@ -540,8 +542,7 @@ func (room *Room)ComputeFrameData(){
         room.removeFromRooms()
         return
      }
-     
-    
+
     var frame_content msg.SC_RoomFrameDataContent
      
     frame_content.FramesData = make([]msg.FrameData,0,1)
@@ -692,9 +693,14 @@ func (room *Room)createRobotData(num int,isRelive bool){
     robots:=new(RobotData)
     robots.Mutex = new(sync.RWMutex)
     robots.robots = make(map[int]*datastruct.Robot)
-    for i:=0;i<num;i++{
-        robot:=tools.CreateRobot(i,isRelive,room.unlockedData.pointData.quadrant,datastruct.DefaultReliveFrameIndex)
-        robots.robots[robot.Id]=robot
+    if num > 0{
+        robots.names = db.Module.GetRobotNames(num)
+        i:=0;
+        for _,v := range robots.names{
+            robot:=tools.CreateRobot(v,i,isRelive,room.unlockedData.pointData.quadrant,datastruct.DefaultReliveFrameIndex)
+            robots.robots[i]=robot
+            i++
+        }
     }
     room.robots = robots
 }
@@ -716,7 +722,7 @@ func (room *Room)createPlayersDiedData(){
 
 func (diedData *PlayersDiedData)isRemovePlayerId(current_pid int,frameIndex int,room *Room) bool{
      tf:=false
-     if current_pid <= room.unlockedData.rebotsNum{
+     if current_pid < room.unlockedData.rebotsNum{
         room.robots.Mutex.RLock()
         _,ok:=room.robots.robots[current_pid]
         if !ok{
@@ -1127,7 +1133,6 @@ func (room *Room)GetPlayerMovedMsg(PlayerId int,moveData *msg.CS_MoveData){
       }
 }
 func (room *Room)HandleDiedData(values []msg.PlayerDiedData){
-    
     room.diedData.Mutex.Lock()
     if len(room.diedData.Data)>0{
             removeIndexs:=make([]int,0,len(values))
@@ -1190,7 +1195,7 @@ func (room *Room)HandleDiedData(values []msg.PlayerDiedData){
          p_died.Action = action
    
         
-         if p_id <= room.unlockedData.rebotsNum{
+         if p_id < room.unlockedData.rebotsNum{
             room.robots.Mutex.RLock()
             robot,ok:=room.robots.robots[p_id]
             if ok{
@@ -1226,7 +1231,7 @@ func (room *Room)gameStart(){
             room.Mutex.RUnlock()
 
             room.removeFromRooms()
-
+            
             log.Debug("----------Game Over----------")
         })
     }

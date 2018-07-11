@@ -7,6 +7,7 @@ import (
     "github.com/go-xorm/xorm"
     "server/conf"
     "github.com/name5566/leaf/log"
+    "server/tools"
     //"encoding/json"//json封装解析
 )
 func init() {  
@@ -47,16 +48,21 @@ func handleCreateDB()*xorm.Engine{
     engine.ShowSQL(true)
 	//设置连接池的空闲数大小
 	engine.SetMaxIdleConns(10)
-	
-	user:=&datastruct.User{}
-	err=engine.DropTables(user)
-    errhandle(err)
-    
-	err=engine.CreateTables(user)
-    errhandle(err)
-    
+	resetDB(engine)
     dbEngine = engine
     return engine
+}
+
+func resetDB(engine *xorm.Engine){
+    user:=&datastruct.User{}
+    robotName:=&datastruct.RobotName{}
+	err:=engine.DropTables(user,robotName)
+    errhandle(err)
+	err=engine.CreateTables(user,robotName)
+    errhandle(err)
+    names:=tools.GetRobotNames()
+    _, err = engine.Insert(&names)
+    errhandle(err)
 }
 
 func errhandle(err error){
@@ -74,5 +80,71 @@ func handleGetUserInfo(uid int)*datastruct.User{
     return &user
 }
 
+func getRobotNames(num int,engine *xorm.Engine)([]datastruct.RobotName,int){
+    session := engine.NewSession()
+    defer session.Close()
+    err := session.Begin()
+    names:= make([]datastruct.RobotName,0,num)
+    table:=new(datastruct.RobotName)
+    count, _ := session.Where("id >?", 0).Count(table)
+    err = session.Where("state = ?", 0).Limit(num, 0).Find(&names)
+    if err != nil {
+       return nil,int(count)
+    }
+    sql := "update robot_name set state=1 where id in ("
+    for _,v := range names{
+        sql+= fmt.Sprintf("%d",v.Id) + ","
+    }
+    sql=sql[0:len(sql)-1]
+    sql +=")"
+    _,err = session.Exec(sql)
+    if err != nil {
+        session.Rollback()
+        return nil,int(count)
+    }
+    err = session.Commit()
+    if err != nil {
+        return nil,int(count)
+    }
+    return names,int(count)
+}
 
+func handleGetRobotNames(num int,engine *xorm.Engine)map[int]string{
+     names,count:=getRobotNames(num,engine)
+     length:=len(names)
+     rs:=num-length
+     if rs > 0 {
+        add:=make([]datastruct.RobotName,0,rs)
+        for i:=0;i<rs;i++{
+            rand:=tools.GetRandID(names,count)
+            var name datastruct.RobotName
+            engine.Id(rand).Get(&name)
+            add = append(add,name)
+        }
+        names = append(names,add...)
+     }
+     rsMap:=make(map[int]string)//key:id,value:name
+     for _,v := range names{
+         rsMap[v.Id] = v.Name
+     }
+     return rsMap
+}
+
+func handleUpdateRobotNamesState(names map[int]string,engine *xorm.Engine){
+    session := engine.NewSession()
+    defer session.Close()
+    session.Begin()
+    sql := "update robot_name set state=0 where id in ("
+    for k,_ := range names{
+        sql+= fmt.Sprintf("%d",k) + ","
+    }
+    sql=sql[0:len(sql)-1]
+    sql +=")"
+    _,err := session.Exec(sql)
+    if err != nil {
+        session.Rollback()
+        return
+    }
+    session.Commit()
+}
 

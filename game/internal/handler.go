@@ -98,7 +98,7 @@ func handlePlayerMoveData(args []interface{}){
     r_id:=agentUserData.RoomID
     m := args[0].(*msg.CS_MoveData)
     
-    //log.Debug("---1---player_id:%v,x:%v,y:%v,Speed:%v",agentUserData.PlayId,m.MsgContent.X,m.MsgContent.Y,m.MsgContent.Speed)
+    log.Debug("---1---player_id:%v,x:%v,y:%v,Speed:%v",agentUserData.PlayId,m.MsgContent.X,m.MsgContent.Y,m.MsgContent.Speed)
     
     switch agentUserData.GameMode{
     case datastruct.SinglePersonMode:
