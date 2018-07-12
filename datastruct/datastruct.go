@@ -36,15 +36,23 @@ const (
 	NULLMode GameModeType = iota //默认无模式
 	SinglePersonMode //单人匹配
 	EndlessMode //无尽模式
+	InviteMode //邀请模式
 )
 
 type AgentUserData struct {
 	 ConnUUID string //每条连接的uuid
 	 Uid int //对应user表中的Id
 	 PlayId   int //在游戏中生成的Id
+	 PlayName string
+	 Details PlayDetails
 	 RoomID string
 	 GameMode GameModeType
 }
+type PlayDetails struct{
+	 IsRandomInfo bool //是否使用的是随机信息
+	 NameID int //对应robotName表中的id
+}
+
 
 type Player struct {
 	Uid       int //对应user表中的Id  

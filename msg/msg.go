@@ -2,7 +2,6 @@ package msg
 
 import (
 	"github.com/name5566/leaf/network/json"
-	"server/datastruct"
 )
 
 const PC_Platform ="pc"  //pc端
@@ -117,7 +116,6 @@ type SC_PlayerMatchingEnd struct {
 
 type SC_PlayerMatchingEndContent struct {
 	RoomID string
-	GameMode datastruct.GameModeType
 }
 
 /*客户端发送来加入房间*/
@@ -157,6 +155,7 @@ type EnergyPoint struct {
 	Type int
     X int
 	Y int
+	Scale float32 //默认值是1.0
 }
 
 
@@ -185,7 +184,9 @@ type SC_InitRoomDataContent struct {
 	 MapWidth int//4000
 	 CurrentFrameIndex int //游戏进行到当前多少帧,从0开始
 	 Interval int //毫秒单位 比如50,代表50毫秒
-	 PlayId int //分配给玩家在游戏中的id 
+	 PlayId int //分配给玩家在游戏中的id
+	 GameTime int //以毫秒单位
+	 GameMode int
 }
 
 
@@ -210,8 +211,8 @@ type CS_PlayerDied struct {
 }
 type PlayerDiedData struct {
 	 PlayerId int
-	 Points []Point
-	 Power int
+	 Points []EnergyPoint
+	 //Power int
 	 FrameIndex int
 }
 
@@ -240,6 +241,9 @@ type FrameData struct {
 	CreateEnergyPoints []EnergyPoint
 }
 
+type PlayerInfo struct {
+}
+
 type ActionType int
 const (
     Create ActionType = iota // value --> 0
@@ -252,6 +256,7 @@ const (
 /*以下为玩家事件*/
 type CreatePlayer struct {//玩家的创建
 	 PlayerId int
+	 PlayerName string
 	 X int
 	 Y int
 	 Action ActionType
@@ -296,7 +301,7 @@ type OfflinePlayerMoved struct {//离线玩家的移动
 
 type PlayerRelive struct {//玩家的重生
     ReLiveFrameIndex int
-    Action CreatePlayer
+	Action CreatePlayer
 }
 
 
@@ -312,15 +317,15 @@ type SC_GameOverDataContent struct {
 }
 
 
-func GetCreatePlayerAction(p_id int,x int,y int,reLiveFrameIndex int) *PlayerRelive{
+func GetCreatePlayerAction(p_id int,x int,y int,reLiveFrameIndex int,playerName string) *PlayerRelive{
 
 	  relive:=new(PlayerRelive)
 	  relive.ReLiveFrameIndex = reLiveFrameIndex
 	  
-      
 	  var action CreatePlayer
 	  action.Action = Create
 	  action.PlayerId = p_id
+	  action.PlayerName = playerName
 	//   switch Num{
 	//   case 0:
 	// 	action.X = Test1Point.X
@@ -355,12 +360,11 @@ func UpdatePlayerMoved(move *PlayerMoved,x int,y int,speed int){
 	move.Speed = speed
 }
 
-func GetMatchingEndMsg(r_id string,mode datastruct.GameModeType) *SC_PlayerMatchingEnd{
+func GetMatchingEndMsg(r_id string) *SC_PlayerMatchingEnd{
 	var msgHeader json.MsgHeader
     msgHeader.MsgName = SC_PlayerMatchingEndKey
     var msgContent SC_PlayerMatchingEndContent
     msgContent.RoomID =r_id
-    msgContent.GameMode = mode
     return &SC_PlayerMatchingEnd{
 		MsgHeader:msgHeader,
 		MsgContent:msgContent,

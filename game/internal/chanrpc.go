@@ -1,6 +1,7 @@
 package internal
 
 import (
+	"server/db"
 	"github.com/name5566/leaf/gate"
 	"server/datastruct"
 	"server/game/internal/match"
@@ -8,9 +9,6 @@ import (
 
 const MatchingKey="Matching"
 const CloseAgentKey="CloseAgent"
-
-
-
 
 func init() {
 	skeleton.RegisterChanRPC(MatchingKey, rpcMatchingPlayers)
@@ -25,7 +23,6 @@ func rpcMatchingPlayers(args []interface{}) {
 	ptr_match.Matching(connUUID,a,uid)
 }
 
-
 func removeOnlinePlayer(args []interface{}){
 	a := args[0].(gate.Agent)
 	u_data:=a.UserData()
@@ -35,6 +32,9 @@ func removeOnlinePlayer(args []interface{}){
 		mode:=au_data.GameMode
 		r_id:=au_data.RoomID
 		playerLeftRoom(connUUID,mode,r_id)
+		if au_data.Details.IsRandomInfo{
+			db.Module.UpdateRobotNameState(au_data.Details.NameID)	
+		}
 	}
 	a.Destroy()
 }

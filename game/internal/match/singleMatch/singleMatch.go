@@ -120,7 +120,7 @@ func (match *SingleMatch)Matching(connUUID string, a gate.Agent,uid int){
 	}else{
 		 player,tf:=match.onlinePlayers.GetAndUpdateState(connUUID,datastruct.FreeRoom,r_id)
 		 if tf{
-		 	player.Agent.WriteMsg(msg.GetMatchingEndMsg(r_id,datastruct.SinglePersonMode))
+		 	player.Agent.WriteMsg(msg.GetMatchingEndMsg(r_id))
 		 }
 	}
 }
@@ -205,7 +205,7 @@ func (singleMatch *SingleMatch)createMatchingTypeRoom(playerUUID []string){
     room:=match.CreateRoom(match.SinglePersonMatching,playerUUID,r_uuid,singleMatch,LeastPeople)
     singleMatch.rooms.Set(r_uuid,room)
     for _,play := range players{
-        play.Agent.WriteMsg(msg.GetMatchingEndMsg(r_uuid,datastruct.SinglePersonMode))
+        play.Agent.WriteMsg(msg.GetMatchingEndMsg(r_uuid))
     }
 }
 

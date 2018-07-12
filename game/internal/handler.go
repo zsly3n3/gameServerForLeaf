@@ -36,7 +36,7 @@ func handlePlayerRelive(args []interface{}){
     agentUserData := a.UserData().(datastruct.AgentUserData)
     switch agentUserData.GameMode{
        case datastruct.EndlessMode:
-        ptr_endlessModeMatch.PlayerRelive(agentUserData.RoomID,agentUserData.PlayId)
+        ptr_endlessModeMatch.PlayerRelive(agentUserData.RoomID,agentUserData.PlayId,agentUserData.PlayName)
     }
 }
 
@@ -196,7 +196,7 @@ func startMatching(args []interface{},mode datastruct.GameModeType){
     connUUID:=agentUserData.ConnUUID
     
     
-    tools.ReSetAgentUserData(a,connUUID,uid,datastruct.NULLSTRING,mode,datastruct.NULLID)
+    tools.ReSetAgentUserData(a,connUUID,uid,datastruct.NULLSTRING,mode,datastruct.NULLID,agentUserData.PlayName,agentUserData.Details)
     removePlayerFromOtherMatchs(connUUID,mode)
     
     if checkActionPool(connUUID,mode,a){

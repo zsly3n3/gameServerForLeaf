@@ -80,7 +80,7 @@ func (match *EndlessModeMatch)Matching(connUUID string, a gate.Agent,uid int){
 	
 	player,tf:=match.onlinePlayers.GetAndUpdateState(connUUID,datastruct.FreeRoom,r_id)
 	if tf{
-		player.Agent.WriteMsg(msg.GetMatchingEndMsg(r_id,datastruct.EndlessMode))
+		player.Agent.WriteMsg(msg.GetMatchingEndMsg(r_id))
 	}
 
 }
@@ -176,10 +176,10 @@ func (match *EndlessModeMatch)PlayerLeftRoom(r_id string,connUUID string){
 	}
 }
 
-func (match *EndlessModeMatch)PlayerRelive(r_id string,pid int){
+func (match *EndlessModeMatch)PlayerRelive(r_id string,pid int,name string){
 	ok,room:=match.rooms.Get(r_id)
 	if ok{
-	   room.PlayerRelive(pid)
+	   room.PlayerRelive(pid,name)
 	}
 }
 

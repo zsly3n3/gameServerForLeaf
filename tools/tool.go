@@ -91,6 +91,7 @@ func getQuadrantPoints(num int,e_type msg.EnergyPointType,quad []msg.Quadrant)[]
             Type:int(e_type),
             X:random_x,
             Y:random_y,
+            Scale:1.0,
         })
     }
     return slice_point
@@ -167,13 +168,15 @@ func IsValid(data interface{}) bool{//判断此连接是否有效
     return tf
 }
 
-func ReSetAgentUserData(a gate.Agent,connUUID string,uid int,r_id string,mode datastruct.GameModeType,PlayId int){
+func ReSetAgentUserData(a gate.Agent,connUUID string,uid int,r_id string,mode datastruct.GameModeType,PlayId int,name string,details datastruct.PlayDetails){
     a.SetUserData(datastruct.AgentUserData{
         ConnUUID:connUUID,
         Uid:uid,
         RoomID:r_id,
         GameMode:mode,
         PlayId:PlayId,
+        PlayName:name,
+        Details:details,
     })
 }
 
@@ -211,17 +214,17 @@ func CreateRobot(name string,index int,isRelive bool,quad []msg.Quadrant,reliveF
      robot.IsRelive = isRelive
      robot.Avatar = fmt.Sprintf("Avatar%d",index)
      robot.NickName = name
-     robot.Action = GetCreateRobotAction(robot.Id,quad,reliveFrameIndex)
+     robot.Action = GetCreateRobotAction(robot.Id,quad,reliveFrameIndex,name)
      robot.SpeedInterval = randInt(minSpeedInterval,maxSpeedInterval+1)
      robot.DirectionInterval = randInt(minDirectionInterval,maxDirectionInterval+1)
      robot.StopSpeedFrameIndex = 0
      return robot
 }
 
-func GetCreateRobotAction(p_id int,quad []msg.Quadrant,reliveFrameIndex int)*msg.PlayerRelive{
+func GetCreateRobotAction(p_id int,quad []msg.Quadrant,reliveFrameIndex int,name string)*msg.PlayerRelive{
     randomIndex:=GetRandomQuadrantIndex()
     point:=GetCreatePlayerPoint(quad[randomIndex],randomIndex) 
-    action:=msg.GetCreatePlayerAction(p_id,point.X,point.Y,reliveFrameIndex)
+    action:=msg.GetCreatePlayerAction(p_id,point.X,point.Y,reliveFrameIndex,name)
     return action
 }
 
@@ -279,4 +282,8 @@ func GetRandID(names []datastruct.RobotName,count int) int {
     }else{
        return GetRandID(names,count)
     }
+}
+func GetOnceRandID(count int) int {
+    rand:=randInt(1,count+1)
+    return rand
 }

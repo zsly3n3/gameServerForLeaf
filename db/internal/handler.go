@@ -48,7 +48,8 @@ func handleCreateDB()*xorm.Engine{
     engine.ShowSQL(true)
 	//设置连接池的空闲数大小
 	engine.SetMaxIdleConns(10)
-	resetDB(engine)
+    resetDB(engine)
+    initData(engine)
     dbEngine = engine
     return engine
 }
@@ -63,6 +64,12 @@ func resetDB(engine *xorm.Engine){
     names:=tools.GetRobotNames()
     _, err = engine.Insert(&names)
     errhandle(err)
+}
+
+func initData(engine *xorm.Engine){
+    robotName:=&datastruct.RobotName{}
+    robotName.State = 0
+    engine.Cols("state").Update(robotName)
 }
 
 func errhandle(err error){
@@ -91,20 +98,22 @@ func getRobotNames(num int,engine *xorm.Engine)([]datastruct.RobotName,int){
     if err != nil {
        return nil,int(count)
     }
-    sql := "update robot_name set state=1 where id in ("
-    for _,v := range names{
+    if len(names) > 0{
+       sql := "update robot_name set state=1 where id in ("
+       for _,v := range names{
         sql+= fmt.Sprintf("%d",v.Id) + ","
-    }
-    sql=sql[0:len(sql)-1]
-    sql +=")"
-    _,err = session.Exec(sql)
-    if err != nil {
+       }
+       sql=sql[0:len(sql)-1]
+       sql +=")"
+       _,err = session.Exec(sql)
+       if err != nil {
         session.Rollback()
         return nil,int(count)
-    }
-    err = session.Commit()
-    if err != nil {
-        return nil,int(count)
+       }
+       err = session.Commit()
+       if err != nil {
+           return nil,int(count)
+       }
     }
     return names,int(count)
 }
@@ -114,20 +123,28 @@ func handleGetRobotNames(num int,engine *xorm.Engine)map[int]string{
      length:=len(names)
      rs:=num-length
      if rs > 0 {
-        add:=make([]datastruct.RobotName,0,rs)
         for i:=0;i<rs;i++{
             rand:=tools.GetRandID(names,count)
             var name datastruct.RobotName
             engine.Id(rand).Get(&name)
-            add = append(add,name)
+            names = append(names,name)
         }
-        names = append(names,add...)
      }
      rsMap:=make(map[int]string)//key:id,value:name
      for _,v := range names{
          rsMap[v.Id] = v.Name
      }
      return rsMap
+}
+func handleGetRobotName(engine *xorm.Engine)(int,string){
+    names,count:=getRobotNames(1,engine)
+    if len(names) == 0 {
+       rand:=tools.GetOnceRandID(count)
+       var name datastruct.RobotName
+       engine.Id(rand).Get(&name)
+       return name.Id,name.Name
+    }
+    return names[0].Id,names[0].Name
 }
 
 func handleUpdateRobotNamesState(names map[int]string,engine *xorm.Engine){
@@ -140,6 +157,19 @@ func handleUpdateRobotNamesState(names map[int]string,engine *xorm.Engine){
     }
     sql=sql[0:len(sql)-1]
     sql +=")"
+    _,err := session.Exec(sql)
+    if err != nil {
+        session.Rollback()
+        return
+    }
+    session.Commit()
+}
+func handleUpdateRobotNameState(n_id int,engine *xorm.Engine){
+    session := engine.NewSession()
+    defer session.Close()
+    session.Begin()
+    sql := "update robot_name set state=0 where id="
+    sql+= fmt.Sprintf("%d",n_id)
     _,err := session.Exec(sql)
     if err != nil {
         session.Rollback()

@@ -2,7 +2,6 @@ package internal
 
 import (
 	"server/datastruct"
-	//"fmt"
 	"reflect"
     "server/msg"
     "server/db"
@@ -29,31 +28,40 @@ func handleUserLogin(args []interface{}) {
     m := args[0].(*msg.CS_UserLogin)  
     // 消息的发送者  
     a := args[1].(gate.Agent)
-   
+
     if m.MsgContent.Platform != msg.PC_Platform{
        str:=thirdParty.GetOpenID(m.MsgContent.Platform,m.MsgContent.LoginName)
         if str!=""{
            m.MsgContent.LoginName = str
         }
     }
-    
+    isRandomInfo := false
+    var details datastruct.PlayDetails
+    if len(m.MsgContent.NickName) <=0{
+       isRandomInfo = true
+       n_id,name:=db.Module.GetRobotName()
+       details.NameID = n_id
+       m.MsgContent.NickName = name
+    }
+    details.IsRandomInfo = isRandomInfo
     uid := db.Module.UserLogin(m)
-
-	//log.Debug("RemoteAddr %v", a.RemoteAddr().String())//客户端地址
+    
+    
+    //log.Debug("RemoteAddr %v", a.RemoteAddr().String())//客户端地址
 	// log.Debug("LocalAddr %v", a.LocalAddr().String())//服务器本机地址
 
     var msgHeader json.MsgHeader
     msgHeader.MsgName = "SC_UserLogin"
 
-    var msgContent msg.SC_UserLoginContent
-    msgContent.Uid =uid
+   var msgContent msg.SC_UserLoginContent
+   msgContent.Uid =uid
    
    if uid > 0{
       connUUID:=tools.UniqueId()
       rid:=datastruct.NULLSTRING
       mode:=datastruct.NULLMode
       p_id:=datastruct.NULLID
-      tools.ReSetAgentUserData(a,connUUID,uid,rid,mode,p_id)
+      tools.ReSetAgentUserData(a,connUUID,uid,rid,mode,p_id,m.MsgContent.NickName,details)
    }
    
    a.WriteMsg(&msg.SC_UserLogin{
