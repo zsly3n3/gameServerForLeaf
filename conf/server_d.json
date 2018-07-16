@@ -2,9 +2,9 @@
 	"LogLevel": "debug",
 	"LogPath": "",
 	"TCPAddr": "127.0.0.1:3563",
-	"WSAddr": "192.168.6.103:3653",
+	"WSAddr": "192.168.8.137:3653",
 	"MaxConnNum": 20000,
-	"DB_IP":"192.168.6.150:3306",
+	"DB_IP":"192.168.8.102:3306",
 	"DB_Name":"testbase",
 	"DB_UserName":"root",
 	"DB_Pwd":"1234s6"
