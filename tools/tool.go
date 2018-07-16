@@ -180,8 +180,6 @@ func ReSetAgentUserData(a gate.Agent,connUUID string,uid int,r_id string,mode da
     })
 }
 
-
-
 const minDirectionInterval = 5
 const maxDirectionInterval = 10
 

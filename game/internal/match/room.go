@@ -188,8 +188,8 @@ func (room *Room)removeFromRooms(){
      safeCloseRobotMoved(room.unlockedData.rebotMoveAction)
      safeClosePoint(room.unlockedData.points_ch)
      safeCloseSync(room.unlockedData.startSync)
-     room.unlockedData.parentMatch.RemoveRoomWithID(room.unlockedData.roomId)
      db.Module.UpdateRobotNamesState(room.robots.names)
+     room.unlockedData.parentMatch.RemoveRoomWithID(room.unlockedData.roomId)
      log.Debug("room removeFromRooms")
 }
 
@@ -440,14 +440,12 @@ func (room*Room)goCreateMovePoint(){
     }
 }
 
-
 func(room *Room)createTicker(){
 	if !room.unlockedData.isExistTicker{
         room.unlockedData.isExistTicker = true
         room.unlockedData.ticker = time.NewTicker(time_interval*time.Millisecond)
         go room.selectTicker()
     }
-    
 }
 
 func(room *Room)stopTicker(){
