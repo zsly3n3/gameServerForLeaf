@@ -2,6 +2,7 @@ package msg
 
 import (
 	"github.com/name5566/leaf/network/json"
+	"server/datastruct"
 )
 
 const PC_Platform ="pc"  //pc端
@@ -36,7 +37,14 @@ func init() {
 	Processor.Register(&CS_PlayerRelive{})
 
 	Processor.Register(&SC_GameOverData{})
-	
+
+	Processor.Register(&SC_PlayerInWaitRoom{})
+	Processor.Register(&CS_InviteModeMatching{})
+	Processor.Register(&CS_JoinInviteMode{})
+	Processor.Register(&CS_LeaveInviteMode{})
+	Processor.Register(&CS_MasterFirePlayer{})
+	Processor.Register(&SC_NotifyMsg{})
+	Processor.Register(&SC_PlayerIsFired{})
 }
 
 /*接收消耗的能量值*/
@@ -48,8 +56,6 @@ type CS_EnergyExpended struct {
 type CS_EnergyExpendedContent struct {
 	EnergyExpended int
 }
-
-
 
 /*客户端发送来完成注册*/
 type CS_UserLogin struct {
@@ -85,6 +91,25 @@ type CS_EndlessModeMatching struct {
 	MsgHeader json.MsgHeader
 }
 
+/*好友模式*/
+type CS_InviteModeMatching struct {
+	MsgHeader json.MsgHeader
+}
+
+/*加入好友模式的房间*/
+type CS_JoinInviteMode struct {
+	MsgHeader json.MsgHeader
+	MsgContent CS_JoinInviteModeContent
+}
+type CS_JoinInviteModeContent struct{
+    RoomID string
+}
+
+/*主动离开好友模式的房间*/
+type CS_LeaveInviteMode struct {
+	MsgHeader json.MsgHeader
+}
+
 /*玩家取消匹配*/
 type CS_PlayerCancelMatching struct {
 	MsgHeader json.MsgHeader
@@ -107,6 +132,48 @@ type SC_PlayerAlreadyMatching struct {
 	MsgHeader json.MsgHeader
 }
 
+/*发送等待房间的数据信息*/
+const SC_PlayerInWaitRoomKey = "SC_PlayerInWaitRoom"
+type SC_PlayerInWaitRoom struct {
+	MsgHeader json.MsgHeader
+	MsgContent SC_PlayerInWaitRoomContent
+}
+type SC_PlayerInWaitRoomContent struct {
+	RoomID string
+	State  datastruct.WaitRoomState
+	Players []datastruct.PlayerInWaitRoom
+}
+
+/*发送通知信息*/
+const SC_NotifyMsgKey = "SC_NotifyMsg"
+type SC_NotifyMsg struct {
+	MsgHeader json.MsgHeader
+	MsgContent SC_NotifyMsgContent
+}
+type SC_NotifyMsgContent struct {
+	Msg string
+}
+
+/*发送房主踢人消息*/
+const CS_MasterFirePlayerKey = "CS_MasterFirePlayer"
+type CS_MasterFirePlayer struct {
+	MsgHeader json.MsgHeader
+	MsgContent CS_MasterFirePlayerContent
+}
+type CS_MasterFirePlayerContent struct {
+	RoomID string
+	Seat int //座位号
+}
+
+/*发送被踢消息*/
+const SC_PlayerIsFiredKey = "SC_PlayerIsFired"
+type SC_PlayerIsFired struct {
+	MsgHeader json.MsgHeader
+}
+
+
+
+
 /*发送匹配成功的信息*/
 const SC_PlayerMatchingEndKey = "SC_PlayerMatchingEnd"
 type SC_PlayerMatchingEnd struct {
@@ -126,9 +193,6 @@ type CS_PlayerJoinRoom struct {
 type CS_PlayerJoinRoomContent struct {
 	RoomID string
 }
-
-
-
 
 /*玩家加入房间无效*/
 type SC_PlayerJoinInvalid struct {
@@ -150,15 +214,6 @@ const (
     TypeC 
     TypeD
 )
-
-type EnergyPoint struct {
-	Type int
-    X int
-	Y int
-	Scale float32 //默认值是1.0
-}
-
-
 
 type Point struct {
     X int
@@ -207,14 +262,9 @@ type CS_MoveDataContent struct {
 
 type CS_PlayerDied struct {
 	MsgHeader json.MsgHeader
-	MsgContent []PlayerDiedData
+	MsgContent []datastruct.PlayerDiedData
 }
-type PlayerDiedData struct {
-	 PlayerId int
-	 Points []EnergyPoint
-	 //Power int
-	 FrameIndex int
-}
+
 
 type CS_PlayerLeftRoom struct { //玩家离开房间
 	MsgHeader json.MsgHeader
@@ -238,11 +288,9 @@ type SC_RoomFrameDataContent struct {
 type FrameData struct {
 	FrameIndex int
 	PlayerFrameData []interface{}
-	CreateEnergyPoints []EnergyPoint
+	CreateEnergyPoints []datastruct.EnergyPoint
 }
 
-type PlayerInfo struct {
-}
 
 type ActionType int
 const (
@@ -266,9 +314,6 @@ type PlayerIsDied struct {//玩家的死亡
 	 PlayerId int
 	 Action ActionType
 }
-
-
-
 
 var DefaultDirection = Point{X:0,Y:1}
 var DefaultSpeed = 1
@@ -305,8 +350,6 @@ type PlayerRelive struct {//玩家的重生
 }
 
 
-
-
 /*发送给客户端游戏结束数据*/
 type SC_GameOverData struct {
 	MsgHeader json.MsgHeader
@@ -317,8 +360,8 @@ type SC_GameOverDataContent struct {
 }
 
 
-func GetCreatePlayerAction(p_id int,x int,y int,reLiveFrameIndex int,playerName string) *PlayerRelive{
 
+func GetCreatePlayerAction(p_id int,x int,y int,reLiveFrameIndex int,playerName string) *PlayerRelive{
 	  relive:=new(PlayerRelive)
 	  relive.ReLiveFrameIndex = reLiveFrameIndex
 	  
@@ -354,10 +397,55 @@ func GetCreatePlayerMoved(p_id int,x int,y int,speed int) *PlayerMoved{
 	action.Speed = speed
 	return action
 }
+
 func UpdatePlayerMoved(move *PlayerMoved,x int,y int,speed int){
 	move.X = x
 	move.Y = y
 	move.Speed = speed
+}
+
+func GetNotifyMsg(str string) *SC_NotifyMsg{
+	var msgHeader json.MsgHeader
+    msgHeader.MsgName = SC_NotifyMsgKey
+	var msgContent SC_NotifyMsgContent
+	msgContent.Msg = str
+	return &SC_NotifyMsg{
+		MsgHeader:msgHeader,
+		MsgContent:msgContent,
+	}
+}
+
+func GetIsFiredMsg() *SC_PlayerIsFired{
+	var msgHeader json.MsgHeader
+    msgHeader.MsgName = SC_PlayerIsFiredKey
+	return &SC_PlayerIsFired{
+		MsgHeader:msgHeader,
+	}
+}
+
+func GetInWaitRoomStateMsg(state datastruct.WaitRoomState,r_id string) *SC_PlayerInWaitRoom{
+	var msgHeader json.MsgHeader
+    msgHeader.MsgName = SC_PlayerInWaitRoomKey
+    var msgContent SC_PlayerInWaitRoomContent
+	msgContent.RoomID = r_id
+	msgContent.State = state
+    return &SC_PlayerInWaitRoom{
+		MsgHeader:msgHeader,
+		MsgContent:msgContent,
+	}
+}
+
+func GetInWaitRoomMsg(state datastruct.WaitRoomState,r_id string,players []datastruct.PlayerInWaitRoom) *SC_PlayerInWaitRoom{
+	var msgHeader json.MsgHeader
+    msgHeader.MsgName = SC_PlayerInWaitRoomKey
+    var msgContent SC_PlayerInWaitRoomContent
+	msgContent.RoomID = r_id
+	msgContent.State = state
+    msgContent.Players = players
+    return &SC_PlayerInWaitRoom{
+		MsgHeader:msgHeader,
+		MsgContent:msgContent,
+	}
 }
 
 func GetMatchingEndMsg(r_id string) *SC_PlayerMatchingEnd{

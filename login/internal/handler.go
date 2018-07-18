@@ -35,15 +35,6 @@ func handleUserLogin(args []interface{}) {
            m.MsgContent.LoginName = str
         }
     }
-    isRandomInfo := false
-    var details datastruct.PlayDetails
-    if len(m.MsgContent.NickName) <=0{
-       isRandomInfo = true
-       n_id,name:=db.Module.GetRobotName()
-       details.NameID = n_id
-       m.MsgContent.NickName = name
-    }
-    details.IsRandomInfo = isRandomInfo
     uid := db.Module.UserLogin(m)
     
     
@@ -61,7 +52,7 @@ func handleUserLogin(args []interface{}) {
       rid:=datastruct.NULLSTRING
       mode:=datastruct.NULLMode
       p_id:=datastruct.NULLID
-      tools.ReSetAgentUserData(a,connUUID,uid,rid,mode,p_id,m.MsgContent.NickName,details)
+      tools.ReSetAgentUserData(a,connUUID,uid,rid,mode,p_id,m.MsgContent.NickName,m.MsgContent.Avatar)
    }
    
    a.WriteMsg(&msg.SC_UserLogin{

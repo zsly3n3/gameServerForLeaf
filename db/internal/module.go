@@ -41,14 +41,14 @@ func (m *Module) UserLogin (arg interface{}) int{
 func (m *Module) GetRobotNames(num int)map[int]string{
 	return handleGetRobotNames(num,dbEngine)
 }
-func (m *Module) GetRobotName()(int,string){
-	return handleGetRobotName(dbEngine)
-}
+// func (m *Module) GetRobotName()(int,string){
+// 	return handleGetRobotName(dbEngine)
+// }
 func (m *Module) UpdateRobotNamesState(names map[int]string){
 	 handleUpdateRobotNamesState(names,dbEngine)
 }
-func (m *Module) UpdateRobotNameState(n_id int){
-	handleUpdateRobotNameState(n_id,dbEngine)
-}
+// func (m *Module) UpdateRobotNameState(n_id int){
+// 	handleUpdateRobotNameState(n_id,dbEngine)
+// }
 
 

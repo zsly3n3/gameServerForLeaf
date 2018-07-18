@@ -1,7 +1,6 @@
 package internal
 
 import (
-	"server/db"
 	"github.com/name5566/leaf/gate"
 	"server/datastruct"
 	"server/game/internal/match"
@@ -32,9 +31,6 @@ func removeOnlinePlayer(args []interface{}){
 		mode:=au_data.GameMode
 		r_id:=au_data.RoomID
 		playerLeftRoom(connUUID,mode,r_id)
-		if au_data.Details.IsRandomInfo{
-			db.Module.UpdateRobotNameState(au_data.Details.NameID)	
-		}
 	}
 	a.Destroy()
 }

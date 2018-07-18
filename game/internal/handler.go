@@ -18,6 +18,7 @@ func handleMsg(m interface{}, h interface{}) {
 func init() {
     handleMsg(&msg.CS_PlayerMatching{}, handleSinglePersonMatching)
     handleMsg(&msg.CS_EndlessModeMatching{},handleEndlessModeMatching)
+    handleMsg(&msg.CS_InviteModeMatching{},handleInviteModeMatching)
 
     handleMsg(&msg.CS_PlayerCancelMatching{}, handleCancelMatching)
     handleMsg(&msg.CS_PlayerJoinRoom{}, handlePlayerJoinRoom)
@@ -26,6 +27,19 @@ func init() {
     handleMsg(&msg.CS_PlayerDied{}, handlePlayersDied)
     handleMsg(&msg.CS_PlayerLeftRoom{}, handlePlayerLeftRoom)
     handleMsg(&msg.CS_PlayerRelive{}, handlePlayerRelive)
+}
+
+func getParentMatch(mode datastruct.GameModeType) match.ParentMatch{
+    var match match.ParentMatch
+    switch mode{
+     case  datastruct.SinglePersonMode:
+         match = ptr_singleMatch
+     case datastruct.EndlessMode:
+         match = ptr_endlessModeMatch
+     case datastruct.InviteMode:
+         match = ptr_inviteModeMatch 
+    }
+    return match
 }
 
 func handlePlayerRelive(args []interface{}){
@@ -44,7 +58,7 @@ func handlePlayerLeftRoom(args []interface{}){
     a := args[1].(gate.Agent)
     if !tools.IsValid(a.UserData()){
        return
-    }    
+    }
     agentUserData := a.UserData().(datastruct.AgentUserData)
     playerLeftRoom(agentUserData.ConnUUID,agentUserData.GameMode,agentUserData.RoomID)
 }
@@ -61,13 +75,10 @@ func handlePlayersDied(args []interface{}){
     //接收玩家死亡坐标,生成指定范围能量点
     //指定某一帧复活
     
-    switch agentUserData.GameMode{
-    case datastruct.SinglePersonMode:
-         ptr_singleMatch.PlayersDied(agentUserData.RoomID,m.MsgContent)
-    case datastruct.EndlessMode:
-         ptr_endlessModeMatch.PlayersDied(agentUserData.RoomID,m.MsgContent)
-    }
+    match:=getParentMatch(agentUserData.GameMode)
+    match.PlayersDied(agentUserData.RoomID,m.MsgContent)
 }
+
 
 func handleEnergyExpended(args []interface{}){
     a := args[1].(gate.Agent)
@@ -78,12 +89,8 @@ func handleEnergyExpended(args []interface{}){
     m := args[0].(*msg.CS_EnergyExpended)
     expended:=m.MsgContent.EnergyExpended
     if expended>0{
-        switch agentUserData.GameMode{
-        case datastruct.SinglePersonMode:
-             ptr_singleMatch.EnergyExpended(expended,agentUserData)
-        case datastruct.EndlessMode:
-             ptr_endlessModeMatch.EnergyExpended(expended,agentUserData)
-        }
+        match:=getParentMatch(agentUserData.GameMode)
+        match.EnergyExpended(expended,agentUserData)
     }
 }
 
@@ -98,14 +105,8 @@ func handlePlayerMoveData(args []interface{}){
     r_id:=agentUserData.RoomID
     m := args[0].(*msg.CS_MoveData)
     
-    log.Debug("---1---player_id:%v,x:%v,y:%v,Speed:%v",agentUserData.PlayId,m.MsgContent.X,m.MsgContent.Y,m.MsgContent.Speed)
-    
-    switch agentUserData.GameMode{
-    case datastruct.SinglePersonMode:
-         ptr_singleMatch.PlayerMoved(r_id,agentUserData.PlayId,m)
-    case datastruct.EndlessMode:
-         ptr_endlessModeMatch.PlayerMoved(r_id,agentUserData.PlayId,m)
-    }
+    match:=getParentMatch(agentUserData.GameMode)
+    match.PlayerMoved(r_id,agentUserData.PlayId,m)
 }
 
 func handlePlayerJoinRoom(args []interface{}){
@@ -116,12 +117,8 @@ func handlePlayerJoinRoom(args []interface{}){
     agentUserData := a.UserData().(datastruct.AgentUserData)
     connUUID:=agentUserData.ConnUUID
     m := args[0].(*msg.CS_PlayerJoinRoom)
-    switch agentUserData.GameMode{
-    case datastruct.SinglePersonMode:
-         ptr_singleMatch.PlayerJoin(connUUID,m)
-    case datastruct.EndlessMode:
-         ptr_endlessModeMatch.PlayerJoin(connUUID,m)
-    }
+    match:=getParentMatch(agentUserData.GameMode)
+    match.PlayerJoin(connUUID,m)
 }
 
 func handleCancelMatching(args []interface{}){
@@ -151,34 +148,33 @@ func handleEndlessModeMatching(args []interface{}){
      startMatching(args,datastruct.EndlessMode)
 }
 
+func handleInviteModeMatching(args []interface{}){
+     startMatching(args,datastruct.InviteMode)
+}
+
+
 func removePlayerFromOtherMatchs(connUUID string,mode datastruct.GameModeType){
      switch mode{
       case datastruct.SinglePersonMode:
-           log.Debug("SinglePersonMode remove connUUID from other matchs")
            removePlayer(connUUID,datastruct.EndlessMode)
+           removePlayer(connUUID,datastruct.InviteMode)
       case datastruct.EndlessMode:
-           log.Debug("EndlessMode remove connUUID from other matchs")
            removePlayer(connUUID,datastruct.SinglePersonMode)
+           removePlayer(connUUID,datastruct.InviteMode)
+      case datastruct.InviteMode:
+           removePlayer(connUUID,datastruct.SinglePersonMode)
+           removePlayer(connUUID,datastruct.EndlessMode)
      }
 }
 
 func removePlayer(key string,mode datastruct.GameModeType){
-    switch mode{
-      case datastruct.SinglePersonMode:
-           ptr_singleMatch.RemovePlayer(key)
-      case datastruct.EndlessMode:
-           ptr_endlessModeMatch.RemovePlayer(key)
-    }
-    //在其他匹配模式中删除玩家
+    match:=getParentMatch(mode)
+    match.RemovePlayer(key)
 }
 
 func playerLeftRoom(connUUID string,mode datastruct.GameModeType,r_id string){
-    switch mode{
-    case datastruct.SinglePersonMode:
-         ptr_singleMatch.PlayerLeftRoom(connUUID)
-    case datastruct.EndlessMode:
-         ptr_endlessModeMatch.PlayerLeftRoom(r_id,connUUID)
-    }
+    match:=getParentMatch(mode)
+    match.PlayerLeftRoom(r_id,connUUID)
 }
 
 func startMatching(args []interface{},mode datastruct.GameModeType){
@@ -196,7 +192,7 @@ func startMatching(args []interface{},mode datastruct.GameModeType){
     connUUID:=agentUserData.ConnUUID
     
     
-    tools.ReSetAgentUserData(a,connUUID,uid,datastruct.NULLSTRING,mode,datastruct.NULLID,agentUserData.PlayName,agentUserData.Details)
+    tools.ReSetAgentUserData(a,connUUID,uid,datastruct.NULLSTRING,mode,datastruct.NULLID,agentUserData.PlayName,agentUserData.Avatar)
     removePlayerFromOtherMatchs(connUUID,mode)
     
     if checkActionPool(connUUID,mode,a){
@@ -219,15 +215,17 @@ func startMatching(args []interface{},mode datastruct.GameModeType){
 
 func checkActionPool(connUUID string,mode datastruct.GameModeType,a gate.Agent) bool {
     isMatching:=false
+    var match match.ParentMatch
     switch mode{
-     case datastruct.SinglePersonMode:
-        if ptr_singleMatch.CheckActionPool(connUUID){//已在匹配中
-            isMatching = true
-        }
+     case  datastruct.SinglePersonMode:
+         match = ptr_singleMatch
      case datastruct.EndlessMode:
-        if ptr_endlessModeMatch.CheckActionPool(connUUID){//已在匹配中
-            isMatching = true
-        }
+         match = ptr_endlessModeMatch
+     case datastruct.InviteMode:
+         match = ptr_inviteModeMatch 
+    }
+    if match.CheckActionPool(connUUID){//已在匹配中
+       isMatching = true
     }
     if isMatching{
         var msgHeader json.MsgHeader
@@ -246,6 +244,8 @@ func matchingChanRPC(mode datastruct.GameModeType,connUUID string,a gate.Agent,u
          match = ptr_singleMatch
      case datastruct.EndlessMode:
          match = ptr_endlessModeMatch
+     case datastruct.InviteMode:
+         match = ptr_inviteModeMatch
     }
     ChanRPC.Go(MatchingKey,match,connUUID,a,uid)//玩家匹配
 }

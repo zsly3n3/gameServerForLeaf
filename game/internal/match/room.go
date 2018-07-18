@@ -23,7 +23,6 @@ const min_MapHeight = 20
 const time_interval = 50//50毫秒
 var map_factor = 200
 
-const MaxPeopleInRoom = 20 //每个房间最大人数
 const RoomCloseTime = 15*time.Second//房间入口关闭时间
 
 const FirstFrameIndex = 0//第一帧索引
@@ -82,7 +81,7 @@ type PlayersDiedData struct {
 }
 
 type PlayerDied struct {//玩家的死亡
-    Points []msg.EnergyPoint
+    Points []datastruct.EnergyPoint
     Action msg.PlayerIsDied
 }
 
@@ -98,9 +97,10 @@ type HistoryFrameData struct {
 type RoomUnlockedData struct {
      parentMatch ParentMatch
      leastPeople int
+     maxPeopleInRoom int //每个房间最大人数
      isExistTicker bool
      ticker *time.Ticker
-     points_ch chan []msg.EnergyPoint
+     points_ch chan []datastruct.EnergyPoint
      pointData *EnergyPointData
      allowList []string//允许列表
      roomType RoomDataType//房间类型
@@ -117,7 +117,7 @@ type GameMap struct{
 
 type EnergyPointData struct{
      quadrant []msg.Quadrant
-     firstFramePoint []msg.EnergyPoint //第一帧的能量点数据
+     firstFramePoint []datastruct.EnergyPoint //第一帧的能量点数据
 }
 
 type EnergyPowerData struct {
@@ -153,24 +153,24 @@ type RobotData struct {
 
 
 
-func CreateRoom(r_type RoomDataType,connUUIDs []string,r_id string,parentMatch ParentMatch,leastPeople int)*Room{
+func CreateRoom(r_type RoomDataType,connUUIDs []string,r_id string,parentMatch ParentMatch,leastPeople int,maxPeopleInRoom int)*Room{
     room := new(Room)
     room.Mutex = new(sync.RWMutex)
     rebotsNum:=leastPeople-len(connUUIDs)
     room.createGameMap(map_factor)
-    room.createRoomUnlockedData(r_type,connUUIDs,r_id,parentMatch,rebotsNum,leastPeople)
+    room.createRoomUnlockedData(r_type,connUUIDs,r_id,parentMatch,rebotsNum,leastPeople,maxPeopleInRoom)
     room.createHistoryFrameData()
     room.createEnergyPowerData()
     room.createEnergyExpend()
     room.createPlayersDiedData()
-    room.createLeftList(MaxPeopleInRoom)
+    room.createLeftList(maxPeopleInRoom)
 
     room.currentFrameIndex = FirstFrameIndex
-    room.onlineSyncPlayers = make([]datastruct.Player,0,MaxPeopleInRoom)
-    room.offlineSyncPlayers = make([]datastruct.Player,0,MaxPeopleInRoom-1)
+    room.onlineSyncPlayers = make([]datastruct.Player,0,maxPeopleInRoom)
+    room.offlineSyncPlayers = make([]datastruct.Player,0,maxPeopleInRoom-1)
     
     room.IsOn = true
-    room.players = make([]string,0,MaxPeopleInRoom)
+    room.players = make([]string,0,maxPeopleInRoom)
     room.playersData = NewPlayersFrameData()
 
       
@@ -224,7 +224,7 @@ func(room *Room)IsSyncFinished(connUUID string,player *datastruct.Player) (bool,
 
     play_id:=length+room.unlockedData.rebotsNum
     
-    if length == MaxPeopleInRoom - 1 {
+    if length == room.unlockedData.maxPeopleInRoom - 1 {
        room.IsOn = false
     }
     room.players=append(room.players,connUUID)
@@ -295,7 +295,7 @@ func (room *Room)sendInitRoomDataToAgent(player *datastruct.Player,content *msg.
      rid:=room.unlockedData.roomId
      mode:=agentData.GameMode
      player.GameData.PlayId = play_id
-     tools.ReSetAgentUserData(player.Agent,connUUID,uid,rid,mode,play_id,agentData.PlayName,agentData.Details)
+     tools.ReSetAgentUserData(player.Agent,connUUID,uid,rid,mode,play_id,agentData.PlayName,agentData.Avatar)
 }
 
 func (room *Room)timeSleepWriteMsg(player *datastruct.Player,startIndex int) int {
@@ -397,10 +397,14 @@ func (room *Room)syncData(connUUID string,player *datastruct.Player){
 }
 
 func(room *Room)Join(connUUID string,player datastruct.Player,force bool) bool{
+    room.Mutex.Lock()
+    if !room.IsOn{
+       room.Mutex.Unlock()
+       return false
+    }
     isOn:=false
     syncFinished:=false
     currentFrameIndex:=-1
-    room.Mutex.Lock()
     if force{
        syncFinished,currentFrameIndex=room.IsSyncFinished(connUUID,&player)
        isOn = true
@@ -421,7 +425,7 @@ func(room *Room)Join(connUUID string,player datastruct.Player,force bool) bool{
     return isOn
 }
 
-func (room*Room)goCreatePoints(num int,maxRangeType msg.EnergyPointType){
+func (room*Room)goCreatePoints(maxRangeType msg.EnergyPointType){
      for {
         points:=tools.GetRandomPoint(PerFrameEnergy_A,PerFrameEnergy_B,room.unlockedData.pointData.quadrant)
         isClosed := safeSendPoint(room.unlockedData.points_ch,points)
@@ -555,7 +559,7 @@ func (room *Room)ComputeFrameData(){
         frame_data.CreateEnergyPoints=room.unlockedData.pointData.firstFramePoint
         room.unlockedData.pointData.firstFramePoint=room.unlockedData.pointData.firstFramePoint[:0]
      }else{
-        var points []msg.EnergyPoint
+        var points []datastruct.EnergyPoint
         select {
         case points = <-room.unlockedData.points_ch:
         default:
@@ -580,10 +584,12 @@ func (room *Room)ComputeFrameData(){
                 if !robot.IsRelive{
                    removeRobotsId=append(removeRobotsId,robot.Id)
                 }
+                log.Debug("robots death points:%v",frame_data.CreateEnergyPoints)
             }
             frame_data.PlayerFrameData = append(frame_data.PlayerFrameData,action)
          }
      }
+
      for _,v:= range removeRobotsId{
         delete(room.robots.robots,v)
      }
@@ -596,6 +602,7 @@ func (room *Room)ComputeFrameData(){
                 died:=action.(*PlayerDied)
                 action=died.Action
                 frame_data.CreateEnergyPoints = append(frame_data.CreateEnergyPoints,died.Points...)
+                log.Debug("online_sync death points:%v",frame_data.CreateEnergyPoints)
              }
              frame_data.PlayerFrameData = append(frame_data.PlayerFrameData,action)
          }
@@ -609,14 +616,17 @@ func (room *Room)ComputeFrameData(){
                died:=action.(*PlayerDied)
                action=died.Action
                frame_data.CreateEnergyPoints = append(frame_data.CreateEnergyPoints,died.Points...)
+               log.Debug("offline_sync death points:%v",frame_data.CreateEnergyPoints)
             }
             frame_data.PlayerFrameData = append(frame_data.PlayerFrameData,action)
         }
      }
- 
+     
      frame_content.FramesData = append(frame_content.FramesData,frame_data)
      msg:=msg.GetRoomFrameDataMsg(&frame_content)
-
+    
+    
+     
    
      for _,player := range online_sync{
          player.Agent.WriteMsg(msg)
@@ -657,11 +667,11 @@ func removeOfflineSyncPlayersInRoom(room *Room,removeIndex []int){
 }
 
 
-func (room *Room)createRoomUnlockedData(r_type RoomDataType,connUUIDs []string,r_id string,parentMatch ParentMatch,rebotsNum int,leastPeople int){
+func (room *Room)createRoomUnlockedData(r_type RoomDataType,connUUIDs []string,r_id string,parentMatch ParentMatch,rebotsNum int,leastPeople int,maxPeopleInRoom int){
     unlockedData:=new(RoomUnlockedData)
-    unlockedData.points_ch = make(chan []msg.EnergyPoint,2)
-    unlockedData.rebotMoveAction = make(chan msg.Point,leastPeople-1+MaxPeopleInRoom-1)
-    unlockedData.startSync = make(chan struct{},MaxPeopleInRoom-1)
+    unlockedData.points_ch = make(chan []datastruct.EnergyPoint,2)
+    unlockedData.rebotMoveAction = make(chan msg.Point,leastPeople-1+maxPeopleInRoom-1)
+    unlockedData.startSync = make(chan struct{},maxPeopleInRoom-1)
     unlockedData.pointData = room.createEnergyPointData(room.gameMap.width,room.gameMap.height)
     unlockedData.allowList = connUUIDs
     unlockedData.roomId = r_id
@@ -669,9 +679,10 @@ func (room *Room)createRoomUnlockedData(r_type RoomDataType,connUUIDs []string,r
     unlockedData.parentMatch = parentMatch
     unlockedData.rebotsNum = rebotsNum
     unlockedData.leastPeople = leastPeople
+    unlockedData.maxPeopleInRoom = maxPeopleInRoom
     unlockedData.roomType = r_type
     room.unlockedData = unlockedData
-    go room.goCreatePoints(1,msg.TypeB)
+    go room.goCreatePoints(msg.TypeB)
     go room.goCreateMovePoint()
 }
 
@@ -752,7 +763,7 @@ func (diedData *PlayersDiedData)isRemovePlayerId(current_pid int,frameIndex int,
      return false
 }
 
-func (diedData *PlayersDiedData)Append(values []msg.PlayerDiedData){
+func (diedData *PlayersDiedData)Append(values []datastruct.PlayerDiedData){
     for _,v := range values{
          p_id:=v.PlayerId
          frameIndex:=v.FrameIndex
@@ -792,7 +803,7 @@ func safeCloseRobotMoved(ch chan msg.Point) (justClosed bool) {
     return true
 }
 
-func safeSendPoint(ch chan []msg.EnergyPoint, value []msg.EnergyPoint) (closed bool) {
+func safeSendPoint(ch chan []datastruct.EnergyPoint, value []datastruct.EnergyPoint) (closed bool) {
     defer func() {
         if recover() != nil {
             closed = true
@@ -802,7 +813,7 @@ func safeSendPoint(ch chan []msg.EnergyPoint, value []msg.EnergyPoint) (closed b
     return false // <=> closed = false; return
 }
 
-func safeClosePoint(ch chan []msg.EnergyPoint) (justClosed bool) {
+func safeClosePoint(ch chan []datastruct.EnergyPoint) (justClosed bool) {
 	defer func() {
         if recover() != nil {
             justClosed = false
@@ -1132,7 +1143,7 @@ func (room *Room)GetPlayerMovedMsg(PlayerId int,moveData *msg.CS_MoveData){
          actionData.Data = action
       }
 }
-func (room *Room)HandleDiedData(values []msg.PlayerDiedData){
+func (room *Room)HandleDiedData(values []datastruct.PlayerDiedData){
     room.diedData.Mutex.Lock()
     if len(room.diedData.Data)>0{
             removeIndexs:=make([]int,0,len(values))
@@ -1169,22 +1180,6 @@ func (room *Room)HandleDiedData(values []msg.PlayerDiedData){
      
      for _,v := range values{
          p_id:=v.PlayerId
-        
-        //  points:=v.Points
-
-        //  arr:=make([]msg.EnergyPoint,0,len(points))
-
-        //  for _,point := range points{
-        //     x:= point.X
-        //     y:= point.Y
-        //     new_x:=int(x)
-        //     new_y:=int(y)
-        //     var e_point msg.EnergyPoint
-        //     e_point.Type = int(msg.TypeC)
-        //     e_point.X = new_x
-        //     e_point.Y = new_y
-        //     arr = append(arr,e_point)
-        //  }
          
          var action msg.PlayerIsDied
          action.Action = msg.Death

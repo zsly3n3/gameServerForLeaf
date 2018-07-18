@@ -82,30 +82,22 @@ func (match *EndlessModeMatch)Matching(connUUID string, a gate.Agent,uid int){
 	if tf{
 		player.Agent.WriteMsg(msg.GetMatchingEndMsg(r_id))
 	}
-
 }
 
 func (endlessModeMatch *EndlessModeMatch)createRoom(connUUID string)string{
 	log.Debug("无尽模式匹配完成，创建房间")
 	r_uuid:=tools.UniqueId()
-	room:=match.CreateRoom(match.EndlessMode,[]string{connUUID},r_uuid,endlessModeMatch,LeastPeople)
+	room:=match.CreateRoom(match.EndlessMode,[]string{connUUID},r_uuid,endlessModeMatch,LeastPeople,20)
     endlessModeMatch.rooms.Set(r_uuid,room)
 	return r_uuid
-}
-
-
-
-func (match *EndlessModeMatch)removeRoomWithID(uuid string){
-	match.rooms.Delete(uuid)
 }
 
 func (match *EndlessModeMatch)PlayerMoved(r_id string,play_id int,moveData *msg.CS_MoveData){
 	ok,room:=match.rooms.Get(r_id)
     if ok&&room.IsEnableUpdatePlayerAction(play_id){
        room.GetPlayerMovedMsg(play_id,moveData)
-    }
+	}
 }
-
 
 func (match *EndlessModeMatch)PlayerJoin(connUUID string,joinData *msg.CS_PlayerJoinRoom){
 	player,tf:=match.onlinePlayers.CheckAndCleanState(connUUID,datastruct.NULLWay,datastruct.NULLSTRING)
@@ -114,27 +106,17 @@ func (match *EndlessModeMatch)PlayerJoin(connUUID string,joinData *msg.CS_Player
         if player.GameData.EnterType == datastruct.FreeRoom&&player.GameData.RoomId==r_id{
 		   ok,room:=match.rooms.Get(r_id)
 		   if ok{
-			isOn:=room.Join(connUUID,player,false)
-			if isOn{
-			   log.Debug("通过遍历空闲房间进入")
-			   match.actionPool.RemoveFromMatchActionPool(connUUID)
-			}else{ 
-			   go match.handleRoomOff(player.Agent,connUUID,player.Uid)
-			}
-		   }  
-        }else if player.GameData.EnterType == datastruct.FromMatchingPool{
-			ok,room:=match.rooms.Get(r_id)
-			if ok{
-				for _,v:=range room.GetAllowList(){
-					if v == connUUID{
-						log.Debug("通过匹配池进入")
-						room.Join(connUUID,player,true)
-						match.actionPool.RemoveFromMatchActionPool(connUUID)
-						break
-					}
-				}
-			}
-        }else{
+			   isOn:=room.Join(connUUID,player,false)
+			   if isOn{
+				  log.Debug("通过遍历空闲房间进入")
+				  match.actionPool.RemoveFromMatchActionPool(connUUID)	
+			   }else{
+                  go match.handleRoomOff(player.Agent,connUUID,player.Uid)
+			   }
+		   }else{ 
+			 go match.handleRoomOff(player.Agent,connUUID,player.Uid)
+		   }
+		}else{
             player.Agent.WriteMsg(msg.GetJoinInvalidMsg())
         }
     }
@@ -154,7 +136,7 @@ func (match *EndlessModeMatch)EnergyExpended(expended int,agentUserData datastru
 	   }
 }
 
-func (match *EndlessModeMatch)PlayersDied(r_id string,values []msg.PlayerDiedData){
+func (match *EndlessModeMatch)PlayersDied(r_id string,values []datastruct.PlayerDiedData){
 	ok,room:=match.rooms.Get(r_id)
 	if ok{
 	  room.HandleDiedData(values)

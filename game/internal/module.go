@@ -5,14 +5,15 @@ import (
 	"server/base"
 	"server/game/internal/match/singleMatch"
 	"server/game/internal/match/endlessModeMatch"
+	"server/game/internal/match/inviteModeMatch"
 )
-
 
 var (
 	skeleton = base.NewSkeleton()
 	ChanRPC  = skeleton.ChanRPCServer
 	ptr_singleMatch=singleMatch.NewSingleMatch()
 	ptr_endlessModeMatch=endlessModeMatch.NewEndlessModeMatch()
+	ptr_inviteModeMatch=inviteModeMatch.NewInviteModeMatch()
 )
 
 type Module struct {

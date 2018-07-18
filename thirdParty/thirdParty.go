@@ -9,7 +9,7 @@ import (
 )
 
 const wx_appid = "wx92a437da81573148"
-const wx_appsecret = "461c4ae398add6b5a3bc460958411ab8"
+const wx_appsecret = "0d1792fcab07c7adc49f9c90f0b4d910"
 //const wx_api ="https://api.weixin.qq.com/sns/jscode2session?appid=APPID&secret=SECRET&js_code=JSCODE&grant_type=authorization_code"
 
 type WX_OPENID struct {

@@ -137,16 +137,16 @@ func handleGetRobotNames(num int,engine *xorm.Engine)map[int]string{
      }
      return rsMap
 }
-func handleGetRobotName(engine *xorm.Engine)(int,string){
-    names,count:=getRobotNames(1,engine)
-    if len(names) == 0 {
-       rand:=tools.GetOnceRandID(count)
-       var name datastruct.RobotName
-       engine.Id(rand).Get(&name)
-       return name.Id,name.Name
-    }
-    return names[0].Id,names[0].Name
-}
+// func handleGetRobotName(engine *xorm.Engine)(int,string){
+//     names,count:=getRobotNames(1,engine)
+//     if len(names) == 0 {
+//        rand:=tools.GetOnceRandID(count)
+//        var name datastruct.RobotName
+//        engine.Id(rand).Get(&name)
+//        return name.Id,name.Name
+//     }
+//     return names[0].Id,names[0].Name
+// }
 
 func handleUpdateRobotNamesState(names map[int]string,engine *xorm.Engine){
     session := engine.NewSession()
@@ -165,17 +165,17 @@ func handleUpdateRobotNamesState(names map[int]string,engine *xorm.Engine){
     }
     session.Commit()
 }
-func handleUpdateRobotNameState(n_id int,engine *xorm.Engine){
-    session := engine.NewSession()
-    defer session.Close()
-    session.Begin()
-    sql := "update robot_name set state=0 where id="
-    sql+= fmt.Sprintf("%d",n_id)
-    _,err := session.Exec(sql)
-    if err != nil {
-        session.Rollback()
-        return
-    }
-    session.Commit()
-}
+// func handleUpdateRobotNameState(n_id int,engine *xorm.Engine){
+//     session := engine.NewSession()
+//     defer session.Close()
+//     session.Begin()
+//     sql := "update robot_name set state=0 where id="
+//     sql+= fmt.Sprintf("%d",n_id)
+//     _,err := session.Exec(sql)
+//     if err != nil {
+//         session.Rollback()
+//         return
+//     }
+//     session.Commit()
+// }
 

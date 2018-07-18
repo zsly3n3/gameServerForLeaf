@@ -44,13 +44,9 @@ type AgentUserData struct {
 	 Uid int //对应user表中的Id
 	 PlayId   int //在游戏中生成的Id
 	 PlayName string
-	 Details PlayDetails
+	 Avatar string
 	 RoomID string
 	 GameMode GameModeType
-}
-type PlayDetails struct{
-	 IsRandomInfo bool //是否使用的是随机信息
-	 NameID int //对应robotName表中的id
 }
 
 
@@ -70,6 +66,19 @@ type PlayerGameData struct{
 	FrameIndex int //保存 已接收第多少帧，大于0
 }
 
+type EnergyPoint struct {
+	Type int
+    X int
+	Y int
+	Scale float32 //默认值是1.0
+}
+
+type PlayerDiedData struct {
+	PlayerId int
+	Points []EnergyPoint
+	//Power int
+	FrameIndex int
+}
 
 /*机器人*/
 type Robot struct {
@@ -78,7 +87,7 @@ type Robot struct {
 	NickName string 
 	IsRelive bool //是否能重生
 	Action interface{}
-	SpeedInterval int ///加速的时间间隔
+	SpeedInterval int //加速的时间间隔
 	StopSpeedFrameIndex int //持续到多少帧结束 
 	DirectionInterval int //转向的时间间隔
 }
@@ -99,7 +108,19 @@ func CreatePlayer(user *User) *Player{
 
 const DefaultReliveFrameIndex = -1 //当前帧立即复活
 
+type WaitRoomState int //等候室状态
+const (
+	NotFull WaitRoomState = iota //房间还有位置
+	Full //房间满员
+	NotExist //房间不存在
+)
 
+type PlayerInWaitRoom struct {
+	NickName string
+	Avatar string
+	IsMaster int //是否为房主
+	Seat int //座位号
+}
 
 
 

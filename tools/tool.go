@@ -59,9 +59,9 @@ func GetCreatePlayerPoint(quad msg.Quadrant,index int) msg.Point {
     return point
 }
 
-func GetRandomPoint(num1 int,num2 int,quad []msg.Quadrant)[]msg.EnergyPoint{
+func GetRandomPoint(num1 int,num2 int,quad []msg.Quadrant)[]datastruct.EnergyPoint{
     //  num1,num2:=GetEnergyNum(msg.TypeA,msg.TypeB,num,maxpower) 
-     slice_point:=make([]msg.EnergyPoint,0,num1+num2)
+     slice_point:=make([]datastruct.EnergyPoint,0,num1+num2)
      slice_point=append(slice_point,getQuadrantPoints(num1,msg.TypeA,quad)...)
      slice_point=append(slice_point,getQuadrantPoints(num2,msg.TypeB,quad)...)
      return slice_point
@@ -80,14 +80,14 @@ func GetRandomPoint(num1 int,num2 int,quad []msg.Quadrant)[]msg.EnergyPoint{
 // }
 
 
-func getQuadrantPoints(num int,e_type msg.EnergyPointType,quad []msg.Quadrant)[]msg.EnergyPoint{
-    slice_point:=make([]msg.EnergyPoint,0,num)
+func getQuadrantPoints(num int,e_type msg.EnergyPointType,quad []msg.Quadrant)[]datastruct.EnergyPoint{
+    slice_point:=make([]datastruct.EnergyPoint,0,num)
     for i:=0;i<num;i++{
         index:=GetRandomQuadrantIndex()
         quad:=quad[index]
         random_x:=randInt(quad.X_Min,quad.X_Max)
         random_y:=randInt(quad.Y_Min,quad.Y_Max)
-        slice_point=append(slice_point,msg.EnergyPoint{
+        slice_point=append(slice_point,datastruct.EnergyPoint{
             Type:int(e_type),
             X:random_x,
             Y:random_y,
@@ -168,7 +168,7 @@ func IsValid(data interface{}) bool{//判断此连接是否有效
     return tf
 }
 
-func ReSetAgentUserData(a gate.Agent,connUUID string,uid int,r_id string,mode datastruct.GameModeType,PlayId int,name string,details datastruct.PlayDetails){
+func ReSetAgentUserData(a gate.Agent,connUUID string,uid int,r_id string,mode datastruct.GameModeType,PlayId int,name string,avatar string){
     a.SetUserData(datastruct.AgentUserData{
         ConnUUID:connUUID,
         Uid:uid,
@@ -176,7 +176,7 @@ func ReSetAgentUserData(a gate.Agent,connUUID string,uid int,r_id string,mode da
         GameMode:mode,
         PlayId:PlayId,
         PlayName:name,
-        Details:details,
+        Avatar:avatar,
     })
 }
 

@@ -21,4 +21,9 @@ func init() {
     msg.Processor.SetRouter(&msg.CS_PlayerLeftRoom{}, game.ChanRPC)
     msg.Processor.SetRouter(&msg.CS_EndlessModeMatching{}, game.ChanRPC)
     msg.Processor.SetRouter(&msg.CS_PlayerRelive{}, game.ChanRPC)
+
+    msg.Processor.SetRouter(&msg.CS_InviteModeMatching{}, game.ChanRPC)
+    msg.Processor.SetRouter(&msg.CS_JoinInviteMode{}, game.ChanRPC)
+    msg.Processor.SetRouter(&msg.CS_LeaveInviteMode{}, game.ChanRPC)
+    msg.Processor.SetRouter(&msg.CS_MasterFirePlayer{}, game.ChanRPC)
 }

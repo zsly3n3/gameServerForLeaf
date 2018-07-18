@@ -4,6 +4,7 @@ import (
     "sync"
     "server/datastruct"
     "github.com/name5566/leaf/gate"
+    "server/msg"
 )
 
 
@@ -66,6 +67,13 @@ type ParentMatch interface {
      RemoveRoomWithID(r_id string)
      GetOnlinePlayersPtr() *datastruct.OnlinePlayers
      Matching(connUUID string, a gate.Agent,uid int)
+     CheckActionPool(connUUID string) bool
+     PlayerLeftRoom(r_id string,connUUID string)
+     PlayersDied(r_id string,values []datastruct.PlayerDiedData)
+     EnergyExpended(expended int,agentUserData datastruct.AgentUserData)
+     PlayerMoved(r_id string,play_id int,moveData *msg.CS_MoveData)
+     RemovePlayer(connUUID string)
+     PlayerJoin(connUUID string,joinData *msg.CS_PlayerJoinRoom)
 }
 
 

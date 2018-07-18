@@ -202,7 +202,7 @@ func (singleMatch *SingleMatch)createMatchingTypeRoom(playerUUID []string){
 	log.Debug("单人匹配完成，创建房间")
     r_uuid:=tools.UniqueId()
 	players:=singleMatch.onlinePlayers.GetsAndUpdateState(playerUUID,datastruct.FromMatchingPool,r_uuid)
-    room:=match.CreateRoom(match.SinglePersonMatching,playerUUID,r_uuid,singleMatch,LeastPeople)
+    room:=match.CreateRoom(match.SinglePersonMatching,playerUUID,r_uuid,singleMatch,LeastPeople,20)
     singleMatch.rooms.Set(r_uuid,room)
     for _,play := range players{
         play.Agent.WriteMsg(msg.GetMatchingEndMsg(r_uuid))
@@ -249,23 +249,33 @@ func (singleMatch *SingleMatch)PlayerJoin(connUUID string,joinData *msg.CS_Playe
 		   if ok{
 			isOn:=room.Join(connUUID,player,false)
 			if isOn{
-			   log.Debug("通过遍历空闲房间进入")
-			   singleMatch.actionPool.RemoveFromMatchActionPool(connUUID)
+			  log.Debug("通过遍历空闲房间进入")
+			  singleMatch.actionPool.RemoveFromMatchActionPool(connUUID)	
 			}else{
-			   go singleMatch.handleRoomOff(player.Agent,connUUID,player.Uid)
+			  go singleMatch.handleRoomOff(player.Agent,connUUID,player.Uid)
 			}
+		   }else{
+			go singleMatch.handleRoomOff(player.Agent,connUUID,player.Uid)		
 		   }
-          
         }else if player.GameData.EnterType == datastruct.FromMatchingPool{
 			ok,room:=singleMatch.rooms.Get(r_id)
 			if ok{
+				isExist:=false
 				for _,v:=range room.GetAllowList(){
 					if v == connUUID{
-						log.Debug("通过匹配池进入")
-						room.Join(connUUID,player,true)
-						singleMatch.actionPool.RemoveFromMatchActionPool(connUUID)
+						isOn:=room.Join(connUUID,player,true)
+						if isOn{
+						  log.Debug("通过匹配池进入")
+						  singleMatch.actionPool.RemoveFromMatchActionPool(connUUID)	
+						}else{
+						  go singleMatch.handleRoomOff(player.Agent,connUUID,player.Uid)
+						}
+						isExist = true
 						break
 					}
+				}
+				if !isExist{
+				   player.Agent.WriteMsg(msg.GetJoinInvalidMsg())
 				}
 			}
         }else{
@@ -288,7 +298,7 @@ func (match *SingleMatch)EnergyExpended(expended int,agentUserData datastruct.Ag
 	   }
 }
 
-func (singleMatch *SingleMatch)PlayersDied(r_id string,values []msg.PlayerDiedData){
+func (singleMatch *SingleMatch)PlayersDied(r_id string,values []datastruct.PlayerDiedData){
 	ok,room:=singleMatch.rooms.Get(r_id)
 	if ok{
 		room.HandleDiedData(values)
@@ -301,8 +311,7 @@ func (match *SingleMatch)RemoveRoomWithID(uuid string){
 func (match *SingleMatch)GetOnlinePlayersPtr() *datastruct.OnlinePlayers{
      return match.onlinePlayers
 }
-
-func (match *SingleMatch)PlayerLeftRoom(connUUID string){
+func (match *SingleMatch)PlayerLeftRoom(r_id string,connUUID string){
 	 match.RemovePlayer(connUUID)
 }
 
