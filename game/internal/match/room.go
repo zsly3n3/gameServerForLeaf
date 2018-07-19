@@ -29,7 +29,7 @@ const FirstFrameIndex = 0//第一帧索引
 
 const MaxPlayingTime = 5*time.Minute
 
-const MaxEnergyPower = 5000 //全场最大能量值
+const MaxEnergyPower = 2000 //全场最大能量值
 const InitEnergyPower = 1000 //地图初始化的能量值
 const PerFramePower = 30 //每帧能量30，1秒能量600
 const InitEnergy_A=60
@@ -240,29 +240,12 @@ func(room *Room)IsSyncFinished(connUUID string,player *datastruct.Player) (bool,
     content.PlayId = play_id
 
     if room.currentFrameIndex == FirstFrameIndex{
-       
         content.CurrentFrameIndex = FirstFrameIndex
-        
-        
         room.sendInitRoomDataToAgent(player,&content,play_id)
-
         room.onlineSyncPlayers=append(room.onlineSyncPlayers,*player)
         room.updateRobotRelive(length) 
-        
-        // var frame_data msg.FrameData
-        // var frame_content msg.SC_RoomFrameDataContent
-
-        // frame_data.FrameIndex = FirstFrameIndex
-        // frame_data.CreateEnergyPoints = room.unlockedData.pointData.firstFramePoint
-        // frame_content.FramesData = make([]msg.FrameData,0,1)
-        
-        // frame_data.PlayerFrameData=make([]interface{},0,1)
-
         room.GetCreateAction(play_id,datastruct.DefaultReliveFrameIndex,player.NickName)
-        // frame_data.PlayerFrameData = append(frame_data.PlayerFrameData,action)
-        // frame_content.FramesData = append(frame_content.FramesData,frame_data)
         syncFinished = true
-
     }else{
         content.CurrentFrameIndex = room.currentFrameIndex-1
         room.sendInitRoomDataToAgent(player,&content,play_id)
@@ -571,13 +554,14 @@ func (room *Room)ComputeFrameData(){
         default:
          points=nil
         }
+        frame_data.CreateEnergyPoints = make([]datastruct.EnergyPoint,0)
         expended:=room.getEnergyExpended(expended_onlineConnUUID)
         room.energyData.SetPower(expended)
         if points != nil && len(points)>0 && room.energyData.IsCreatePower(){
-            frame_data.CreateEnergyPoints = points
+          frame_data.CreateEnergyPoints = append(frame_data.CreateEnergyPoints,points...)
         }
      }
-   
+     
      room.robots.Mutex.Lock()
      removeRobotsId:=make([]int,0,len(room.robots.robots))
      for _,robot:= range room.robots.robots{
@@ -1190,7 +1174,7 @@ func (room *Room)HandleDiedData(values []datastruct.PlayerDiedData){
          action.PlayerId = p_id
          
          p_died:=new(PlayerDied)
-         p_died.Points = v.Points
+         p_died.Points = tools.CheckScalePoints(v.Points)
          p_died.Action = action
          p_died.AddEnergy = v.AddEnergy
          
@@ -1212,6 +1196,7 @@ func (room *Room)HandleDiedData(values []datastruct.PlayerDiedData){
          }
      }
 }
+
 func (room *Room)GetAllowList()[]string{
      return room.unlockedData.allowList 
 }

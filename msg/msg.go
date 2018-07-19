@@ -231,7 +231,6 @@ type Quadrant struct {
     Y_Max int
 }
 
-
 /*发送给客户端房间初始化数据*/
 type SC_InitRoomData struct {
 	MsgHeader json.MsgHeader
@@ -247,10 +246,6 @@ type SC_InitRoomDataContent struct {
 	 GameTime int //以毫秒单位
 	 GameMode int
 }
-
-
-
-
 
 /*接收客户端的帧数据*/
 type CS_MoveData struct {
