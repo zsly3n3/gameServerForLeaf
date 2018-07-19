@@ -178,18 +178,20 @@ func (waitRoom *WaitRoom)SendMatchingEndMsg(msg *msg.SC_PlayerMatchingEnd,online
 	}
 }
 
-func (waitRoom *WaitRoom)IsMaster(connUUID string) bool {
+func (waitRoom *WaitRoom)IfCanStartGame(connUUID string) bool {
 	tf := false
 	waitRoom.mutex.RLock()
 	defer waitRoom.mutex.RUnlock()
-	for _,v := range waitRoom.players{
+	if len(waitRoom.players) > 1{
+	  for _,v := range waitRoom.players{
 		u_data:=v.agent.UserData().(datastruct.AgentUserData)
 		if u_data.ConnUUID == connUUID{
-		   if v.data.IsMaster == 1 {
-			  tf = true
-		   }
-		   break
+			if v.data.IsMaster == 1 {
+			   tf = true
+			}
+			break
 		}
+	  }
 	}
 	return tf
 }

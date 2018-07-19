@@ -590,7 +590,7 @@ func (room *Room)ComputeFrameData(){
                 if !robot.IsRelive{
                    removeRobotsId=append(removeRobotsId,robot.Id)
                 }
-                log.Debug("robots death points:%v",frame_data.CreateEnergyPoints)
+               
             }
             frame_data.PlayerFrameData = append(frame_data.PlayerFrameData,action)
          }
@@ -608,7 +608,7 @@ func (room *Room)ComputeFrameData(){
                 died:=action.(*PlayerDied)
                 action=died.Action
                 frame_data.CreateEnergyPoints = append(frame_data.CreateEnergyPoints,died.Points...)
-                log.Debug("online_sync death points:%v",frame_data.CreateEnergyPoints)
+                
              }
              frame_data.PlayerFrameData = append(frame_data.PlayerFrameData,action)
          }
@@ -622,7 +622,7 @@ func (room *Room)ComputeFrameData(){
                died:=action.(*PlayerDied)
                action=died.Action
                frame_data.CreateEnergyPoints = append(frame_data.CreateEnergyPoints,died.Points...)
-               log.Debug("offline_sync death points:%v",frame_data.CreateEnergyPoints)
+              
             }
             frame_data.PlayerFrameData = append(frame_data.PlayerFrameData,action)
         }

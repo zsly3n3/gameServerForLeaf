@@ -193,7 +193,7 @@ func (match *InviteModeMatch)PlayerJoin(connUUID string,joinData *msg.CS_PlayerJ
 
 func (match *InviteModeMatch)StartGame(w_id string,connUUID string){
 	tf,waitRoom:=match.waitRooms.Get(w_id)
-	if tf && waitRoom.IsMaster(connUUID){
+	if tf && waitRoom.IfCanStartGame(connUUID){
 		match.waitRooms.Delete(w_id)
 		waitRoom.mutex.Lock()
 		defer waitRoom.mutex.Unlock()
