@@ -129,7 +129,7 @@ func (match *EndlessModeMatch)handleRoomOff(a gate.Agent,connUUID string,uid int
 
 func (match *EndlessModeMatch)EnergyExpended(expended int,agentUserData datastruct.AgentUserData){
        connUUID:=agentUserData.ConnUUID
-	   r_id:=agentUserData.RoomID
+	   r_id:=agentUserData.Extra.RoomID
 	   ok,room:=match.rooms.Get(r_id)
 	   if ok{
 		room.EnergyExpended(connUUID,expended)
@@ -161,7 +161,7 @@ func (match *EndlessModeMatch)PlayerLeftRoom(r_id string,connUUID string){
 func (match *EndlessModeMatch)PlayerRelive(r_id string,pid int,name string){
 	ok,room:=match.rooms.Get(r_id)
 	if ok{
-	   room.PlayerRelive(pid,name)
+	   room.HandlePlayerRelive(pid,name)
 	}
 }
 

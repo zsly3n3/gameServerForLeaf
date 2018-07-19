@@ -45,6 +45,7 @@ func init() {
 	Processor.Register(&CS_MasterFirePlayer{})
 	Processor.Register(&SC_NotifyMsg{})
 	Processor.Register(&SC_PlayerIsFired{})
+	Processor.Register(&CS_MasterStartGame{})
 }
 
 /*接收消耗的能量值*/
@@ -140,6 +141,7 @@ type SC_PlayerInWaitRoom struct {
 }
 type SC_PlayerInWaitRoomContent struct {
 	RoomID string
+	IsMaster int
 	State  datastruct.WaitRoomState
 	Players []datastruct.PlayerInWaitRoom
 }
@@ -161,8 +163,13 @@ type CS_MasterFirePlayer struct {
 	MsgContent CS_MasterFirePlayerContent
 }
 type CS_MasterFirePlayerContent struct {
-	RoomID string
 	Seat int //座位号
+}
+
+/*发送房主开始游戏消息*/
+const CS_MasterStartGameKey = "CS_MasterStartGame"
+type CS_MasterStartGame struct {
+	MsgHeader json.MsgHeader
 }
 
 /*发送被踢消息*/
@@ -170,9 +177,6 @@ const SC_PlayerIsFiredKey = "SC_PlayerIsFired"
 type SC_PlayerIsFired struct {
 	MsgHeader json.MsgHeader
 }
-
-
-
 
 /*发送匹配成功的信息*/
 const SC_PlayerMatchingEndKey = "SC_PlayerMatchingEnd"
@@ -307,6 +311,7 @@ type CreatePlayer struct {//玩家的创建
 	 PlayerName string
 	 X int
 	 Y int
+	 AddEnergy int //默认值是0
 	 Action ActionType
 }
 
@@ -361,7 +366,7 @@ type SC_GameOverDataContent struct {
 
 
 
-func GetCreatePlayerAction(p_id int,x int,y int,reLiveFrameIndex int,playerName string) *PlayerRelive{
+func GetCreatePlayerAction(p_id int,x int,y int,reLiveFrameIndex int,playerName string,addEnergy int) *PlayerRelive{
 	  relive:=new(PlayerRelive)
 	  relive.ReLiveFrameIndex = reLiveFrameIndex
 	  
@@ -369,6 +374,7 @@ func GetCreatePlayerAction(p_id int,x int,y int,reLiveFrameIndex int,playerName 
 	  action.Action = Create
 	  action.PlayerId = p_id
 	  action.PlayerName = playerName
+	  action.AddEnergy = addEnergy
 	//   switch Num{
 	//   case 0:
 	// 	action.X = Test1Point.X
@@ -435,12 +441,13 @@ func GetInWaitRoomStateMsg(state datastruct.WaitRoomState,r_id string) *SC_Playe
 	}
 }
 
-func GetInWaitRoomMsg(state datastruct.WaitRoomState,r_id string,players []datastruct.PlayerInWaitRoom) *SC_PlayerInWaitRoom{
+func GetInWaitRoomMsg(state datastruct.WaitRoomState,r_id string,isMaster int,players []datastruct.PlayerInWaitRoom) *SC_PlayerInWaitRoom{
 	var msgHeader json.MsgHeader
     msgHeader.MsgName = SC_PlayerInWaitRoomKey
     var msgContent SC_PlayerInWaitRoomContent
 	msgContent.RoomID = r_id
 	msgContent.State = state
+	msgContent.IsMaster = isMaster
     msgContent.Players = players
     return &SC_PlayerInWaitRoom{
 		MsgHeader:msgHeader,

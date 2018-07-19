@@ -168,16 +168,19 @@ func IsValid(data interface{}) bool{//判断此连接是否有效
     return tf
 }
 
-func ReSetAgentUserData(a gate.Agent,connUUID string,uid int,r_id string,mode datastruct.GameModeType,PlayId int,name string,avatar string){
+func ReSetAgentUserData(uid int,mode datastruct.GameModeType,PlayId int,a gate.Agent,connUUID string,extra datastruct.ExtraUserData){
     a.SetUserData(datastruct.AgentUserData{
         ConnUUID:connUUID,
         Uid:uid,
-        RoomID:r_id,
         GameMode:mode,
         PlayId:PlayId,
-        PlayName:name,
-        Avatar:avatar,
+        Extra:extra,
     })
+}
+func ReSetExtraRoomID(extra datastruct.ExtraUserData) datastruct.ExtraUserData{
+     extra.RoomID = datastruct.NULLSTRING
+     extra.WaitRoomID = datastruct.NULLSTRING
+     return extra
 }
 
 const minDirectionInterval = 5
@@ -212,17 +215,17 @@ func CreateRobot(name string,index int,isRelive bool,quad []msg.Quadrant,reliveF
      robot.IsRelive = isRelive
      robot.Avatar = fmt.Sprintf("Avatar%d",index)
      robot.NickName = name
-     robot.Action = GetCreateRobotAction(robot.Id,quad,reliveFrameIndex,name)
+     robot.Action = GetCreateRobotAction(robot.Id,quad,reliveFrameIndex,name,0)
      robot.SpeedInterval = randInt(minSpeedInterval,maxSpeedInterval+1)
      robot.DirectionInterval = randInt(minDirectionInterval,maxDirectionInterval+1)
      robot.StopSpeedFrameIndex = 0
      return robot
 }
 
-func GetCreateRobotAction(p_id int,quad []msg.Quadrant,reliveFrameIndex int,name string)*msg.PlayerRelive{
+func GetCreateRobotAction(p_id int,quad []msg.Quadrant,reliveFrameIndex int,name string,addEnergy int)*msg.PlayerRelive{
     randomIndex:=GetRandomQuadrantIndex()
     point:=GetCreatePlayerPoint(quad[randomIndex],randomIndex) 
-    action:=msg.GetCreatePlayerAction(p_id,point.X,point.Y,reliveFrameIndex,name)
+    action:=msg.GetCreatePlayerAction(p_id,point.X,point.Y,reliveFrameIndex,name,addEnergy)
     return action
 }
 

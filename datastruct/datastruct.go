@@ -42,11 +42,15 @@ const (
 type AgentUserData struct {
 	 ConnUUID string //每条连接的uuid
 	 Uid int //对应user表中的Id
-	 PlayId   int //在游戏中生成的Id
+	 PlayId int //在游戏中生成的Id
+	 GameMode GameModeType
+	 Extra ExtraUserData
+}
+type ExtraUserData struct {
 	 PlayName string
 	 Avatar string
 	 RoomID string
-	 GameMode GameModeType
+	 WaitRoomID string	 
 }
 
 
@@ -76,7 +80,7 @@ type EnergyPoint struct {
 type PlayerDiedData struct {
 	PlayerId int
 	Points []EnergyPoint
-	//Power int
+	AddEnergy int
 	FrameIndex int
 }
 

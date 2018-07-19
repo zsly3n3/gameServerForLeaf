@@ -49,10 +49,14 @@ func handleUserLogin(args []interface{}) {
    
    if uid > 0{
       connUUID:=tools.UniqueId()
-      rid:=datastruct.NULLSTRING
       mode:=datastruct.NULLMode
       p_id:=datastruct.NULLID
-      tools.ReSetAgentUserData(a,connUUID,uid,rid,mode,p_id,m.MsgContent.NickName,m.MsgContent.Avatar)
+      var extra datastruct.ExtraUserData
+      extra.Avatar = m.MsgContent.Avatar
+      extra.PlayName = m.MsgContent.NickName
+      extra.RoomID = datastruct.NULLSTRING
+      extra.WaitRoomID = datastruct.NULLSTRING
+      tools.ReSetAgentUserData(uid,mode,p_id,a,connUUID,extra)
    }
    
    a.WriteMsg(&msg.SC_UserLogin{

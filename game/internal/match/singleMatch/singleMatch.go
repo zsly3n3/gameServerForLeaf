@@ -291,7 +291,7 @@ func (match *SingleMatch)handleRoomOff(a gate.Agent,connUUID string,uid int){
 
 func (match *SingleMatch)EnergyExpended(expended int,agentUserData datastruct.AgentUserData){
        connUUID:=agentUserData.ConnUUID
-	   r_id:=agentUserData.RoomID
+	   r_id:=agentUserData.Extra.RoomID
 	   ok,room:=match.rooms.Get(r_id)
 	   if ok{
 		room.EnergyExpended(connUUID,expended)

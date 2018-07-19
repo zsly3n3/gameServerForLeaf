@@ -75,27 +75,55 @@ func (match *InviteModeMatch)Matching(connUUID string,a gate.Agent,uid int){
 
 	userData:=a.UserData().(datastruct.AgentUserData)
 	var data datastruct.PlayerInWaitRoom
-	data.NickName = userData.PlayName
-	data.Avatar = userData.Avatar
+	data.NickName = userData.Extra.PlayName
+	data.Avatar = userData.Extra.Avatar
 	data.IsMaster = 1
 	data.Seat = 0
 	players:=[]datastruct.PlayerInWaitRoom{data}
-	a.WriteMsg(msg.GetInWaitRoomMsg(datastruct.NotFull,r_id,players))
+	
+	var extra datastruct.ExtraUserData
+	extra.Avatar = userData.Extra.Avatar
+	extra.PlayName = userData.Extra.PlayName
+	extra.RoomID = userData.Extra.RoomID
+	extra.WaitRoomID = r_id
+	tools.ReSetAgentUserData(uid,datastruct.InviteMode,userData.PlayId,a,connUUID,extra)
+	a.WriteMsg(msg.GetInWaitRoomMsg(datastruct.NotFull,r_id,1,players))
 }
 
-func (match *InviteModeMatch)JoinWaitRoom(w_id string,a gate.Agent,uid int){
+func (match *InviteModeMatch)JoinWaitRoom(w_id string,a gate.Agent,uid int,connUUID string){
 	 tf,waitRoom:=match.waitRooms.Get(w_id)
 	 if tf{
-		waitRoom.Join(a) 
+		userData:=a.UserData().(datastruct.AgentUserData)
+		var extra datastruct.ExtraUserData
+		extra.Avatar = userData.Extra.Avatar
+		extra.PlayName = userData.Extra.PlayName
+		extra.RoomID = userData.Extra.RoomID
+		extra.WaitRoomID = w_id
+		tools.ReSetAgentUserData(uid,datastruct.InviteMode,userData.PlayId,a,connUUID,extra)
+		match.addPlayer(connUUID,a,uid)
+		waitRoom.Join(a)
 	 }else{
 		a.WriteMsg(msg.GetInWaitRoomStateMsg(datastruct.NotExist,w_id)) 
 	 }
 }
 
-func (match *InviteModeMatch)LeftWaitRoom(w_id string,connUUID string,isFired bool){
+func (match *InviteModeMatch)LeftWaitRoom(w_id string,connUUID string){
 	tf,waitRoom:=match.waitRooms.Get(w_id)
-	if tf{
-	   waitRoom.Left(connUUID,match.waitRooms,isFired)
+	if tf {
+	   isExist:=waitRoom.Left(connUUID,match.waitRooms)
+	   if isExist{
+		  match.RemovePlayer(connUUID)
+	   }
+	}
+}
+
+func (match *InviteModeMatch)MasterFirePlayer(w_id string,connUUID string,seat int){
+	tf,waitRoom:=match.waitRooms.Get(w_id)
+	if tf && waitRoom.IsPermit(connUUID,seat){
+		isExist,rm_connUUID:=waitRoom.FirePlayer(seat,match.waitRooms)
+		if isExist{
+		   match.RemovePlayer(rm_connUUID)
+		}
 	}
 }
 
@@ -119,7 +147,7 @@ func (match *InviteModeMatch)PlayerLeftRoom(r_id string,connUUID string){
 
 func (match *InviteModeMatch)EnergyExpended(expended int,agentUserData datastruct.AgentUserData){
 	connUUID:=agentUserData.ConnUUID
-	r_id:=agentUserData.RoomID
+	r_id:=agentUserData.Extra.RoomID
 	ok,room:=match.rooms.Get(r_id)
 	if ok{
 	 room.EnergyExpended(connUUID,expended)
@@ -163,9 +191,9 @@ func (match *InviteModeMatch)PlayerJoin(connUUID string,joinData *msg.CS_PlayerJ
 
 }
 
-func (match *InviteModeMatch)StartGame(w_id string){
+func (match *InviteModeMatch)StartGame(w_id string,connUUID string){
 	tf,waitRoom:=match.waitRooms.Get(w_id)
-	if tf{
+	if tf && waitRoom.IsMaster(connUUID){
 		match.waitRooms.Delete(w_id)
 		waitRoom.mutex.Lock()
 		defer waitRoom.mutex.Unlock()

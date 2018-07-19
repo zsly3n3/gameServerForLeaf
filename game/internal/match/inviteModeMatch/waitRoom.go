@@ -38,8 +38,8 @@ func (waitRoom *WaitRoom)addPlayer(a gate.Agent,isMaster int){
 	var data datastruct.PlayerInWaitRoom
 	data.Seat = seat
 	data.IsMaster = isMaster
-	data.Avatar = u_data.Avatar
-	data.NickName = u_data.PlayName
+	data.Avatar = u_data.Extra.Avatar
+	data.NickName = u_data.Extra.PlayName
 	p_data:=new(playerMsgData)
 	p_data.agent = a
 	p_data.data = data
@@ -53,7 +53,7 @@ func (waitRoom *WaitRoom)Join(a gate.Agent){
 		waitRoom.addPlayer(a,0)
 		players:=waitRoom.getPlayersData()
 		for _,v := range waitRoom.players{
-			v.agent.WriteMsg(msg.GetInWaitRoomMsg(datastruct.NotFull,waitRoom.roomID,players))
+			v.agent.WriteMsg(msg.GetInWaitRoomMsg(datastruct.NotFull,waitRoom.roomID,v.data.IsMaster,players))
 		}
 		waitRoom.mutex.Unlock()
 	}else{
@@ -62,40 +62,70 @@ func (waitRoom *WaitRoom)Join(a gate.Agent){
 	}
 }
 
-func (waitRoom *WaitRoom)Left(connUUID string,waitRooms *WaitRooms,isFired bool){
+func (waitRoom *WaitRoom)Left(connUUID string,waitRooms *WaitRooms) bool{
+	isExist:= true
 	waitRoom.mutex.Lock()
+	rm_key:=-1
+	isMaster:=-1
+	rm_nickname:=""
+	for k,p_data:= range waitRoom.players{
+		u_data:=p_data.agent.UserData().(datastruct.AgentUserData)
+		if u_data.ConnUUID == connUUID{
+			rm_key = k
+			isMaster = p_data.data.IsMaster
+			rm_nickname = p_data.data.NickName
+			break
+		}
+	}
+    if rm_key == -1{
+		waitRoom.mutex.Unlock()
+		return false
+	}
 	length:=len(waitRoom.players)
 	if length <= 1{
 		waitRooms.Delete(waitRoom.roomID)
-		waitRoom.mutex.Unlock()
 	}else{
-		rm_key:=-1
-		isMaster:=-1
-		rm_nickname:=""
-		for k,p_data:= range waitRoom.players{
-			u_data:=p_data.agent.UserData().(datastruct.AgentUserData)
-			if u_data.ConnUUID == connUUID{
-				rm_key = k
-				isMaster = p_data.data.IsMaster
-				rm_nickname = p_data.data.NickName
-				if isFired{
-				   p_data.agent.WriteMsg(msg.GetIsFiredMsg())
-				}
-				break
-			}
-		}
 		delete(waitRoom.players,rm_key)
 		if isMaster == 1{
-			waitRoom.updateMasterSeat()
+		  waitRoom.updateMasterSeat()
 		}
 		players:=waitRoom.getPlayersData()
 		notice_str := rm_nickname + leaveStr
 		for _,v := range waitRoom.players{
-			v.agent.WriteMsg(msg.GetInWaitRoomMsg(datastruct.NotFull,waitRoom.roomID,players))
-			v.agent.WriteMsg(msg.GetNotifyMsg(notice_str))
-		}
-		waitRoom.mutex.Unlock()		
+		  v.agent.WriteMsg(msg.GetInWaitRoomMsg(datastruct.NotFull,waitRoom.roomID,v.data.IsMaster,players))
+		  v.agent.WriteMsg(msg.GetNotifyMsg(notice_str))
+		}	
 	}
+	waitRoom.mutex.Unlock()
+	return isExist
+}
+
+func (waitRoom *WaitRoom)FirePlayer(seat int,waitRooms *WaitRooms) (bool,string){
+	isExist:=true
+	rm_connUUID:=datastruct.NULLSTRING
+	waitRoom.mutex.Lock()
+    v,tf:= waitRoom.players[seat]
+	if !tf{
+	    waitRoom.mutex.Unlock()
+        return false,rm_connUUID
+	}
+	u_data:=v.agent.UserData().(datastruct.AgentUserData)
+	rm_connUUID = u_data.ConnUUID
+	length:=len(waitRoom.players)
+	if length <= 1{
+		waitRooms.Delete(waitRoom.roomID)
+	}else{
+		v.agent.WriteMsg(msg.GetIsFiredMsg())
+		delete(waitRoom.players,seat)
+		players:=waitRoom.getPlayersData()
+		notice_str := v.data.NickName + leaveStr
+		for _,v := range waitRoom.players{
+		  v.agent.WriteMsg(msg.GetInWaitRoomMsg(datastruct.NotFull,waitRoom.roomID,v.data.IsMaster,players))
+		  v.agent.WriteMsg(msg.GetNotifyMsg(notice_str))
+		}
+	}
+	waitRoom.mutex.Unlock()
+	return isExist,rm_connUUID
 }
 
 func (waitRoom *WaitRoom)getPlayersData()[]datastruct.PlayerInWaitRoom{
@@ -146,4 +176,36 @@ func (waitRoom *WaitRoom)SendMatchingEndMsg(msg *msg.SC_PlayerMatchingEnd,online
 			player.Agent.WriteMsg(msg)
 		}
 	}
+}
+
+func (waitRoom *WaitRoom)IsMaster(connUUID string) bool {
+	tf := false
+	waitRoom.mutex.RLock()
+	defer waitRoom.mutex.RUnlock()
+	for _,v := range waitRoom.players{
+		u_data:=v.agent.UserData().(datastruct.AgentUserData)
+		if u_data.ConnUUID == connUUID{
+		   if v.data.IsMaster == 1 {
+			  tf = true
+		   }
+		   break
+		}
+	}
+	return tf
+}
+
+func (waitRoom *WaitRoom)IsPermit(connUUID string,seat int)bool{
+	tf:=false
+	waitRoom.mutex.RLock()
+	defer waitRoom.mutex.RUnlock() 
+	for _,v := range waitRoom.players{
+		u_data:=v.agent.UserData().(datastruct.AgentUserData)
+		if u_data.ConnUUID == connUUID{
+		   if v.data.IsMaster == 1 && v.data.Seat != seat {
+			  tf = true
+		   }
+		   break
+		}
+	}
+	return tf
 }

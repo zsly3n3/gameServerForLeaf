@@ -26,4 +26,5 @@ func init() {
     msg.Processor.SetRouter(&msg.CS_JoinInviteMode{}, game.ChanRPC)
     msg.Processor.SetRouter(&msg.CS_LeaveInviteMode{}, game.ChanRPC)
     msg.Processor.SetRouter(&msg.CS_MasterFirePlayer{}, game.ChanRPC)
+    msg.Processor.SetRouter(&msg.CS_MasterStartGame{}, game.ChanRPC)
 }

@@ -83,6 +83,7 @@ type PlayersDiedData struct {
 type PlayerDied struct {//玩家的死亡
     Points []datastruct.EnergyPoint
     Action msg.PlayerIsDied
+    AddEnergy int
 }
 
 
@@ -275,7 +276,7 @@ func (room *Room)GetCreateAction(play_id int,reliveFrameIndex int,playername str
      }
      randomIndex:=tools.GetRandomQuadrantIndex()
      point:=tools.GetCreatePlayerPoint(room.unlockedData.pointData.quadrant[randomIndex],randomIndex) 
-     action:=msg.GetCreatePlayerAction(play_id,point.X,point.Y,reliveFrameIndex,playername)
+     action:=msg.GetCreatePlayerAction(play_id,point.X,point.Y,reliveFrameIndex,playername,0)
      actionData:=new(PlayerActionData)
      actionData.ActionType = action.Action.Action
      actionData.Data = action
@@ -295,7 +296,12 @@ func (room *Room)sendInitRoomDataToAgent(player *datastruct.Player,content *msg.
      rid:=room.unlockedData.roomId
      mode:=agentData.GameMode
      player.GameData.PlayId = play_id
-     tools.ReSetAgentUserData(player.Agent,connUUID,uid,rid,mode,play_id,agentData.PlayName,agentData.Avatar)
+     var extra datastruct.ExtraUserData
+     extra.Avatar = agentData.Extra.Avatar
+     extra.PlayName = agentData.Extra.PlayName
+     extra.WaitRoomID = datastruct.NULLSTRING
+     extra.RoomID = rid
+     tools.ReSetAgentUserData(uid,mode,play_id,player.Agent,connUUID,extra)
 }
 
 func (room *Room)timeSleepWriteMsg(player *datastruct.Player,startIndex int) int {
@@ -907,6 +913,8 @@ func (data *PlayersFrameData)GetValue(name string,pid int,currentFrameIndex int,
              isCreate:=false
              reliveFrameIndex:=datastruct.DefaultReliveFrameIndex
              switch room.unlockedData.roomType{
+             case Invite:
+                  fallthrough
              case SinglePersonMatching:
                   isCreate = true
                   reliveFrameIndex=currentFrameIndex+offsetFrames
@@ -914,7 +922,7 @@ func (data *PlayersFrameData)GetValue(name string,pid int,currentFrameIndex int,
                   delete(data.Data,pid)
              }
              if isCreate{
-                room.relive(actionData,pid,reliveFrameIndex,name)
+                room.relive(actionData,pid,reliveFrameIndex,name,actionData.Data.(*PlayerDied).AddEnergy)
              }
           case msg.Move:
              v= *(actionData.Data.(*msg.PlayerMoved))
@@ -951,6 +959,8 @@ func (data *PlayersFrameData)GetOfflineAction(name string,pid int,currentFrameIn
              isCreate:=false
              reliveFrameIndex:=datastruct.DefaultReliveFrameIndex
              switch room.unlockedData.roomType{
+               case Invite:
+                    fallthrough            
                case SinglePersonMatching:
                     isCreate = true
                     reliveFrameIndex=currentFrameIndex+offsetFrames
@@ -961,7 +971,7 @@ func (data *PlayersFrameData)GetOfflineAction(name string,pid int,currentFrameIn
                     }
              }
              if isCreate{
-                room.relive(actionData,pid,reliveFrameIndex,name)
+                room.relive(actionData,pid,reliveFrameIndex,name,actionData.Data.(*PlayerDied).AddEnergy)
              }
           case msg.Move:
             rs_actionType = msg.Move
@@ -975,12 +985,10 @@ func (data *PlayersFrameData)GetOfflineAction(name string,pid int,currentFrameIn
                  actionData.Data = offlinemove_action
                  
             case *msg.OfflinePlayerMoved:
-                  
                  offlinemove_action:=actionData.Data.(*msg.OfflinePlayerMoved)
                  startIndex:=offlinemove_action.StartFrameIndex
                  directionInterval:=offlinemove_action.DirectionInterval
                  speedInterval:=offlinemove_action.SpeedInterval
-
                  var ptr_action *msg.PlayerMoved
                   
                  if (currentFrameIndex-startIndex)*time_interval % (directionInterval*1000) == 0 {
@@ -1013,10 +1021,6 @@ func (data *PlayersFrameData)GetOfflineAction(name string,pid int,currentFrameIn
     return rs_actionType,v
 }
 
-
-
-
-
 func (room *Room)getRobotAction(robot *datastruct.Robot,currentFrameIndex int)(msg.ActionType,interface{}){
      var rs interface{}
      current_action:=robot.Action
@@ -1035,7 +1039,6 @@ func (room *Room)getRobotAction(robot *datastruct.Robot,currentFrameIndex int)(m
             }else{
                 rs = nil
             }
-
        case *msg.PlayerMoved:
             var ptr_action *msg.PlayerMoved
             if currentFrameIndex*time_interval % (robot.DirectionInterval*1000) == 0 {
@@ -1064,10 +1067,11 @@ func (room *Room)getRobotAction(robot *datastruct.Robot,currentFrameIndex int)(m
             rs_type = msg.Move
             
         case *PlayerDied:
-            rs = current_action //PlayerDied
+            rs = current_action//*PlayerDied
             rs_type = msg.Death
+            addEnergy:= current_action.(*PlayerDied).AddEnergy
             if robot.IsRelive {
-                action:=tools.GetCreateRobotAction(robot.Id,room.unlockedData.pointData.quadrant,offsetFrames+currentFrameIndex,robot.NickName)
+                action:=tools.GetCreateRobotAction(robot.Id,room.unlockedData.pointData.quadrant,offsetFrames+currentFrameIndex,robot.NickName,addEnergy)
                 robot.Action=action
             }
      }
@@ -1188,8 +1192,8 @@ func (room *Room)HandleDiedData(values []datastruct.PlayerDiedData){
          p_died:=new(PlayerDied)
          p_died.Points = v.Points
          p_died.Action = action
-   
-        
+         p_died.AddEnergy = v.AddEnergy
+         
          if p_id < room.unlockedData.rebotsNum{
             room.robots.Mutex.RLock()
             robot,ok:=room.robots.robots[p_id]
@@ -1213,7 +1217,7 @@ func (room *Room)GetAllowList()[]string{
 }
 
 func (room *Room)gameStart(){
-    if room.unlockedData.roomType == SinglePersonMatching{
+    if room.unlockedData.roomType == SinglePersonMatching || room.unlockedData.roomType == Invite{
         time.AfterFunc(MaxPlayingTime,func(){
             content:=new(msg.SC_GameOverDataContent)
             content.RoomId = room.unlockedData.roomId
@@ -1283,18 +1287,18 @@ func (room *Room)removePlayer(connUUID string){
     }
 }
 
-func (room *Room)PlayerRelive(pid int,playername string){
+func (room *Room)HandlePlayerRelive(pid int,playername string){
      actionData,tf:=room.playersData.CheckValue(pid)
      if !tf{
         actionData=new(PlayerActionData)
-        room.relive(actionData,pid,datastruct.DefaultReliveFrameIndex,playername)
+        room.relive(actionData,pid,datastruct.DefaultReliveFrameIndex,playername,0)
         room.playersData.Set(pid,actionData)
      }
 }
-func (room *Room)relive(actionData *PlayerActionData,pid int,reliveFrameIndex int,playername string){
+func (room *Room)relive(actionData *PlayerActionData,pid int,reliveFrameIndex int,playername string,addEnergy int){
      randomIndex:=tools.GetRandomQuadrantIndex()
      point:=tools.GetCreatePlayerPoint(room.unlockedData.pointData.quadrant[randomIndex],randomIndex) 
-     action:=msg.GetCreatePlayerAction(pid,point.X,point.Y,reliveFrameIndex,playername)
+     action:=msg.GetCreatePlayerAction(pid,point.X,point.Y,reliveFrameIndex,playername,addEnergy)
      actionData.ActionType = action.Action.Action
      actionData.Data = action
 }
