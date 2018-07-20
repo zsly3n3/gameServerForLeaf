@@ -97,14 +97,16 @@ func getQuadrantPoints(num int,e_type msg.EnergyPointType,quad []msg.Quadrant)[]
     return slice_point
 }
 
-func CheckScalePoints(points []datastruct.EnergyPoint)[]datastruct.EnergyPoint{
+func CheckScalePoints(points []datastruct.EnergyPoint)([]datastruct.EnergyPoint,int){
+     expend:=0
      for index,v := range points{
          if v.Scale < 1.0{
             v.Scale = 1.0
             points[index]=v 
          }
+         expend+= msg.GetPower(msg.EnergyPointType(v.Type))
      }
-     return points
+     return points,expend
 }
 
 func CreateQuadrant(width int,height int,index int) msg.Quadrant{

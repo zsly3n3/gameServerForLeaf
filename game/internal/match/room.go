@@ -18,8 +18,8 @@ const (
 	Invite
 )
 
-const min_MapWidth = 30
-const min_MapHeight = 20
+const min_MapWidth = 24
+const min_MapHeight = 18
 const time_interval = 50//50毫秒
 var map_factor = 200
 
@@ -122,6 +122,7 @@ type EnergyPointData struct{
 }
 
 type EnergyPowerData struct {
+     Mutex *sync.Mutex //读写互斥量
      EnableCreateEnergyPower int //当前可以生成的能量
 }
 
@@ -555,9 +556,11 @@ func (room *Room)ComputeFrameData(){
          points=nil
         }
         frame_data.CreateEnergyPoints = make([]datastruct.EnergyPoint,0)
-        expended:=room.getEnergyExpended(expended_onlineConnUUID)
+        expended:=room.getEnergyExpended(expended_onlineConnUUID) 
+        log.Debug("expended:%v",expended)
         room.energyData.SetPower(expended)
         if points != nil && len(points)>0 && room.energyData.IsCreatePower(){
+          log.Debug("CreateEnergyPoints:")
           frame_data.CreateEnergyPoints = append(frame_data.CreateEnergyPoints,points...)
         }
      }
@@ -686,6 +689,7 @@ func (room *Room)createHistoryFrameData(){
 
 func (room *Room)createEnergyPowerData(){
     energyData:=new(EnergyPowerData)
+    energyData.Mutex = new(sync.Mutex)
     energyData.EnableCreateEnergyPower = MaxEnergyPower - InitEnergyPower
     room.energyData = energyData
 }
@@ -857,18 +861,22 @@ func (data *PlayersFrameData)CheckValue(k int) (*PlayerActionData,bool){
 
 func (power *EnergyPowerData)IsCreatePower()bool{
      tf:=false
+     power.Mutex.Lock()
      if power.EnableCreateEnergyPower>=PerFramePower{
         power.EnableCreateEnergyPower-=PerFramePower
         tf = true
      }
+     power.Mutex.Unlock()
      return tf
 }
 
 func (power *EnergyPowerData)SetPower(num int){
+    power.Mutex.Lock()
     power.EnableCreateEnergyPower += num
     if power.EnableCreateEnergyPower>MaxEnergyPower{
        power.EnableCreateEnergyPower = MaxEnergyPower 
     }
+    power.Mutex.Unlock()
 }
 
 func (data *PlayersFrameData)GetValue(name string,pid int,currentFrameIndex int,room *Room)(msg.ActionType,interface{}){
@@ -1174,7 +1182,11 @@ func (room *Room)HandleDiedData(values []datastruct.PlayerDiedData){
          action.PlayerId = p_id
          
          p_died:=new(PlayerDied)
-         p_died.Points = tools.CheckScalePoints(v.Points)
+         expend:=0
+         p_died.Points,expend= tools.CheckScalePoints(v.Points)
+         if expend > 0{
+            room.energyData.SetPower(-expend)
+         }
          p_died.Action = action
          p_died.AddEnergy = v.AddEnergy
          

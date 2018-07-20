@@ -512,7 +512,7 @@ func GetPower(e_type EnergyPointType) int {
 	   case TypeB:
 		 power=20
 	   case TypeC:
-		 power=40
+		 power=36
 	   case TypeD: 
 	 }
 	 return power
