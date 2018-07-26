@@ -309,55 +309,66 @@ func GetRobotPath()[]map[int]msg.Point{
         fmt.Println(err)
         log.Fatal("Excel error is %v", err.Error())
     }
-    row:=1
+    sheets:=9
     paths:=make([]map[int]msg.Point, 0)
-    map_path:=make(map[int]msg.Point)
-    for {
-        frameIndex_cell:= fmt.Sprintf("A%d",row)
-        v_a_cell:= fmt.Sprintf("B%d",row)
-        v_b_cell:= fmt.Sprintf("C%d",row)
-        frameIndex := xlsx.GetCellValue("Sheet1", frameIndex_cell)
-        v_a := xlsx.GetCellValue("Sheet1", v_a_cell)
-        v_b := xlsx.GetCellValue("Sheet1", v_b_cell)
-        if row == 1{
-            pt_x_cell:= fmt.Sprintf("M%d",row)
-            pt_y_cell:= fmt.Sprintf("N%d",row)
-            pt_x_str := xlsx.GetCellValue("Sheet1", pt_x_cell)
-            pt_y_str := xlsx.GetCellValue("Sheet1", pt_y_cell)
-            pt_x,_ := strconv.Atoi(pt_x_str)
-            pt_y,_ := strconv.Atoi(pt_y_str)
-            map_path[row-1]=msg.Point{
-                X:pt_x,
-                Y:pt_y,
+    for i:=0;i<sheets;i++{
+        map_path:=make(map[int]msg.Point)
+        sheet_index:=fmt.Sprintf("Sheet%d",i)
+        row:=1
+        for {
+            frameIndex_cell:= fmt.Sprintf("A%d",row)
+            v_a_cell:= fmt.Sprintf("B%d",row)
+            v_b_cell:= fmt.Sprintf("C%d",row)
+            frameIndex := xlsx.GetCellValue(sheet_index, frameIndex_cell)
+            v_a := xlsx.GetCellValue(sheet_index, v_a_cell)
+            v_b := xlsx.GetCellValue(sheet_index, v_b_cell)
+            if row == 1{
+                pt_x_cell:= fmt.Sprintf("M%d",row)
+                pt_y_cell:= fmt.Sprintf("N%d",row)
+                pt_x_str := xlsx.GetCellValue(sheet_index, pt_x_cell)
+                pt_y_str := xlsx.GetCellValue(sheet_index, pt_y_cell)
+                pt_x,_ := strconv.Atoi(pt_x_str)
+                pt_y,_ := strconv.Atoi(pt_y_str)
+                map_path[row-1]=msg.Point{
+                    X:pt_x,
+                    Y:pt_y,
+                }
             }
+            if frameIndex == "" {
+                break
+            }
+            var index int
+            var a int
+            var b int
+            var err error
+            index,err = strconv.Atoi(frameIndex)
+            if err!=nil {
+               panic("string to int error")
+            }
+            a,err = strconv.Atoi(v_a)
+            if err!=nil {
+               panic("string to int error")
+            }
+            b,err = strconv.Atoi(v_b)
+            if err!=nil {
+               panic("string to int error")
+            }
+            map_path[index]=msg.Point{
+                X:a,
+                Y:b,
+            }
+            row++
         }
-        if frameIndex == "" {
-            break
-        }
-        var index int
-        var a int
-        var b int
-        var err error
-        index,err = strconv.Atoi(frameIndex)
-        if err!=nil {
-           panic("string to int error")
-        }
-        a,err = strconv.Atoi(v_a)
-        if err!=nil {
-           panic("string to int error")
-        }
-        b,err = strconv.Atoi(v_b)
-        if err!=nil {
-           panic("string to int error")
-        }
-        map_path[index]=msg.Point{
-            X:a,
-            Y:b,
-        }
-        row++
+        paths = append(paths,map_path)
     }
-    paths = append(paths,map_path)
     return paths
+}
+
+func GetRandomFromSlice(slice []int)int{
+     min:=0
+     max:=len(slice)
+     rs_index:=randInt(min,max)
+     return slice[rs_index]
 }
 
 

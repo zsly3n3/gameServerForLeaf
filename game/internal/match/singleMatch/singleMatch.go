@@ -236,7 +236,6 @@ func (match *SingleMatch)computeMatchingTime(){
 func (match *SingleMatch)PlayerMoved(r_id string,play_id int,moveData *msg.CS_MoveData){
 	ok,room:=match.rooms.Get(r_id)
     if ok&&room.IsEnableUpdatePlayerAction(play_id){
-	//    log.Debug("r_id:%v,data:%v",r_id,moveData.MsgContent)	
        room.GetPlayerMovedMsg(play_id,moveData)
     }
 }

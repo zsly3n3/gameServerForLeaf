@@ -25,9 +25,9 @@ var map_factor = 200
 
 const RoomCloseTime = 15*time.Second//房间入口关闭时间
 
-const FirstFrameIndex = 0//第一帧索引
+var MaxPlayingTime time.Duration
 
-var MaxPlayingTime = 12*time.Minute
+const FirstFrameIndex = 0//第一帧索引
 
 const MaxEnergyPower = 2000 //全场最大能量值
 const InitEnergyPower = 1000 //地图初始化的能量值
@@ -71,7 +71,7 @@ type Room struct {
 
 type RobotPaths struct {
     Mutex *sync.Mutex
-    RobotPath map[int]int //key为pathIndex,value为robotID
+    RobotPath map[int]struct{} //key为pathIndex,正在使用中
 }
 
 type LeftList struct {
@@ -153,15 +153,11 @@ type RobotData struct {
     //get robot, set isrelive = false, write
 }
 
-
-
-
 func CreateRoom(r_type RoomDataType,connUUIDs []string,r_id string,parentMatch ParentMatch,leastPeople int,maxPeopleInRoom int)*Room{
     //测试
-    if r_type == SinglePersonMatching{
-        MaxPlayingTime = 10 * time.Second
+    if r_type == SinglePersonMatching || r_type == Invite{
+        MaxPlayingTime = 5 * time.Minute
     }
-
     room := new(Room)
     room.Mutex = new(sync.RWMutex)
     rebotsNum:=leastPeople-len(connUUIDs)
@@ -172,7 +168,7 @@ func CreateRoom(r_type RoomDataType,connUUIDs []string,r_id string,parentMatch P
     room.createEnergyExpend()
     room.createPlayersDiedData()
     room.createLeftList(maxPeopleInRoom)
-
+    
     room.currentFrameIndex = FirstFrameIndex
     room.onlineSyncPlayers = make([]datastruct.Player,0,maxPeopleInRoom)
     room.offlineSyncPlayers = make([]datastruct.Player,0,maxPeopleInRoom-1)
@@ -183,14 +179,7 @@ func CreateRoom(r_type RoomDataType,connUUIDs []string,r_id string,parentMatch P
 
       
     //测试
-    room.createRobotData(1,true)
-    
-    // if r_type == EndlessMode{
-    //     room.createRobotData(1,true)
-    // }else{
-    //     room.createRobotData(rebotsNum,true) 
-    // }
-        
+    room.createRobotData(rebotsNum,true)
     room.gameStart()   
       
     return room
@@ -201,7 +190,9 @@ func (room *Room)removeFromRooms(){
      safeCloseRobotMoved(room.unlockedData.rebotMoveAction)
      safeClosePoint(room.unlockedData.points_ch)
      safeCloseSync(room.unlockedData.startSync)
-     db.Module.UpdateRobotNamesState(room.robots.names)
+     if len(room.robots.names) > 0{
+        db.Module.UpdateRobotNamesState(room.robots.names)
+     }
      room.unlockedData.parentMatch.RemoveRoomWithID(room.unlockedData.roomId)
      log.Debug("room removeFromRooms")
 }
@@ -282,12 +273,7 @@ func (room *Room)GetCreateAction(play_id int,reliveFrameIndex int,playername str
 func (room *Room)sendInitRoomDataToAgent(player *datastruct.Player,content *msg.SC_InitRoomDataContent,play_id int){
      if room.unlockedData.roomType != EndlessMode {
         //测试
-        //content.GameTime = 300 * 1000 *  - room.currentFrameIndex*50
-        if room.unlockedData.roomType == SinglePersonMatching{
-            content.GameTime = 10 * 1000 *  - room.currentFrameIndex*50
-        }else{
-            content.GameTime = 720 * 1000 *   - room.currentFrameIndex*50
-        }
+        content.GameTime = 300 * 1000 *  - room.currentFrameIndex*50
      }
      content.GameMode = int(room.unlockedData.roomType)
      player.Agent.WriteMsg(msg.GetInitRoomDataMsg(*content))
@@ -719,14 +705,16 @@ func (room *Room)createRobotData(num int,isRelive bool){
     robots.Mutex = new(sync.RWMutex)
     robots.robots = make(map[int]*datastruct.Robot)
     if num > 0{
+        room.CreateRobotPaths()
         robots.names = db.Module.GetRobotNames(num)
         i:=0;
         for _,v := range robots.names{
-            pt:=room.getRobotPath(i,0)
-            robot:=tools.CreateRobot(v,i,isRelive,room.unlockedData.pointData.quadrant,datastruct.DefaultReliveFrameIndex,pt)
-            robot.PathIndex = i
-            robots.robots[i]=robot
-            i++
+           pathIndex:= room.getRandPathIndex(-1)
+           pt:=room.getRobotPath(pathIndex,0)
+           robot:=tools.CreateRobot(v,i,isRelive,room.unlockedData.pointData.quadrant,datastruct.DefaultReliveFrameIndex,pt)
+           robot.PathIndex = pathIndex
+           robots.robots[i]=robot
+           i++
         }
     }
     room.robots = robots
@@ -940,7 +928,10 @@ func (data *PlayersFrameData)GetValue(name string,pid int,currentFrameIndex int,
              }
           case msg.Move:
              v= *(actionData.Data.(*msg.PlayerMoved))
-             rs_actionType = msg.Move    
+             rs_actionType = msg.Move
+             //测试
+             test:=*(actionData.Data.(*msg.PlayerMoved))
+             log.Debug("r_id:%v,x:%v,y:%v,frameIndex:%v",room.unlockedData.roomId,test.X,test.Y,currentFrameIndex)
         }
     }
     return rs_actionType,v
@@ -1066,7 +1057,7 @@ func (room *Room)getRobotAction(robot *datastruct.Robot,currentFrameIndex int)(m
             action.X = pt.X
             action.Y = pt.Y
             log.Debug("robotMoveStep:%v",robot.MoveStep)
-            robot.MoveStep++ //测试
+            robot.MoveStep++
             //ptr_action = action
             /* //测试
             if currentFrameIndex*time_interval % (robot.DirectionInterval*1000) == 0 {
@@ -1098,9 +1089,11 @@ func (room *Room)getRobotAction(robot *datastruct.Robot,currentFrameIndex int)(m
             rs = current_action//*PlayerDied
             rs_type = msg.Death
             addEnergy:= current_action.(*PlayerDied).AddEnergy
+            room.DeleteRandPathIndex(robot.PathIndex)
             if robot.IsRelive {
-                robot.PathIndex=robot.Id
-                pt:=room.getRobotPath(robot.PathIndex,0)
+                pathIndex:= room.getRandPathIndex(robot.PathIndex)
+                robot.PathIndex = pathIndex
+                pt:=room.getRobotPath(pathIndex,0)
                 action:=tools.GetCreateRobotAction(pt,robot.Id,room.unlockedData.pointData.quadrant,offsetFrames+currentFrameIndex,robot.NickName,addEnergy)
                 robot.Action=action
             }
@@ -1350,3 +1343,54 @@ func (room *Room)getRobotPath(index int,step int)msg.Point{
     }
     return pt
 }
+
+func (room *Room)CreateRobotPaths(){
+    paths:=new(RobotPaths)
+    paths.Mutex = new(sync.Mutex)
+    paths.RobotPath = make(map[int]struct{})
+    room.robotPaths = paths
+}
+
+func (room *Room)getRandPathIndex(lastIndex int) int{
+     paths := db.Module.GetRobotPaths()
+     randMap:=make(map[int]struct{})
+     for i:=0;i<len(paths);i++{
+         randMap[i]=struct{}{}
+     }
+     room.robotPaths.Mutex.Lock()
+     defer room.robotPaths.Mutex.Unlock()
+     for k,_ := range room.robotPaths.RobotPath{
+         delete(randMap,k)
+     }
+     rs:=-1
+     switch len(randMap){
+     case 0:
+        panic("路径地图数不能小于机器人个数")
+     case 1:
+        for k,_ := range randMap{
+            rs = k
+        }
+     default:
+        delete(randMap,lastIndex)
+        if len(randMap) <= 1{
+           for k,_ := range randMap{
+               rs = k
+           }
+        }else{
+           rand_slice:=make([]int,0,len(randMap)) 
+           for k,_ := range randMap{
+             rand_slice = append(rand_slice,k)                
+           }
+           rs=tools.GetRandomFromSlice(rand_slice)
+        }
+     }
+     room.robotPaths.RobotPath[rs]=struct{}{}
+     return rs
+}
+
+func (room *Room)DeleteRandPathIndex(k int){
+    room.robotPaths.Mutex.Lock()
+    defer room.robotPaths.Mutex.Unlock()
+    delete(room.robotPaths.RobotPath,k)
+}
+
