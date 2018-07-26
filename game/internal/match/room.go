@@ -27,7 +27,7 @@ const RoomCloseTime = 15*time.Second//房间入口关闭时间
 
 const FirstFrameIndex = 0//第一帧索引
 
-const MaxPlayingTime = 5*time.Minute
+const MaxPlayingTime = 12*time.Minute
 
 const MaxEnergyPower = 2000 //全场最大能量值
 const InitEnergyPower = 1000 //地图初始化的能量值
@@ -66,9 +66,13 @@ type Room struct {
     diedData *PlayersDiedData
     
     leftList *LeftList
-
+    robotPaths *RobotPaths
 }
 
+type RobotPaths struct {
+    Mutex *sync.Mutex
+    RobotPath map[int]int //key为pathIndex,value为robotID
+}
 
 type LeftList struct {
      Mutex *sync.Mutex
@@ -85,9 +89,6 @@ type PlayerDied struct {//玩家的死亡
     Action msg.PlayerIsDied
     AddEnergy int
 }
-
-
-
 
 
 type HistoryFrameData struct {
@@ -177,8 +178,11 @@ func CreateRoom(r_type RoomDataType,connUUIDs []string,r_id string,parentMatch P
 
       
     //测试
-    //room.createRobotData(0,true)
-    room.createRobotData(rebotsNum,true)
+    if r_type == SinglePersonMatching{
+       room.createRobotData(1,true)
+    }else{
+       room.createRobotData(rebotsNum,true) 
+    }
         
     room.gameStart()   
       
@@ -270,7 +274,9 @@ func (room *Room)GetCreateAction(play_id int,reliveFrameIndex int,playername str
 
 func (room *Room)sendInitRoomDataToAgent(player *datastruct.Player,content *msg.SC_InitRoomDataContent,play_id int){
      if room.unlockedData.roomType != EndlessMode {
-        content.GameTime = 300 * 1000  - room.currentFrameIndex*50
+        //测试
+        //content.GameTime = 300 * 1000 *  - room.currentFrameIndex*50
+        content.GameTime = 720 * 1000 *   - room.currentFrameIndex*50
      }
      content.GameMode = int(room.unlockedData.roomType)
      player.Agent.WriteMsg(msg.GetInitRoomDataMsg(*content))
@@ -354,7 +360,7 @@ func (room *Room)syncData(connUUID string,player *datastruct.Player){
       room.Mutex.Lock()
       if lastFrameIndex+1 == room.currentFrameIndex {//数据帧是从0开始，服务器计算帧是从1开始
                room.onlineSyncPlayers=append(room.onlineSyncPlayers,*player)
-               log.Debug("syncData GetCreateAction")
+               
                room.GetCreateAction(player.GameData.PlayId,datastruct.DefaultReliveFrameIndex,player.NickName)
                length=len(room.players)
                room.Mutex.Unlock()
@@ -371,14 +377,14 @@ func (room *Room)syncData(connUUID string,player *datastruct.Player){
                        if lastFrameIndex+1 == room.currentFrameIndex {
                            isSyncFinished = true
                            room.onlineSyncPlayers=append(room.onlineSyncPlayers,*player)
-                           log.Debug("syncData Channel GetCreateAction")
+                           //log.Debug("syncData Channel GetCreateAction")
                            room.GetCreateAction(player.GameData.PlayId,datastruct.DefaultReliveFrameIndex,player.NickName)
                            length=len(room.players)
                        }
                        room.Mutex.Unlock()
                        if isSyncFinished{
                            room.updateRobotRelive(length)
-                           log.Debug("Channel SyncFinished")
+                           //log.Debug("Channel SyncFinished")
                            break
                        }
                    }
@@ -557,10 +563,10 @@ func (room *Room)ComputeFrameData(){
         }
         frame_data.CreateEnergyPoints = make([]datastruct.EnergyPoint,0)
         expended:=room.getEnergyExpended(expended_onlineConnUUID) 
-        log.Debug("expended:%v",expended)
+        //log.Debug("expended:%v",expended)
         room.energyData.SetPower(expended)
         if points != nil && len(points)>0 && room.energyData.IsCreatePower(){
-          log.Debug("CreateEnergyPoints:")
+          //log.Debug("CreateEnergyPoints:")
           frame_data.CreateEnergyPoints = append(frame_data.CreateEnergyPoints,points...)
         }
      }
@@ -569,6 +575,9 @@ func (room *Room)ComputeFrameData(){
      removeRobotsId:=make([]int,0,len(room.robots.robots))
      for _,robot:= range room.robots.robots{
         action_type,action:=room.getRobotAction(robot,currentFrameIndex)
+        // if currentFrameIndex < 10 && currentFrameIndex > 0{
+        //     log.Debug("robot 1 x:",action.(*msg.PlayerMoved).X,",y:",action.(*msg.PlayerMoved).Y)
+        // }
         if action != nil{
             if action_type==msg.Death{
                 died:=action.(*PlayerDied)
@@ -620,7 +629,7 @@ func (room *Room)ComputeFrameData(){
     
     
      
-   
+     
      for _,player := range online_sync{
          player.Agent.WriteMsg(msg)
      }
@@ -1025,14 +1034,26 @@ func (room *Room)getRobotAction(robot *datastruct.Robot,currentFrameIndex int)(m
             if p_relive.ReLiveFrameIndex == datastruct.DefaultReliveFrameIndex || p_relive.ReLiveFrameIndex == currentFrameIndex{
                  rs = p_relive.Action
                  rs_type = msg.Create
-                 point:=room.getMovePoint()
+                 //point:=room.getMovePoint()//测试
+                 point:=msg.Point{
+                     X:0,
+                     Y:0,
+                 }
                  action:=msg.GetCreatePlayerMoved(robot.Id,point.X,point.Y,msg.DefaultSpeed)
                  robot.Action = action
             }else{
                 rs = nil
             }
        case *msg.PlayerMoved:
-            var ptr_action *msg.PlayerMoved
+            //var ptr_action *msg.PlayerMoved
+            action:=current_action.(*msg.PlayerMoved)
+            action.Speed = 1
+            action.X = db.Module.GetRobotPaths()[0][robot.MoveStep].X
+            action.Y = db.Module.GetRobotPaths()[0][robot.MoveStep].Y
+            log.Debug("robotMoveStep:%v",robot.MoveStep)
+            robot.MoveStep++ //测试
+            //ptr_action = action
+            /* //测试
             if currentFrameIndex*time_interval % (robot.DirectionInterval*1000) == 0 {
                 action:=current_action.(*msg.PlayerMoved)
                 lastSpeed:=action.Speed
@@ -1053,9 +1074,9 @@ func (room *Room)getRobotAction(robot *datastruct.Robot,currentFrameIndex int)(m
                 robot.StopSpeedFrameIndex = 0
                 ptr_action.Speed = msg.DefaultSpeed
             }
-            
-            robot.Action=ptr_action
-            rs=*ptr_action
+            */
+            robot.Action=action
+            rs=action
             rs_type = msg.Move
             
         case *PlayerDied:
@@ -1063,7 +1084,7 @@ func (room *Room)getRobotAction(robot *datastruct.Robot,currentFrameIndex int)(m
             rs_type = msg.Death
             addEnergy:= current_action.(*PlayerDied).AddEnergy
             if robot.IsRelive {
-                action:=tools.GetCreateRobotAction(robot.Id,room.unlockedData.pointData.quadrant,offsetFrames+currentFrameIndex,robot.NickName,addEnergy)
+                action:=tools.GetCreateRobotAction(robot,robot.Id,room.unlockedData.pointData.quadrant,offsetFrames+currentFrameIndex,robot.NickName,addEnergy)
                 robot.Action=action
             }
      }
@@ -1150,7 +1171,7 @@ func (room *Room)HandleDiedData(values []datastruct.PlayerDiedData){
                 isRemove:=false
                 if v.FrameIndex>currentFrameIndex{
                    isRemove = true
-                   log.Debug("HandleDiedData_0 v.FrameIndex:%v,currentFrameIndex:%v",v.FrameIndex,currentFrameIndex)
+                   //log.Debug("HandleDiedData_0 v.FrameIndex:%v,currentFrameIndex:%v",v.FrameIndex,currentFrameIndex)
                 }else{
                    isRemove =room.diedData.isRemovePlayerId(v.PlayerId,v.FrameIndex,room)
 
@@ -1298,4 +1319,17 @@ func (room *Room)relive(actionData *PlayerActionData,pid int,reliveFrameIndex in
      action:=msg.GetCreatePlayerAction(pid,point.X,point.Y,reliveFrameIndex,playername,addEnergy)
      actionData.ActionType = action.Action.Action
      actionData.Data = action
+}
+
+func (room *Room)getRobotPath(index int,step int)msg.Point{
+    paths := db.Module.GetRobotPaths()
+    path := paths[index]
+    v,tf:= path[step]
+    var pt msg.Point
+    if tf{
+       pt = v
+    }else{
+       pt = room.getMovePoint()
+    }
+    return pt
 }

@@ -1,6 +1,7 @@
 package internal
 
 import (
+	"server/msg"
 	"server/datastruct"
 	"github.com/name5566/leaf/module"
 	"server/base"
@@ -12,6 +13,7 @@ var (
 	skeleton = base.NewSkeleton()
 	ChanRPC  = skeleton.ChanRPCServer
 	dbEngine *xorm.Engine
+	robotPaths []map[int]msg.Point
 )
 
 type Module struct {
@@ -47,8 +49,9 @@ func (m *Module) GetRobotNames(num int)map[int]string{
 func (m *Module) UpdateRobotNamesState(names map[int]string){
 	 handleUpdateRobotNamesState(names,dbEngine)
 }
-// func (m *Module) UpdateRobotNameState(n_id int){
-// 	handleUpdateRobotNameState(n_id,dbEngine)
-// }
+
+func (m *Module) GetRobotPaths()[]map[int]msg.Point{
+	 return robotPaths
+}
 
 

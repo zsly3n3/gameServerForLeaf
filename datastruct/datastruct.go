@@ -91,9 +91,11 @@ type Robot struct {
 	NickName string 
 	IsRelive bool //是否能重生
 	Action interface{}
-	SpeedInterval int //加速的时间间隔
-	StopSpeedFrameIndex int //持续到多少帧结束 
-	DirectionInterval int //转向的时间间隔
+	MoveStep int //默认从1开始，移动的步数
+	// SpeedInterval int //加速的时间间隔
+	// StopSpeedFrameIndex int //持续到多少帧结束 
+	// DirectionInterval int //转向的时间间隔
+	
 }
 
 func CreatePlayer(user *User) *Player{

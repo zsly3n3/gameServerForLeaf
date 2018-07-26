@@ -2,7 +2,8 @@ package tools
 
 import (
 	"fmt"
-	"crypto/md5"  
+    "crypto/md5"
+    "strconv"
     crypto_rand "crypto/rand"
     "math/rand" 
     "encoding/base64"  
@@ -226,16 +227,21 @@ func CreateRobot(name string,index int,isRelive bool,quad []msg.Quadrant,reliveF
      robot.IsRelive = isRelive
      robot.Avatar = fmt.Sprintf("Avatar%d",index)
      robot.NickName = name
-     robot.Action = GetCreateRobotAction(robot.Id,quad,reliveFrameIndex,name,0)
-     robot.SpeedInterval = randInt(minSpeedInterval,maxSpeedInterval+1)
-     robot.DirectionInterval = randInt(minDirectionInterval,maxDirectionInterval+1)
-     robot.StopSpeedFrameIndex = 0
+     robot.Action = GetCreateRobotAction(robot,robot.Id,quad,reliveFrameIndex,name,0)
+    //  robot.SpeedInterval = randInt(minSpeedInterval,maxSpeedInterval+1)
+    //  robot.DirectionInterval = randInt(minDirectionInterval,maxDirectionInterval+1)
+    //  robot.StopSpeedFrameIndex = 0
      return robot
 }
 
-func GetCreateRobotAction(p_id int,quad []msg.Quadrant,reliveFrameIndex int,name string,addEnergy int)*msg.PlayerRelive{
-    randomIndex:=GetRandomQuadrantIndex()
-    point:=GetCreatePlayerPoint(quad[randomIndex],randomIndex) 
+func GetCreateRobotAction(robot *datastruct.Robot,p_id int,quad []msg.Quadrant,reliveFrameIndex int,name string,addEnergy int)*msg.PlayerRelive{
+    //randomIndex:=GetRandomQuadrantIndex()
+    //point:=GetCreatePlayerPoint(quad[randomIndex],randomIndex)//测试
+    point := msg.Point{
+        X:-660,
+        Y:-1600,
+    }
+    robot.MoveStep = 1
     action:=msg.GetCreatePlayerAction(p_id,point.X,point.Y,reliveFrameIndex,name,addEnergy)
     return action
 }
@@ -299,3 +305,50 @@ func GetOnceRandID(count int) int {
     rand:=randInt(1,count+1)
     return rand
 }
+
+func GetRobotPath()[]map[int]msg.Point{
+    xlsx, err := excelize.OpenFile("conf/robot_path.xlsx")
+    if err != nil {
+        fmt.Println(err)
+        log.Fatal("Excel error is %v", err.Error())
+    }
+    row:=1
+    paths:=make([]map[int]msg.Point, 0)
+    map_path:=make(map[int]msg.Point)
+    for {
+        frameIndex_cell:= fmt.Sprintf("A%d",row)
+        v_a_cell:= fmt.Sprintf("B%d",row)
+        v_b_cell:= fmt.Sprintf("C%d",row)
+        frameIndex := xlsx.GetCellValue("Sheet1", frameIndex_cell)
+        v_a := xlsx.GetCellValue("Sheet1", v_a_cell)
+        v_b := xlsx.GetCellValue("Sheet1", v_b_cell)
+        if frameIndex == "" {
+            break
+        }
+        var index int
+        var a int
+        var b int
+        var err error
+        index,err = strconv.Atoi(frameIndex)
+        if err!=nil {
+           panic("string to int error")
+        }
+        a,err = strconv.Atoi(v_a)
+        if err!=nil {
+           panic("string to int error")
+        }
+        b,err = strconv.Atoi(v_b)
+        if err!=nil {
+           panic("string to int error")
+        }
+        map_path[index]=msg.Point{
+            X:a,
+            Y:b,
+        }
+        row++
+    }
+    paths = append(paths,map_path)
+    return paths
+}
+
+
