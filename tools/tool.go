@@ -2,7 +2,8 @@ package tools
 
 import (
 	"fmt"
-	"crypto/md5"  
+    "crypto/md5"
+    "strconv"
     crypto_rand "crypto/rand"
     "math/rand" 
     "encoding/base64"  
@@ -220,22 +221,24 @@ func CreateOfflinePlayerMoved(currentFrameIndex int,action *msg.PlayerMoved) *ms
     return offlineMoved
 }
 
-func CreateRobot(name string,index int,isRelive bool,quad []msg.Quadrant,reliveFrameIndex int) *datastruct.Robot{
+func CreateRobot(name string,index int,isRelive bool,quad []msg.Quadrant,reliveFrameIndex int,pt msg.Point) *datastruct.Robot{
      robot:=new(datastruct.Robot)
      robot.Id = index
      robot.IsRelive = isRelive
      robot.Avatar = fmt.Sprintf("Avatar%d",index)
      robot.NickName = name
-     robot.Action = GetCreateRobotAction(robot.Id,quad,reliveFrameIndex,name,0)
-     robot.SpeedInterval = randInt(minSpeedInterval,maxSpeedInterval+1)
-     robot.DirectionInterval = randInt(minDirectionInterval,maxDirectionInterval+1)
-     robot.StopSpeedFrameIndex = 0
+     robot.Action = GetCreateRobotAction(pt,robot.Id,quad,reliveFrameIndex,name,0)
+    //  robot.SpeedInterval = randInt(minSpeedInterval,maxSpeedInterval+1)
+    //  robot.DirectionInterval = randInt(minDirectionInterval,maxDirectionInterval+1)
+    //  robot.StopSpeedFrameIndex = 0
      return robot
 }
 
-func GetCreateRobotAction(p_id int,quad []msg.Quadrant,reliveFrameIndex int,name string,addEnergy int)*msg.PlayerRelive{
-    randomIndex:=GetRandomQuadrantIndex()
-    point:=GetCreatePlayerPoint(quad[randomIndex],randomIndex) 
+func GetCreateRobotAction(point msg.Point,p_id int,quad []msg.Quadrant,reliveFrameIndex int,name string,addEnergy int)*msg.PlayerRelive{
+    //randomIndex:=GetRandomQuadrantIndex()
+    //point:=GetCreatePlayerPoint(quad[randomIndex],randomIndex)//测试
+    
+
     action:=msg.GetCreatePlayerAction(p_id,point.X,point.Y,reliveFrameIndex,name,addEnergy)
     return action
 }
@@ -299,3 +302,73 @@ func GetOnceRandID(count int) int {
     rand:=randInt(1,count+1)
     return rand
 }
+
+func GetRobotPath()[]map[int]msg.Point{
+    xlsx, err := excelize.OpenFile("conf/robot_path.xlsx")
+    if err != nil {
+        fmt.Println(err)
+        log.Fatal("Excel error is %v", err.Error())
+    }
+    sheets:=9
+    paths:=make([]map[int]msg.Point, 0)
+    for i:=0;i<sheets;i++{
+        map_path:=make(map[int]msg.Point)
+        sheet_index:=fmt.Sprintf("Sheet%d",i)
+        row:=1
+        for {
+            frameIndex_cell:= fmt.Sprintf("A%d",row)
+            v_a_cell:= fmt.Sprintf("B%d",row)
+            v_b_cell:= fmt.Sprintf("C%d",row)
+            frameIndex := xlsx.GetCellValue(sheet_index, frameIndex_cell)
+            v_a := xlsx.GetCellValue(sheet_index, v_a_cell)
+            v_b := xlsx.GetCellValue(sheet_index, v_b_cell)
+            if row == 1{
+                pt_x_cell:= fmt.Sprintf("M%d",row)
+                pt_y_cell:= fmt.Sprintf("N%d",row)
+                pt_x_str := xlsx.GetCellValue(sheet_index, pt_x_cell)
+                pt_y_str := xlsx.GetCellValue(sheet_index, pt_y_cell)
+                pt_x,_ := strconv.Atoi(pt_x_str)
+                pt_y,_ := strconv.Atoi(pt_y_str)
+                map_path[row-1]=msg.Point{
+                    X:pt_x,
+                    Y:pt_y,
+                }
+            }
+            if frameIndex == "" {
+                break
+            }
+            var index int
+            var a int
+            var b int
+            var err error
+            index,err = strconv.Atoi(frameIndex)
+            if err!=nil {
+               panic("string to int error")
+            }
+            a,err = strconv.Atoi(v_a)
+            if err!=nil {
+               panic("string to int error")
+            }
+            b,err = strconv.Atoi(v_b)
+            if err!=nil {
+               panic("string to int error")
+            }
+            map_path[index]=msg.Point{
+                X:a,
+                Y:b,
+            }
+            row++
+        }
+        paths = append(paths,map_path)
+    }
+    return paths
+}
+
+func GetRandomFromSlice(slice []int)int{
+     min:=0
+     max:=len(slice)
+     rs_index:=randInt(min,max)
+     return slice[rs_index]
+}
+
+

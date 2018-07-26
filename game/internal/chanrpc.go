@@ -36,5 +36,7 @@ func removeOnlinePlayer(args []interface{}){
 		   leaveWaitRoom(w_id,connUUID)
 		}
 	}
-	a.Destroy()
+	if a != nil{
+	   a.Destroy()
+	}
 }

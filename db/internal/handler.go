@@ -68,6 +68,7 @@ func resetDB(engine *xorm.Engine){
 }
 
 func initData(engine *xorm.Engine){
+    robotPaths = tools.GetRobotPath()
     robotName:=&datastruct.RobotName{}
     robotName.State = 0
     engine.Cols("state").Update(robotName)

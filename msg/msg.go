@@ -384,7 +384,10 @@ func GetCreatePlayerAction(p_id int,x int,y int,reLiveFrameIndex int,playerName 
 	//   Num++
 	   action.X = x
 	   action.Y = y
-	 
+	   //测试 
+	action.X = 1100
+	action.Y = -800
+
 	  relive.Action = action
 	  return relive
 }
@@ -517,6 +520,8 @@ func GetPower(e_type EnergyPointType) int {
 	 }
 	 return power
 }
+
+
 
 
 

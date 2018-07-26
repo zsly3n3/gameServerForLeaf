@@ -108,7 +108,6 @@ func handlePlayerMoveData(args []interface{}){
     agentUserData := a.UserData().(datastruct.AgentUserData)
     r_id:=agentUserData.Extra.RoomID
     m := args[0].(*msg.CS_MoveData)
-    
     match:=getParentMatch(agentUserData.GameMode)
     match.PlayerMoved(r_id,agentUserData.PlayId,m)
 }
