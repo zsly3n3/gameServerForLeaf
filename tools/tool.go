@@ -221,27 +221,24 @@ func CreateOfflinePlayerMoved(currentFrameIndex int,action *msg.PlayerMoved) *ms
     return offlineMoved
 }
 
-func CreateRobot(name string,index int,isRelive bool,quad []msg.Quadrant,reliveFrameIndex int) *datastruct.Robot{
+func CreateRobot(name string,index int,isRelive bool,quad []msg.Quadrant,reliveFrameIndex int,pt msg.Point) *datastruct.Robot{
      robot:=new(datastruct.Robot)
      robot.Id = index
      robot.IsRelive = isRelive
      robot.Avatar = fmt.Sprintf("Avatar%d",index)
      robot.NickName = name
-     robot.Action = GetCreateRobotAction(robot,robot.Id,quad,reliveFrameIndex,name,0)
+     robot.Action = GetCreateRobotAction(pt,robot.Id,quad,reliveFrameIndex,name,0)
     //  robot.SpeedInterval = randInt(minSpeedInterval,maxSpeedInterval+1)
     //  robot.DirectionInterval = randInt(minDirectionInterval,maxDirectionInterval+1)
     //  robot.StopSpeedFrameIndex = 0
      return robot
 }
 
-func GetCreateRobotAction(robot *datastruct.Robot,p_id int,quad []msg.Quadrant,reliveFrameIndex int,name string,addEnergy int)*msg.PlayerRelive{
+func GetCreateRobotAction(point msg.Point,p_id int,quad []msg.Quadrant,reliveFrameIndex int,name string,addEnergy int)*msg.PlayerRelive{
     //randomIndex:=GetRandomQuadrantIndex()
     //point:=GetCreatePlayerPoint(quad[randomIndex],randomIndex)//测试
-    point := msg.Point{
-        X:-660,
-        Y:-1600,
-    }
-    robot.MoveStep = 1
+    
+
     action:=msg.GetCreatePlayerAction(p_id,point.X,point.Y,reliveFrameIndex,name,addEnergy)
     return action
 }
@@ -322,6 +319,18 @@ func GetRobotPath()[]map[int]msg.Point{
         frameIndex := xlsx.GetCellValue("Sheet1", frameIndex_cell)
         v_a := xlsx.GetCellValue("Sheet1", v_a_cell)
         v_b := xlsx.GetCellValue("Sheet1", v_b_cell)
+        if row == 1{
+            pt_x_cell:= fmt.Sprintf("M%d",row)
+            pt_y_cell:= fmt.Sprintf("N%d",row)
+            pt_x_str := xlsx.GetCellValue("Sheet1", pt_x_cell)
+            pt_y_str := xlsx.GetCellValue("Sheet1", pt_y_cell)
+            pt_x,_ := strconv.Atoi(pt_x_str)
+            pt_y,_ := strconv.Atoi(pt_y_str)
+            map_path[row-1]=msg.Point{
+                X:pt_x,
+                Y:pt_y,
+            }
+        }
         if frameIndex == "" {
             break
         }

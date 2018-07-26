@@ -27,7 +27,7 @@ const RoomCloseTime = 15*time.Second//房间入口关闭时间
 
 const FirstFrameIndex = 0//第一帧索引
 
-const MaxPlayingTime = 12*time.Minute
+var MaxPlayingTime = 12*time.Minute
 
 const MaxEnergyPower = 2000 //全场最大能量值
 const InitEnergyPower = 1000 //地图初始化的能量值
@@ -157,6 +157,11 @@ type RobotData struct {
 
 
 func CreateRoom(r_type RoomDataType,connUUIDs []string,r_id string,parentMatch ParentMatch,leastPeople int,maxPeopleInRoom int)*Room{
+    //测试
+    if r_type == SinglePersonMatching{
+        MaxPlayingTime = 10 * time.Second
+    }
+
     room := new(Room)
     room.Mutex = new(sync.RWMutex)
     rebotsNum:=leastPeople-len(connUUIDs)
@@ -178,11 +183,13 @@ func CreateRoom(r_type RoomDataType,connUUIDs []string,r_id string,parentMatch P
 
       
     //测试
-    if r_type == SinglePersonMatching{
-       room.createRobotData(1,true)
-    }else{
-       room.createRobotData(rebotsNum,true) 
-    }
+    room.createRobotData(1,true)
+    
+    // if r_type == EndlessMode{
+    //     room.createRobotData(1,true)
+    // }else{
+    //     room.createRobotData(rebotsNum,true) 
+    // }
         
     room.gameStart()   
       
@@ -276,7 +283,11 @@ func (room *Room)sendInitRoomDataToAgent(player *datastruct.Player,content *msg.
      if room.unlockedData.roomType != EndlessMode {
         //测试
         //content.GameTime = 300 * 1000 *  - room.currentFrameIndex*50
-        content.GameTime = 720 * 1000 *   - room.currentFrameIndex*50
+        if room.unlockedData.roomType == SinglePersonMatching{
+            content.GameTime = 10 * 1000 *  - room.currentFrameIndex*50
+        }else{
+            content.GameTime = 720 * 1000 *   - room.currentFrameIndex*50
+        }
      }
      content.GameMode = int(room.unlockedData.roomType)
      player.Agent.WriteMsg(msg.GetInitRoomDataMsg(*content))
@@ -711,7 +722,9 @@ func (room *Room)createRobotData(num int,isRelive bool){
         robots.names = db.Module.GetRobotNames(num)
         i:=0;
         for _,v := range robots.names{
-            robot:=tools.CreateRobot(v,i,isRelive,room.unlockedData.pointData.quadrant,datastruct.DefaultReliveFrameIndex)
+            pt:=room.getRobotPath(i,0)
+            robot:=tools.CreateRobot(v,i,isRelive,room.unlockedData.pointData.quadrant,datastruct.DefaultReliveFrameIndex,pt)
+            robot.PathIndex = i
             robots.robots[i]=robot
             i++
         }
@@ -1039,6 +1052,7 @@ func (room *Room)getRobotAction(robot *datastruct.Robot,currentFrameIndex int)(m
                      X:0,
                      Y:0,
                  }
+                 robot.MoveStep = 1
                  action:=msg.GetCreatePlayerMoved(robot.Id,point.X,point.Y,msg.DefaultSpeed)
                  robot.Action = action
             }else{
@@ -1048,8 +1062,9 @@ func (room *Room)getRobotAction(robot *datastruct.Robot,currentFrameIndex int)(m
             //var ptr_action *msg.PlayerMoved
             action:=current_action.(*msg.PlayerMoved)
             action.Speed = 1
-            action.X = db.Module.GetRobotPaths()[0][robot.MoveStep].X
-            action.Y = db.Module.GetRobotPaths()[0][robot.MoveStep].Y
+            pt:=room.getRobotPath(robot.PathIndex,robot.MoveStep)
+            action.X = pt.X
+            action.Y = pt.Y
             log.Debug("robotMoveStep:%v",robot.MoveStep)
             robot.MoveStep++ //测试
             //ptr_action = action
@@ -1084,7 +1099,9 @@ func (room *Room)getRobotAction(robot *datastruct.Robot,currentFrameIndex int)(m
             rs_type = msg.Death
             addEnergy:= current_action.(*PlayerDied).AddEnergy
             if robot.IsRelive {
-                action:=tools.GetCreateRobotAction(robot,robot.Id,room.unlockedData.pointData.quadrant,offsetFrames+currentFrameIndex,robot.NickName,addEnergy)
+                robot.PathIndex=robot.Id
+                pt:=room.getRobotPath(robot.PathIndex,0)
+                action:=tools.GetCreateRobotAction(pt,robot.Id,room.unlockedData.pointData.quadrant,offsetFrames+currentFrameIndex,robot.NickName,addEnergy)
                 robot.Action=action
             }
      }
