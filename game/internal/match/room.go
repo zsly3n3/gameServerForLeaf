@@ -27,7 +27,8 @@ const RoomCloseTime = 15*time.Second//房间入口关闭时间
 
 const FirstFrameIndex = 0//第一帧索引
 
-const MaxPlayingTime = 5*time.Minute
+
+const MaxPlayingTime = 10*time.Second //测试
 
 const MaxEnergyPower = 2000 //全场最大能量值
 const InitEnergyPower = 1000 //地图初始化的能量值
@@ -270,7 +271,7 @@ func (room *Room)GetCreateAction(play_id int,reliveFrameIndex int,playername str
 
 func (room *Room)sendInitRoomDataToAgent(player *datastruct.Player,content *msg.SC_InitRoomDataContent,play_id int){
      if room.unlockedData.roomType != EndlessMode {
-        content.GameTime = 300 * 1000  - room.currentFrameIndex*50
+        content.GameTime = 10 * 1000  - room.currentFrameIndex*50 //测试 10秒
      }
      content.GameMode = int(room.unlockedData.roomType)
      player.Agent.WriteMsg(msg.GetInitRoomDataMsg(*content))
