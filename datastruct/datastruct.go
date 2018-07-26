@@ -91,6 +91,7 @@ type Robot struct {
 	NickName string 
 	IsRelive bool //是否能重生
 	Action interface{}
+	PathIndex int //决定使用哪条线路
 	MoveStep int //默认从1开始，移动的步数
 	// SpeedInterval int //加速的时间间隔
 	// StopSpeedFrameIndex int //持续到多少帧结束 
