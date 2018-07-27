@@ -181,8 +181,8 @@ func CreateRoom(r_type RoomDataType,connUUIDs []string,r_id string,parentMatch P
     room.CreateRobotPaths()
     
     //测试
-    room.createRobotData(0,true)
-    //room.createRobotData(rebotsNum,true)
+    //room.createRobotData(0,true)
+    room.createRobotData(rebotsNum,true)
     room.gameStart()   
       
     return room
@@ -277,10 +277,12 @@ func (room *Room)GetCreateAction(play_id int,reliveFrameIndex int,playername str
 func (room *Room)sendInitRoomDataToAgent(player *datastruct.Player,content *msg.SC_InitRoomDataContent,play_id int){
      if room.unlockedData.roomType != EndlessMode {
         //测试
-        content.GameTime = 300 * 1000 *  - room.currentFrameIndex*50
+        content.GameTime = 300 * 1000 - room.currentFrameIndex*50
      }
      content.GameMode = int(room.unlockedData.roomType)
-     player.Agent.WriteMsg(msg.GetInitRoomDataMsg(*content))
+     msg_initRoom:=msg.GetInitRoomDataMsg(*content)
+     player.Agent.WriteMsg(msg_initRoom)
+     
      agentData:=player.Agent.UserData().(datastruct.AgentUserData)
      connUUID:=agentData.ConnUUID
      uid:=agentData.Uid
@@ -599,7 +601,8 @@ func (room *Room)ComputeFrameData(){
      room.robots.Mutex.Unlock()
      
      for _,player := range online_sync{
-         action_type,action:=room.playersData.GetValue(player.NickName,player.GameData.PlayId,currentFrameIndex,room)
+         connUUID:=player.Agent.UserData().(datastruct.AgentUserData).ConnUUID
+         action_type,action:=room.playersData.GetValue(player.NickName,player.GameData.PlayId,currentFrameIndex,room,connUUID)
          if action != nil{
              if action_type==msg.Death{
                 died:=action.(*PlayerDied)
@@ -892,7 +895,7 @@ func (power *EnergyPowerData)SetPower(num int){
     power.Mutex.Unlock()
 }
 
-func (data *PlayersFrameData)GetValue(name string,pid int,currentFrameIndex int,room *Room)(msg.ActionType,interface{}){
+func (data *PlayersFrameData)GetValue(name string,pid int,currentFrameIndex int,room *Room,connUUID string)(msg.ActionType,interface{}){
     data.Mutex.Lock()
 	defer data.Mutex.Unlock()
     var v interface{}
@@ -925,6 +928,7 @@ func (data *PlayersFrameData)GetValue(name string,pid int,currentFrameIndex int,
                   reliveFrameIndex=currentFrameIndex+offsetFrames
              case EndlessMode:
                   delete(data.Data,pid)
+                  room.playerLeftCurrentRoom(connUUID)
              }
              if isCreate{
                 room.relive(actionData,pid,reliveFrameIndex,name,actionData.Data.(*PlayerDied).AddEnergy,false)
@@ -1441,3 +1445,7 @@ func (room *Room)DeleteRandPathIndex(k int){
     delete(room.robotPaths.RobotPath,k)
 }
 
+func (room *Room)playerLeftCurrentRoom(connUUID string){
+    room.unlockedData.parentMatch.RemovePlayer(connUUID)
+	room.AddPlayerleft(connUUID)
+}

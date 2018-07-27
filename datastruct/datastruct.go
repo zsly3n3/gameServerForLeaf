@@ -22,6 +22,12 @@ type RobotName struct {
 	State int8 `xorm:"TINYINT(1) not null"`
 }
 
+type MaxScoreInEndlessMode struct {
+	Id   int       `xorm:"not null pk autoincr INT(11)"`
+	Uid int    `xorm:"INT(11) not null"`
+	MaxScore int    `xorm:"INT(11) not null"`
+}
+
 type PlayerEnterType int //玩家进入房间的类型
 const (
 	NULLWay PlayerEnterType = iota

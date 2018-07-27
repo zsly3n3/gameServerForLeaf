@@ -58,9 +58,10 @@ func handleCreateDB()*xorm.Engine{
 func resetDB(engine *xorm.Engine){
     user:=&datastruct.User{}
     robotName:=&datastruct.RobotName{}
-	err:=engine.DropTables(user,robotName)
+    maxScoreInEndlessMode:=&datastruct.MaxScoreInEndlessMode{}
+	err:=engine.DropTables(user,robotName,maxScoreInEndlessMode)
     errhandle(err)
-	err=engine.CreateTables(user,robotName)
+	err=engine.CreateTables(user,robotName,maxScoreInEndlessMode)
     errhandle(err)
     names:=tools.GetRobotNames()
     _, err = engine.Insert(&names)
@@ -80,6 +81,36 @@ func errhandle(err error){
 	}
 }
 
+func handleGetMaxScoreInEndlessMode(uid int) int {
+    var scoreInfo datastruct.MaxScoreInEndlessMode
+    has,err:=dbEngine.Where("uid =?", uid).Get(&scoreInfo)
+    score:=0
+    if err !=nil{
+       log.Error("handleGetMaxScoreInEndlessMode err:%v",err)
+    }
+    if has{
+       score = scoreInfo.MaxScore
+    }
+    return score
+}
+
+func handleUpdateMaxScoreInEndlessMode(uid int,score int){
+     var scoreInfo datastruct.MaxScoreInEndlessMode
+     has,_:=dbEngine.Where("uid =?", uid).Get(&scoreInfo)
+     if !has{
+        scoreInfo.Uid = uid
+        scoreInfo.MaxScore = score
+        dbEngine.Insert(scoreInfo)
+     }else{
+        score_str:=fmt.Sprintf("%d",score)
+        uid_str:=fmt.Sprintf("%d",uid)
+        sql := "update max_score_in_endless_mode set max_score=" + score_str + " where uid="+uid_str
+        dbEngine.Exec(sql)
+     }
+}
+
+
+
 func handleGetUserInfo(uid int)*datastruct.User{
     var user datastruct.User
     _,err:=dbEngine.Id(uid).Get(&user)
@@ -88,6 +119,7 @@ func handleGetUserInfo(uid int)*datastruct.User{
     }
     return &user
 }
+
 
 func getRobotNames(num int,engine *xorm.Engine)([]datastruct.RobotName,int){
     session := engine.NewSession()

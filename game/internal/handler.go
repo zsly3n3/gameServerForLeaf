@@ -1,5 +1,6 @@
 package internal
 import (
+	"server/db"
     "reflect"  
     "server/msg"
     "server/datastruct"
@@ -31,7 +32,10 @@ func init() {
     handleMsg(&msg.CS_PlayerDied{}, handlePlayersDied)
     handleMsg(&msg.CS_PlayerLeftRoom{}, handlePlayerLeftRoom)
     handleMsg(&msg.CS_PlayerRelive{}, handlePlayerRelive)
+
+    handleMsg(&msg.CS_GameOver1{}, handlePlayerGameOver1)
 }
+
 
 func getParentMatch(mode datastruct.GameModeType) match.ParentMatch{
     var match match.ParentMatch
@@ -45,6 +49,30 @@ func getParentMatch(mode datastruct.GameModeType) match.ParentMatch{
          match = ptr_inviteModeMatch 
     }
     return match
+}
+
+func handlePlayerGameOver1(args []interface{}){
+    a := args[1].(gate.Agent)
+    if !tools.IsValid(a.UserData()){
+       return
+    }
+    m := args[0].(*msg.CS_GameOver1)
+    agentUserData := a.UserData().(datastruct.AgentUserData)
+    uid:=agentUserData.Uid
+    score:=m.MsgContent.Score
+    switch agentUserData.GameMode{
+       case datastruct.EndlessMode:
+        maxScore:=db.Module.GetMaxScoreInEndlessMode(uid)
+        isUpdate:=false
+        if score>maxScore{
+           maxScore = score
+           isUpdate = true
+        }
+        a.WriteMsg(msg.GetGameOver1Msg(maxScore,m.MsgContent.Score,m.MsgContent.KillNum))
+        if isUpdate{
+           db.Module.UpdateMaxScoreInEndlessMode(uid,maxScore)
+        }
+    }
 }
 
 func handlePlayerRelive(args []interface{}){
@@ -196,7 +224,6 @@ func startMatching(args []interface{},mode datastruct.GameModeType){
         return
     }
     connUUID:=agentUserData.ConnUUID
-    
     
     tools.ReSetAgentUserData(uid,mode,datastruct.NULLID,a,connUUID,tools.ReSetExtraRoomID(agentUserData.Extra))
     removePlayerFromOtherMatchs(connUUID,mode)

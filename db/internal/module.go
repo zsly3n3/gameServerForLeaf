@@ -54,4 +54,13 @@ func (m *Module) GetRobotPaths()[]map[int]msg.Point{
 	 return robotPaths
 }
 
+func (m *Module) GetMaxScoreInEndlessMode(uid int)int{
+	return handleGetMaxScoreInEndlessMode(uid)
+}
+
+func (m *Module) UpdateMaxScoreInEndlessMode(uid int,score int){
+	handleUpdateMaxScoreInEndlessMode(uid,score)
+}
+
+
 

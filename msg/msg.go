@@ -46,6 +46,9 @@ func init() {
 	Processor.Register(&SC_NotifyMsg{})
 	Processor.Register(&SC_PlayerIsFired{})
 	Processor.Register(&CS_MasterStartGame{})
+
+	Processor.Register(&CS_GameOver1{})
+	Processor.Register(&SC_GameOver1{})
 }
 
 /*接收消耗的能量值*/
@@ -343,11 +346,31 @@ type OfflinePlayerMoved struct {//离线玩家的移动
 
 // var Num = 0
 
-
-
 type PlayerRelive struct {//玩家的重生
     ReLiveFrameIndex int
 	Action CreatePlayer
+}
+
+/*当前玩家无尽模式中死亡,保存记录最大值*/
+type CS_GameOver1 struct {
+	MsgHeader json.MsgHeader
+	MsgContent *CS_GameOver1Content
+}
+type CS_GameOver1Content struct {
+	KillNum int //当前击杀数
+	Score int //当前分数
+}
+
+/*当前玩家无尽模式中死亡,返回相应数据*/
+const SC_GameOver1Key = "SC_GameOver1"
+type SC_GameOver1 struct {
+	MsgHeader json.MsgHeader
+	MsgContent SC_GameOver1Content
+}
+type SC_GameOver1Content struct {
+	MaxScore int
+	Score int
+	KillNum int
 }
 
 
@@ -360,6 +383,19 @@ type SC_GameOverDataContent struct {
     RoomId string 
 }
 
+
+func GetGameOver1Msg(maxScore int,score int,killNum int) *SC_GameOver1{
+	var msgHeader json.MsgHeader
+    msgHeader.MsgName = SC_GameOver1Key
+	var msgContent SC_GameOver1Content
+	msgContent.MaxScore = maxScore
+	msgContent.Score = score
+	msgContent.KillNum = killNum
+	return &SC_GameOver1{
+		MsgHeader:msgHeader,
+		MsgContent:msgContent,
+	}
+}
 
 
 func GetCreatePlayerAction(p_id int,x int,y int,reLiveFrameIndex int,playerName string,addEnergy int) *PlayerRelive{
