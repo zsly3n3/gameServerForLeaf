@@ -140,6 +140,7 @@ type PlayersFrameData struct {
 
 type PlayerActionData struct {
     ActionType msg.ActionType
+    PathIndex int //离线玩家使用    
     Data interface{}//目前只能存一个动作,之后可能改进为每个单位存一组动作
 }
 
@@ -177,9 +178,11 @@ func CreateRoom(r_type RoomDataType,connUUIDs []string,r_id string,parentMatch P
     room.players = make([]string,0,maxPeopleInRoom)
     room.playersData = NewPlayersFrameData()
 
-      
+    room.CreateRobotPaths()
+    
     //测试
-    room.createRobotData(rebotsNum,true)
+    room.createRobotData(0,true)
+    //room.createRobotData(rebotsNum,true)
     room.gameStart()   
       
     return room
@@ -266,6 +269,7 @@ func (room *Room)GetCreateAction(play_id int,reliveFrameIndex int,playername str
      actionData:=new(PlayerActionData)
      actionData.ActionType = action.Action.Action
      actionData.Data = action
+     actionData.PathIndex = -1
      room.playersData.Set(play_id,actionData)//添加action 到 lastFrameIndex+1
      return action
 }
@@ -705,7 +709,6 @@ func (room *Room)createRobotData(num int,isRelive bool){
     robots.Mutex = new(sync.RWMutex)
     robots.robots = make(map[int]*datastruct.Robot)
     if num > 0{
-        room.CreateRobotPaths()
         robots.names = db.Module.GetRobotNames(num)
         i:=0;
         for _,v := range robots.names{
@@ -924,14 +927,14 @@ func (data *PlayersFrameData)GetValue(name string,pid int,currentFrameIndex int,
                   delete(data.Data,pid)
              }
              if isCreate{
-                room.relive(actionData,pid,reliveFrameIndex,name,actionData.Data.(*PlayerDied).AddEnergy)
+                room.relive(actionData,pid,reliveFrameIndex,name,actionData.Data.(*PlayerDied).AddEnergy,false)
              }
           case msg.Move:
              v= *(actionData.Data.(*msg.PlayerMoved))
              rs_actionType = msg.Move
-             //测试
-             test:=*(actionData.Data.(*msg.PlayerMoved))
-             log.Debug("r_id:%v,x:%v,y:%v,frameIndex:%v",room.unlockedData.roomId,test.X,test.Y,currentFrameIndex)
+            //测试
+            //  test:=*(actionData.Data.(*msg.PlayerMoved))
+            //  log.Debug("r_id:%v,x:%v,y:%v,frameIndex:%v",room.unlockedData.roomId,test.X,test.Y,currentFrameIndex)
         }
     }
     return rs_actionType,v
@@ -951,10 +954,20 @@ func (data *PlayersFrameData)GetOfflineAction(name string,pid int,currentFrameIn
                if p_relive.ReLiveFrameIndex == datastruct.DefaultReliveFrameIndex || p_relive.ReLiveFrameIndex == currentFrameIndex{
                   v = p_relive.Action
                   rs_actionType = msg.Create
-                  point:=room.getMovePoint()
+                
+                  var point msg.Point
+                  if actionData.PathIndex == -1{
+                     point =room.getMovePoint() 
+                  }else{
+                     point = msg.Point{
+                         X:0,
+                         Y:0,
+                     }
+                  }
                   action:=msg.GetCreatePlayerMoved(pid,point.X,point.Y,msg.DefaultSpeed)
-                  actionData.ActionType = action.Action
-                  actionData.Data = action
+                  offlinemove_action:=tools.CreateOfflinePlayerMoved(action,1)
+                  actionData.ActionType = offlinemove_action.Action.Action
+                  actionData.Data = offlinemove_action
                }else{
                   v = nil
                }
@@ -976,7 +989,7 @@ func (data *PlayersFrameData)GetOfflineAction(name string,pid int,currentFrameIn
                     }
              }
              if isCreate{
-                room.relive(actionData,pid,reliveFrameIndex,name,actionData.Data.(*PlayerDied).AddEnergy)
+                room.relive(actionData,pid,reliveFrameIndex,name,actionData.Data.(*PlayerDied).AddEnergy,true)
              }
           case msg.Move:
             rs_actionType = msg.Move
@@ -985,35 +998,51 @@ func (data *PlayersFrameData)GetOfflineAction(name string,pid int,currentFrameIn
                  
                  move_action:=actionData.Data.(*msg.PlayerMoved)
                  v= *move_action
-                 offlinemove_action:=tools.CreateOfflinePlayerMoved(currentFrameIndex,move_action)
+                 offlinemove_action:=tools.CreateOfflinePlayerMoved(move_action,-1)
                  actionData.ActionType = offlinemove_action.Action.Action
                  actionData.Data = offlinemove_action
                  
             case *msg.OfflinePlayerMoved:
+                 
                  offlinemove_action:=actionData.Data.(*msg.OfflinePlayerMoved)
-                 startIndex:=offlinemove_action.StartFrameIndex
-                 directionInterval:=offlinemove_action.DirectionInterval
-                 speedInterval:=offlinemove_action.SpeedInterval
-                 var ptr_action *msg.PlayerMoved
-                  
-                 if (currentFrameIndex-startIndex)*time_interval % (directionInterval*1000) == 0 {
-                     lastSpeed:=offlinemove_action.Action.Speed
-                     point:=room.getMovePoint()
-                     ptr_action = msg.GetCreatePlayerMoved(pid,point.X,point.Y,lastSpeed)
-                 }else{
-                     ptr_action = &offlinemove_action.Action
-                 }
 
-                 if (currentFrameIndex-startIndex)*time_interval % (speedInterval*1000) == 0{
-                    speedDuration:= tools.GetRandomSpeedDuration()
-                    offlinemove_action.StopSpeedFrameIndex = currentFrameIndex-startIndex+speedDuration*(1000/time_interval)
-                    ptr_action.Speed = tools.GetRandomSpeed()
-                }
+                 ptr_action := &offlinemove_action.Action
+
+                
+                 var point msg.Point
+                 pathIndex:=actionData.PathIndex
+                 if pathIndex == -1||offlinemove_action.MoveStep==-1{
+                    point = room.getMovePoint() 
+                 }else{
+                    point=room.getRobotPath(pathIndex,offlinemove_action.MoveStep)
+                    offlinemove_action.MoveStep++
+                 }
+                 ptr_action.Speed = 1
+                 ptr_action.X = point.X
+                 ptr_action.Y = point.Y
+                //  startIndex:=offlinemove_action.StartFrameIndex
+                //  directionInterval:=offlinemove_action.DirectionInterval
+                //  speedInterval:=offlinemove_action.SpeedInterval
+                //  var ptr_action *msg.PlayerMoved
+                  
+                //  if (currentFrameIndex-startIndex)*time_interval % (directionInterval*1000) == 0 {
+                //      lastSpeed:=offlinemove_action.Action.Speed
+                //      point:=room.getMovePoint()
+                //      ptr_action = msg.GetCreatePlayerMoved(pid,point.X,point.Y,lastSpeed)
+                //  }else{
+                //      ptr_action = &offlinemove_action.Action
+                //  }
+
+                //  if (currentFrameIndex-startIndex)*time_interval % (speedInterval*1000) == 0{
+                //     speedDuration:= tools.GetRandomSpeedDuration()
+                //     offlinemove_action.StopSpeedFrameIndex = currentFrameIndex-startIndex+speedDuration*(1000/time_interval)
+                //     ptr_action.Speed = tools.GetRandomSpeed()
+                // }
     
-                if offlinemove_action.StopSpeedFrameIndex != 0 && currentFrameIndex-startIndex == offlinemove_action.StopSpeedFrameIndex{
-                    offlinemove_action.StopSpeedFrameIndex = 0
-                    ptr_action.Speed = msg.DefaultSpeed
-                }
+                // if offlinemove_action.StopSpeedFrameIndex != 0 && currentFrameIndex-startIndex == offlinemove_action.StopSpeedFrameIndex{
+                //     offlinemove_action.StopSpeedFrameIndex = 0
+                //     ptr_action.Speed = msg.DefaultSpeed
+                // }
                 
                 offlinemove_action.Action = *ptr_action
                 actionData.ActionType = ptr_action.Action
@@ -1056,7 +1085,6 @@ func (room *Room)getRobotAction(robot *datastruct.Robot,currentFrameIndex int)(m
             pt:=room.getRobotPath(robot.PathIndex,robot.MoveStep)
             action.X = pt.X
             action.Y = pt.Y
-            log.Debug("robotMoveStep:%v",robot.MoveStep)
             robot.MoveStep++
             //ptr_action = action
             /* //测试
@@ -1319,16 +1347,25 @@ func (room *Room)HandlePlayerRelive(pid int,playername string){
      actionData,tf:=room.playersData.CheckValue(pid)
      if !tf{
         actionData=new(PlayerActionData)
-        room.relive(actionData,pid,datastruct.DefaultReliveFrameIndex,playername,0)
+        room.relive(actionData,pid,datastruct.DefaultReliveFrameIndex,playername,0,false)
+        actionData.PathIndex = -1
         room.playersData.Set(pid,actionData)
      }
 }
-func (room *Room)relive(actionData *PlayerActionData,pid int,reliveFrameIndex int,playername string,addEnergy int){
-     randomIndex:=tools.GetRandomQuadrantIndex()
-     point:=tools.GetCreatePlayerPoint(room.unlockedData.pointData.quadrant[randomIndex],randomIndex) 
+func (room *Room)relive(actionData *PlayerActionData,pid int,reliveFrameIndex int,playername string,addEnergy int,isRobot bool){
+     var point msg.Point
+     pathIndex:=-1
+     if isRobot{
+        pathIndex = room.getRandPathIndex(-1)
+        point=room.getRobotPath(pathIndex,0)
+     }else{
+        randomIndex:=tools.GetRandomQuadrantIndex()
+        point=tools.GetCreatePlayerPoint(room.unlockedData.pointData.quadrant[randomIndex],randomIndex) 
+     }
      action:=msg.GetCreatePlayerAction(pid,point.X,point.Y,reliveFrameIndex,playername,addEnergy)
      actionData.ActionType = action.Action.Action
      actionData.Data = action
+     actionData.PathIndex = pathIndex
 }
 
 func (room *Room)getRobotPath(index int,step int)msg.Point{
@@ -1365,7 +1402,17 @@ func (room *Room)getRandPathIndex(lastIndex int) int{
      rs:=-1
      switch len(randMap){
      case 0:
-        panic("路径地图数不能小于机器人个数")
+        randMap:=make(map[int]struct{})
+        for i:=0;i<len(paths);i++{
+            randMap[i]=struct{}{}
+        }
+        rand_slice:=make([]int,0,len(randMap)) 
+        for k,_ := range randMap{
+          rand_slice = append(rand_slice,k)                
+        }
+        rs=tools.GetRandomFromSlice(rand_slice)
+         //panic("路径地图数不能小于机器人个数")
+        return rs
      case 1:
         for k,_ := range randMap{
             rs = k

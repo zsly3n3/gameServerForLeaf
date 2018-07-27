@@ -35,6 +35,7 @@ func init() {
 
 func getParentMatch(mode datastruct.GameModeType) match.ParentMatch{
     var match match.ParentMatch
+    match = nil
     switch mode{
      case  datastruct.SinglePersonMode:
          match = ptr_singleMatch
@@ -177,7 +178,9 @@ func removePlayer(key string,mode datastruct.GameModeType){
 
 func playerLeftRoom(connUUID string,mode datastruct.GameModeType,r_id string){
     match:=getParentMatch(mode)
-    match.PlayerLeftRoom(r_id,connUUID)
+    if match != nil{
+       match.PlayerLeftRoom(r_id,connUUID) 
+    }
 }
 
 func startMatching(args []interface{},mode datastruct.GameModeType){

@@ -327,10 +327,11 @@ type PlayerMoved struct {//玩家的移动
 
 type OfflinePlayerMoved struct {//离线玩家的移动
     Action PlayerMoved
-    StartFrameIndex int //从多少帧开始记录的
-    SpeedInterval int //加速的时间间隔
-	StopSpeedFrameIndex int //持续到多少帧结束 
-	DirectionInterval int //转向的时间间隔
+	MoveStep int //默认从1开始，移动的步数
+	
+    // SpeedInterval int //加速的时间间隔
+	// StopSpeedFrameIndex int //持续到多少帧结束 
+	// DirectionInterval int //转向的时间间隔
 }
 
 
@@ -384,9 +385,6 @@ func GetCreatePlayerAction(p_id int,x int,y int,reLiveFrameIndex int,playerName 
 	//   Num++
 	   action.X = x
 	   action.Y = y
-	   //测试 
-	action.X = 1100
-	action.Y = -800
 
 	  relive.Action = action
 	  return relive
