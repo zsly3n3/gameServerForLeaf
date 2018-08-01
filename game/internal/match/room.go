@@ -250,7 +250,7 @@ func(room *Room)IsSyncFinished(connUUID string,player *datastruct.Player) (bool,
         room.sendInitRoomDataToAgent(player,&content,play_id)
         room.onlineSyncPlayers=append(room.onlineSyncPlayers,*player)
         room.updateRobotRelive(length) 
-        room.GetCreateAction(play_id,datastruct.DefaultReliveFrameIndex,player.NickName)
+        room.GetCreateAction(play_id,datastruct.DefaultReliveFrameIndex,player.NickName,player.Avatar)
         syncFinished = true
     }else{
         content.CurrentFrameIndex = room.currentFrameIndex-1
@@ -259,13 +259,13 @@ func(room *Room)IsSyncFinished(connUUID string,player *datastruct.Player) (bool,
     return syncFinished,content.CurrentFrameIndex
 }
 
-func (room *Room)GetCreateAction(play_id int,reliveFrameIndex int,playername string)*msg.PlayerRelive{
+func (room *Room)GetCreateAction(play_id int,reliveFrameIndex int,playername string,playeravatar string)*msg.PlayerRelive{
      if play_id == datastruct.NULLID{
         panic("GetCreateAction play_id error")
      }
      randomIndex:=tools.GetRandomQuadrantIndex()
      point:=tools.GetCreatePlayerPoint(room.unlockedData.pointData.quadrant[randomIndex],randomIndex) 
-     action:=msg.GetCreatePlayerAction(play_id,point.X,point.Y,reliveFrameIndex,playername,0)
+     action:=msg.GetCreatePlayerAction(play_id,point.X,point.Y,reliveFrameIndex,playername,0,playeravatar)
      actionData:=new(PlayerActionData)
      actionData.ActionType = action.Action.Action
      actionData.Data = action
@@ -364,7 +364,7 @@ func (room *Room)syncData(connUUID string,player *datastruct.Player){
       if lastFrameIndex+1 == room.currentFrameIndex {//数据帧是从0开始，服务器计算帧是从1开始
                room.onlineSyncPlayers=append(room.onlineSyncPlayers,*player)
                
-               room.GetCreateAction(player.GameData.PlayId,datastruct.DefaultReliveFrameIndex,player.NickName)
+               room.GetCreateAction(player.GameData.PlayId,datastruct.DefaultReliveFrameIndex,player.NickName,player.Avatar)
                length=len(room.players)
                room.Mutex.Unlock()
                room.updateRobotRelive(length)
@@ -381,7 +381,7 @@ func (room *Room)syncData(connUUID string,player *datastruct.Player){
                            isSyncFinished = true
                            room.onlineSyncPlayers=append(room.onlineSyncPlayers,*player)
                            //log.Debug("syncData Channel GetCreateAction")
-                           room.GetCreateAction(player.GameData.PlayId,datastruct.DefaultReliveFrameIndex,player.NickName)
+                           room.GetCreateAction(player.GameData.PlayId,datastruct.DefaultReliveFrameIndex,player.NickName,player.Avatar)
                            length=len(room.players)
                        }
                        room.Mutex.Unlock()
@@ -602,7 +602,7 @@ func (room *Room)ComputeFrameData(){
      
      for _,player := range online_sync{
          connUUID:=player.Agent.UserData().(datastruct.AgentUserData).ConnUUID
-         action_type,action:=room.playersData.GetValue(player.NickName,player.GameData.PlayId,currentFrameIndex,room,connUUID)
+         action_type,action:=room.playersData.GetValue(player.Avatar,player.NickName,player.GameData.PlayId,currentFrameIndex,room,connUUID)
          if action != nil{
              if action_type==msg.Death{
                 died:=action.(*PlayerDied)
@@ -616,7 +616,7 @@ func (room *Room)ComputeFrameData(){
      
      for _,player := range offline_sync{
         connUUID:=player.Agent.UserData().(datastruct.AgentUserData).ConnUUID
-        action_type,action:=room.playersData.GetOfflineAction(player.NickName,player.GameData.PlayId,currentFrameIndex,room,connUUID)
+        action_type,action:=room.playersData.GetOfflineAction(player.Avatar,player.NickName,player.GameData.PlayId,currentFrameIndex,room,connUUID)
         if action != nil{
             if action_type==msg.Death{
                died:=action.(*PlayerDied)
@@ -895,7 +895,7 @@ func (power *EnergyPowerData)SetPower(num int){
     power.Mutex.Unlock()
 }
 
-func (data *PlayersFrameData)GetValue(name string,pid int,currentFrameIndex int,room *Room,connUUID string)(msg.ActionType,interface{}){
+func (data *PlayersFrameData)GetValue(avatar string,name string,pid int,currentFrameIndex int,room *Room,connUUID string)(msg.ActionType,interface{}){
     data.Mutex.Lock()
 	defer data.Mutex.Unlock()
     var v interface{}
@@ -931,7 +931,7 @@ func (data *PlayersFrameData)GetValue(name string,pid int,currentFrameIndex int,
                   room.playerLeftCurrentRoom(connUUID)
              }
              if isCreate{
-                room.relive(actionData,pid,reliveFrameIndex,name,actionData.Data.(*PlayerDied).AddEnergy,false)
+                room.relive(actionData,pid,reliveFrameIndex,name,actionData.Data.(*PlayerDied).AddEnergy,false,avatar)
              }
           case msg.Move:
              v= *(actionData.Data.(*msg.PlayerMoved))
@@ -944,7 +944,7 @@ func (data *PlayersFrameData)GetValue(name string,pid int,currentFrameIndex int,
     return rs_actionType,v
 }
 
-func (data *PlayersFrameData)GetOfflineAction(name string,pid int,currentFrameIndex int,room *Room,connUUID string)(msg.ActionType,interface{}){
+func (data *PlayersFrameData)GetOfflineAction(avatar string,name string,pid int,currentFrameIndex int,room *Room,connUUID string)(msg.ActionType,interface{}){
     data.Mutex.Lock()
 	defer data.Mutex.Unlock()
     var v interface{}
@@ -993,7 +993,7 @@ func (data *PlayersFrameData)GetOfflineAction(name string,pid int,currentFrameIn
                     }
              }
              if isCreate{
-                room.relive(actionData,pid,reliveFrameIndex,name,actionData.Data.(*PlayerDied).AddEnergy,true)
+                room.relive(actionData,pid,reliveFrameIndex,name,actionData.Data.(*PlayerDied).AddEnergy,true,avatar)
              }
           case msg.Move:
             rs_actionType = msg.Move
@@ -1126,7 +1126,7 @@ func (room *Room)getRobotAction(robot *datastruct.Robot,currentFrameIndex int)(m
                 pathIndex:= room.getRandPathIndex(robot.PathIndex)
                 robot.PathIndex = pathIndex
                 pt:=room.getRobotPath(pathIndex,0)
-                action:=tools.GetCreateRobotAction(pt,robot.Id,room.unlockedData.pointData.quadrant,offsetFrames+currentFrameIndex,robot.NickName,addEnergy)
+                action:=tools.GetCreateRobotAction(pt,robot.Id,room.unlockedData.pointData.quadrant,offsetFrames+currentFrameIndex,robot.NickName,addEnergy,tools.GetRobotAvatar())
                 robot.Action=action
             }
      }
@@ -1347,16 +1347,16 @@ func (room *Room)removePlayer(connUUID string){
     }
 }
 
-func (room *Room)HandlePlayerRelive(pid int,playername string){
+func (room *Room)HandlePlayerRelive(pid int,playername string,playeravatar string){
      actionData,tf:=room.playersData.CheckValue(pid)
      if !tf{
         actionData=new(PlayerActionData)
-        room.relive(actionData,pid,datastruct.DefaultReliveFrameIndex,playername,0,false)
+        room.relive(actionData,pid,datastruct.DefaultReliveFrameIndex,playername,0,false,playeravatar)
         actionData.PathIndex = -1
         room.playersData.Set(pid,actionData)
      }
 }
-func (room *Room)relive(actionData *PlayerActionData,pid int,reliveFrameIndex int,playername string,addEnergy int,isRobot bool){
+func (room *Room)relive(actionData *PlayerActionData,pid int,reliveFrameIndex int,playername string,addEnergy int,isRobot bool,playeravatar string){
      var point msg.Point
      pathIndex:=-1
      if isRobot{
@@ -1366,7 +1366,7 @@ func (room *Room)relive(actionData *PlayerActionData,pid int,reliveFrameIndex in
         randomIndex:=tools.GetRandomQuadrantIndex()
         point=tools.GetCreatePlayerPoint(room.unlockedData.pointData.quadrant[randomIndex],randomIndex) 
      }
-     action:=msg.GetCreatePlayerAction(pid,point.X,point.Y,reliveFrameIndex,playername,addEnergy)
+     action:=msg.GetCreatePlayerAction(pid,point.X,point.Y,reliveFrameIndex,playername,addEnergy,playeravatar)
      actionData.ActionType = action.Action.Action
      actionData.Data = action
      actionData.PathIndex = pathIndex

@@ -67,7 +67,7 @@ func (match *EndlessModeMatch)addOnlinePlayer(connUUID string,a gate.Agent,uid i
 }
 
 
-func (match *EndlessModeMatch)Matching(connUUID string, a gate.Agent,uid int){
+func (match *EndlessModeMatch)Matching(connUUID string, a gate.Agent,uid int)string{
 	log.Debug("无尽模式匹配开始")
 	match.addPlayer(connUUID,a,uid)
 	
@@ -82,6 +82,7 @@ func (match *EndlessModeMatch)Matching(connUUID string, a gate.Agent,uid int){
 	if tf{
 		player.Agent.WriteMsg(msg.GetMatchingEndMsg(r_id))
 	}
+	return r_id
 }
 
 func (endlessModeMatch *EndlessModeMatch)createRoom(connUUID string)string{
@@ -158,10 +159,10 @@ func (match *EndlessModeMatch)PlayerLeftRoom(r_id string,connUUID string){
 	}
 }
 
-func (match *EndlessModeMatch)PlayerRelive(r_id string,pid int,name string){
+func (match *EndlessModeMatch)PlayerRelive(r_id string,pid int,name string,avatar string){
 	ok,room:=match.rooms.Get(r_id)
 	if ok{
-	   room.HandlePlayerRelive(pid,name)
+	   room.HandlePlayerRelive(pid,name,avatar)
 	}
 }
 

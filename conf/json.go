@@ -20,6 +20,7 @@ var Server struct {
 	DB_IP string
 	DB_UserName string
 	DB_Pwd string
+	HttpServer string
 }
 
 func init() {

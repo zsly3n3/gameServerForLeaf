@@ -49,6 +49,8 @@ func init() {
 
 	Processor.Register(&CS_GameOver1{})
 	Processor.Register(&SC_GameOver1{})
+
+	Processor.Register(&SC_InviteQRCode{})
 }
 
 /*接收消耗的能量值*/
@@ -211,6 +213,15 @@ type SC_PlayerReMatch struct {
 	MsgHeader json.MsgHeader
 }
 
+/*发送生成完成的二维码http地址*/
+const SC_InviteQRCodeKey="SC_InviteQRCode"
+type SC_InviteQRCode struct {
+	MsgHeader json.MsgHeader
+	MsgContent SC_InviteQRCodeContent
+}
+type SC_InviteQRCodeContent struct {
+	QRCode string
+}
 
 type EnergyPointType int
 
@@ -307,6 +318,7 @@ const (
 type CreatePlayer struct {//玩家的创建
 	 PlayerId int
 	 PlayerName string
+	 PlayerAvatar string
 	 X int
 	 Y int
 	 AddEnergy int //默认值是0
@@ -383,6 +395,17 @@ type SC_GameOverDataContent struct {
     RoomId string 
 }
 
+func GetInviteQRCodeMsg(qrcode string) *SC_InviteQRCode{
+	var msgHeader json.MsgHeader
+    msgHeader.MsgName = SC_InviteQRCodeKey
+	var msgContent SC_InviteQRCodeContent
+	msgContent.QRCode = qrcode
+	return &SC_InviteQRCode{
+		MsgHeader:msgHeader,
+		MsgContent:msgContent,
+	}
+}
+
 
 func GetGameOver1Msg(maxScore int,score int,killNum int) *SC_GameOver1{
 	var msgHeader json.MsgHeader
@@ -398,7 +421,7 @@ func GetGameOver1Msg(maxScore int,score int,killNum int) *SC_GameOver1{
 }
 
 
-func GetCreatePlayerAction(p_id int,x int,y int,reLiveFrameIndex int,playerName string,addEnergy int) *PlayerRelive{
+func GetCreatePlayerAction(p_id int,x int,y int,reLiveFrameIndex int,playerName string,addEnergy int,playerAvatar string) *PlayerRelive{
 	  relive:=new(PlayerRelive)
 	  relive.ReLiveFrameIndex = reLiveFrameIndex
 	  
@@ -406,6 +429,7 @@ func GetCreatePlayerAction(p_id int,x int,y int,reLiveFrameIndex int,playerName 
 	  action.Action = Create
 	  action.PlayerId = p_id
 	  action.PlayerName = playerName
+      action.PlayerAvatar = playerAvatar
 	  action.AddEnergy = addEnergy
 	//   switch Num{
 	//   case 0:

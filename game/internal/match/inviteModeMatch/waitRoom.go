@@ -1,11 +1,13 @@
 package inviteModeMatch
 
 import (
+	"fmt"
 	"server/tools"
 	"server/datastruct"
 	"sync"
 	"github.com/name5566/leaf/gate"
 	"server/msg"
+	"server/thirdParty"
 )
 
 const leaveStr = " 退出房间"
@@ -25,10 +27,10 @@ type playerMsgData struct{
 func CreateWaitRoom(a gate.Agent,maxPeople int) *WaitRoom{
 	waitRoom:=new(WaitRoom)
 	waitRoom.mutex = new(sync.RWMutex)
-	waitRoom.roomID = tools.UniqueId()
+	waitRoom.roomID = tools.UniqueIdFromInt()
 	waitRoom.maxPeople = maxPeople
     waitRoom.players = make(map[int]*playerMsgData)
-    waitRoom.addPlayer(a,1)
+	waitRoom.addPlayer(a,1)
 	return waitRoom
 }
 
@@ -83,7 +85,7 @@ func (waitRoom *WaitRoom)Left(connUUID string,waitRooms *WaitRooms) bool{
 	}
 	length:=len(waitRoom.players)
 	if length <= 1{
-		waitRooms.Delete(waitRoom.roomID)
+		deleteWaitRoom(waitRooms,waitRoom.roomID)
 	}else{
 		delete(waitRoom.players,rm_key)
 		if isMaster == 1{
@@ -113,7 +115,7 @@ func (waitRoom *WaitRoom)FirePlayer(seat int,waitRooms *WaitRooms) (bool,string)
 	rm_connUUID = u_data.ConnUUID
 	length:=len(waitRoom.players)
 	if length <= 1{
-		waitRooms.Delete(waitRoom.roomID)
+		deleteWaitRoom(waitRooms,waitRoom.roomID)
 	}else{
 		v.agent.WriteMsg(msg.GetIsFiredMsg())
 		delete(waitRoom.players,seat)
@@ -210,4 +212,20 @@ func (waitRoom *WaitRoom)IsPermit(connUUID string,seat int)bool{
 		}
 	}
 	return tf
+}
+
+func (waitRoom *WaitRoom)SendInviteQRCode(qrcode string){
+	fmt.Println("qrcode:",qrcode)
+	for _,v := range waitRoom.players{
+		v.agent.WriteMsg(msg.GetInviteQRCodeMsg(qrcode))
+	}
+}
+
+func deleteWaitRoom(waitRooms *WaitRooms,w_id string){
+	waitRooms.Delete(w_id)
+	deleteQRCode(w_id)
+}
+
+func deleteQRCode(w_id string){
+	go thirdParty.RemoveQRCode(w_id)
 }

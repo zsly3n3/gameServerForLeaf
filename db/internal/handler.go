@@ -63,12 +63,12 @@ func resetDB(engine *xorm.Engine){
     errhandle(err)
 	err=engine.CreateTables(user,robotName,maxScoreInEndlessMode)
     errhandle(err)
-    names:=tools.GetRobotNames()
-    _, err = engine.Insert(&names)
-    errhandle(err)
 }
 
 func initData(engine *xorm.Engine){
+    names:=tools.GetRobotNames()
+    _, err := engine.Insert(&names)
+    errhandle(err)
     robotPaths = tools.GetRobotPath()
     robotName:=&datastruct.RobotName{}
     robotName.State = 0

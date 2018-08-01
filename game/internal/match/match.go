@@ -66,7 +66,7 @@ func (actionPool *MatchActionPool)Check(p_uuid string) bool{
 type ParentMatch interface {
      RemoveRoomWithID(r_id string)
      GetOnlinePlayersPtr() *datastruct.OnlinePlayers
-     Matching(connUUID string, a gate.Agent,uid int)
+     Matching(connUUID string, a gate.Agent,uid int) string
      CheckActionPool(connUUID string) bool
      PlayerLeftRoom(r_id string,connUUID string)
      PlayersDied(r_id string,values []datastruct.PlayerDiedData)

@@ -13,7 +13,9 @@ import (
     "server/datastruct"
     "github.com/name5566/leaf/gate"
     "server/msg"
+    "server/conf"
     "github.com/360EntSecGroup-Skylar/excelize"
+    "server/tools/snowFlakeByGo"
 )
 
 func randInt(min int,max int) int {
@@ -166,12 +168,17 @@ func getMd5String(s string) string {
 }  
   
 //生成Guid字串  
-func UniqueId() string {  
+func UniqueId() string {
+    // 生成节点实例
     b := make([]byte, 48)  
     if _, err := io.ReadFull(crypto_rand.Reader, b); err != nil {  
         return ""
     }  
     return getMd5String(base64.URLEncoding.EncodeToString(b))  
+}
+func UniqueIdFromInt()string{
+    worker, _ := snowFlakeByGo.NewWorker(1)
+    return fmt.Sprintf("%d",worker.GetId())
 }
 
 func IsValid(data interface{}) bool{//判断此连接是否有效
@@ -230,19 +237,18 @@ func CreateRobot(name string,index int,isRelive bool,quad []msg.Quadrant,reliveF
      robot.IsRelive = isRelive
      robot.Avatar = fmt.Sprintf("Avatar%d",index)
      robot.NickName = name
-     robot.Action = GetCreateRobotAction(pt,robot.Id,quad,reliveFrameIndex,name,0)
+     robot.Action = GetCreateRobotAction(pt,robot.Id,quad,reliveFrameIndex,name,0,GetRobotAvatar())
     //  robot.SpeedInterval = randInt(minSpeedInterval,maxSpeedInterval+1)
     //  robot.DirectionInterval = randInt(minDirectionInterval,maxDirectionInterval+1)
     //  robot.StopSpeedFrameIndex = 0
      return robot
 }
 
-func GetCreateRobotAction(point msg.Point,p_id int,quad []msg.Quadrant,reliveFrameIndex int,name string,addEnergy int)*msg.PlayerRelive{
+func GetCreateRobotAction(point msg.Point,p_id int,quad []msg.Quadrant,reliveFrameIndex int,name string,addEnergy int,avatar string)*msg.PlayerRelive{
     //randomIndex:=GetRandomQuadrantIndex()
     //point:=GetCreatePlayerPoint(quad[randomIndex],randomIndex)//测试
     
-
-    action:=msg.GetCreatePlayerAction(p_id,point.X,point.Y,reliveFrameIndex,name,addEnergy)
+    action:=msg.GetCreatePlayerAction(p_id,point.X,point.Y,reliveFrameIndex,name,addEnergy,avatar)
     return action
 }
 
@@ -374,4 +380,6 @@ func GetRandomFromSlice(slice []int)int{
      return slice[rs_index]
 }
 
-
+func GetRobotAvatar()string{
+     return conf.Server.HttpServer+"/assets/robotAvatar/robot.jpeg"
+}

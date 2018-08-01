@@ -4,13 +4,17 @@ import (
 	"github.com/name5566/leaf/gate"
 	"server/datastruct"
 	"server/game/internal/match"
+	"server/game/internal/match/inviteModeMatch"
+	"server/thirdParty"
 )
 
 const MatchingKey="Matching"
+const GetInviteQRCodeKey="GetInviteQRCode"
 const CloseAgentKey="CloseAgent"
 
 func init() {
 	skeleton.RegisterChanRPC(MatchingKey, rpcMatchingPlayers)
+	skeleton.RegisterChanRPC(GetInviteQRCodeKey, rpcGetQRCode)
 	skeleton.RegisterChanRPC(CloseAgentKey, removeOnlinePlayer)
 }
 
@@ -19,7 +23,17 @@ func rpcMatchingPlayers(args []interface{}) {
 	connUUID := args[1].(string)
 	a := args[2].(gate.Agent)
 	uid:= args[3].(int)
-	ptr_match.Matching(connUUID,a,uid)
+	r_id := ptr_match.Matching(connUUID,a,uid)
+	switch ptr_match.(type){
+	 case *inviteModeMatch.InviteModeMatch:
+	    ChanRPC.Go(GetInviteQRCodeKey,r_id)
+	}
+}
+
+func rpcGetQRCode(args []interface{}){
+	r_id := args[0].(string)
+	rs:=thirdParty.GetQRCode(r_id)
+    sendInviteQRCode(r_id,rs)
 }
 
 func removeOnlinePlayer(args []interface{}){

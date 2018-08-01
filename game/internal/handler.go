@@ -83,7 +83,7 @@ func handlePlayerRelive(args []interface{}){
     agentUserData := a.UserData().(datastruct.AgentUserData)
     switch agentUserData.GameMode{
        case datastruct.EndlessMode:
-        ptr_endlessModeMatch.PlayerRelive(agentUserData.Extra.RoomID,agentUserData.PlayId,agentUserData.Extra.PlayName)
+        ptr_endlessModeMatch.PlayerRelive(agentUserData.Extra.RoomID,agentUserData.PlayId,agentUserData.Extra.PlayName,agentUserData.Extra.Avatar)
     }
 }
 
@@ -343,4 +343,8 @@ func handleMasterStartGame(args []interface{}){
 
 func leaveWaitRoom(w_id string,connUUID string){
     ptr_inviteModeMatch.LeftWaitRoom(w_id,connUUID)
+}
+
+func sendInviteQRCode(r_id string,qrcode string){
+    ptr_inviteModeMatch.SendInviteQRCode(r_id,qrcode)
 }

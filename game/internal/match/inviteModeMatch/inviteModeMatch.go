@@ -65,14 +65,14 @@ func (match *InviteModeMatch)addOnlinePlayer(connUUID string,a gate.Agent,uid in
 }
 
 
-func (match *InviteModeMatch)Matching(connUUID string,a gate.Agent,uid int){
+func (match *InviteModeMatch)Matching(connUUID string,a gate.Agent,uid int)string{
 	match.addPlayer(connUUID,a,uid)
 
 	//创建等待房间,房主即第一个玩家
 	waitRoom:=CreateWaitRoom(a,MaxPeople)
 	r_id:=waitRoom.roomID
 	match.waitRooms.Set(r_id,waitRoom)
-
+	
 	userData:=a.UserData().(datastruct.AgentUserData)
 	var data datastruct.PlayerInWaitRoom
 	data.NickName = userData.Extra.PlayName
@@ -88,6 +88,7 @@ func (match *InviteModeMatch)Matching(connUUID string,a gate.Agent,uid int){
 	extra.WaitRoomID = r_id
 	tools.ReSetAgentUserData(uid,datastruct.InviteMode,userData.PlayId,a,connUUID,extra)
 	a.WriteMsg(msg.GetInWaitRoomMsg(datastruct.NotFull,r_id,1,players))
+	return r_id
 }
 
 func (match *InviteModeMatch)JoinWaitRoom(w_id string,a gate.Agent,uid int,connUUID string){
@@ -188,13 +189,12 @@ func (match *InviteModeMatch)PlayerJoin(connUUID string,joinData *msg.CS_PlayerJ
             player.Agent.WriteMsg(msg.GetJoinInvalidMsg())
         }
 	}
-
 }
 
 func (match *InviteModeMatch)StartGame(w_id string,connUUID string){
 	tf,waitRoom:=match.waitRooms.Get(w_id)
 	if tf && waitRoom.IfCanStartGame(connUUID){
-		match.waitRooms.Delete(w_id)
+		deleteWaitRoom(match.waitRooms,w_id)
 		waitRoom.mutex.Lock()
 		defer waitRoom.mutex.Unlock()
 		playersUUID := waitRoom.GetPlayersUUID()
@@ -211,12 +211,12 @@ func (inviteModeMatch *InviteModeMatch)createRoom(playersUUID []string)string{
 	return r_uuid
 }
 
-
-
-
-
-
-
+func (match *InviteModeMatch)SendInviteQRCode(w_id string,qrcode string){
+	tf,waitRoom:=match.waitRooms.Get(w_id)
+	if tf{
+	   waitRoom.SendInviteQRCode(qrcode)
+	}
+}
 
 
 

@@ -91,7 +91,7 @@ func (match *SingleMatch)CheckActionPool(connUUID string) bool{
 	  return match.actionPool.Check(connUUID)
 }
 
-func (match *SingleMatch)Matching(connUUID string, a gate.Agent,uid int){
+func (match *SingleMatch)Matching(connUUID string, a gate.Agent,uid int) string{
 	match.addPlayer(connUUID,a,uid)
 	
 	//willEnterRoom 是否将要加入了房间
@@ -123,6 +123,7 @@ func (match *SingleMatch)Matching(connUUID string, a gate.Agent,uid int){
 		 	player.Agent.WriteMsg(msg.GetMatchingEndMsg(r_id))
 		 }
 	}
+	return r_id
 }
 
 func (match *SingleMatch)createTicker(){
