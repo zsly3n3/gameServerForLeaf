@@ -431,6 +431,8 @@ func GetCreatePlayerAction(p_id int,x int,y int,reLiveFrameIndex int,playerName 
 	  action.PlayerName = playerName
       action.PlayerAvatar = playerAvatar
 	  action.AddEnergy = addEnergy
+	 
+
 	//   switch Num{
 	//   case 0:
 	// 	action.X = Test1Point.X

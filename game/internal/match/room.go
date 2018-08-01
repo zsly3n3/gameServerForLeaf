@@ -600,6 +600,7 @@ func (room *Room)ComputeFrameData(){
      }
      room.robots.Mutex.Unlock()
      
+
      for _,player := range online_sync{
          connUUID:=player.Agent.UserData().(datastruct.AgentUserData).ConnUUID
          action_type,action:=room.playersData.GetValue(player.Avatar,player.NickName,player.GameData.PlayId,currentFrameIndex,room,connUUID)
