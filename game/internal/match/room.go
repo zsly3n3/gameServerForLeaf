@@ -23,7 +23,7 @@ const min_MapHeight = 18
 const time_interval = 50//50毫秒
 var map_factor = 200
 
-const RoomCloseTime = 15*time.Second//房间入口关闭时间
+const RoomCloseTime = 15*time.Minute//房间入口关闭时间
 
 var MaxPlayingTime time.Duration
 
@@ -46,6 +46,7 @@ type Room struct {
     IsOn bool //玩家是否能进入的开关
     players []string//玩家列表
     
+    pid_auto int //每进入一个玩家 自增1
     
     currentFrameIndex int//记录当前第几帧
     onlineSyncPlayers []datastruct.Player//同步完成的在线玩家列表,第0帧进来的玩家就已存在同步列表中
@@ -94,6 +95,7 @@ type PlayerDied struct {//玩家的死亡
 type HistoryFrameData struct {
     Mutex *sync.RWMutex //读写互斥量
     FramesData []*msg.SC_RoomFrameDataContent
+    IsClean bool
 }
 
 type RoomUnlockedData struct {
@@ -161,6 +163,7 @@ func CreateRoom(r_type RoomDataType,connUUIDs []string,r_id string,parentMatch P
     }
     room := new(Room)
     room.Mutex = new(sync.RWMutex)
+    room.pid_auto = 0
     rebotsNum:=leastPeople-len(connUUIDs)
     room.createGameMap(map_factor)
     room.createRoomUnlockedData(r_type,connUUIDs,r_id,parentMatch,rebotsNum,leastPeople,maxPeopleInRoom)
@@ -181,8 +184,8 @@ func CreateRoom(r_type RoomDataType,connUUIDs []string,r_id string,parentMatch P
     room.CreateRobotPaths()
     
     //测试
-    //room.createRobotData(0,true)
-    room.createRobotData(rebotsNum,true)
+    room.createRobotData(0,true)
+    //room.createRobotData(rebotsNum,true)
     room.gameStart()   
       
     return room
@@ -228,14 +231,14 @@ func (room *Room)createEnergyPointData(width int,height int) *EnergyPointData{
 
 func(room *Room)IsSyncFinished(connUUID string,player *datastruct.Player) (bool,int){
     length:=len(room.players)
-
-    play_id:=length+room.unlockedData.rebotsNum
+    
+    play_id:= room.pid_auto +room.unlockedData.rebotsNum
     
     if length == room.unlockedData.maxPeopleInRoom - 1 {
        room.IsOn = false
     }
     room.players=append(room.players,connUUID)
-    
+    room.pid_auto++
     var content msg.SC_InitRoomDataContent
     content.MapHeight = room.gameMap.height
     content.MapWidth = room.gameMap.width
@@ -307,7 +310,7 @@ func (room *Room)timeSleepWriteMsg(player *datastruct.Player,startIndex int) int
          copyData=room.history.FramesData[startIndex:]
       }
       room.history.Mutex.RUnlock()
-      
+    
       num:=len(copyData)
       lastFrameIndex:=copyData[num-1].FramesData[0].FrameIndex
       //log.Debug("timeSleepWriteMsg_0 num:%v",num)
@@ -363,7 +366,7 @@ func (room *Room)syncData(connUUID string,player *datastruct.Player){
       room.Mutex.Lock()
       if lastFrameIndex+1 == room.currentFrameIndex {//数据帧是从0开始，服务器计算帧是从1开始
                room.onlineSyncPlayers=append(room.onlineSyncPlayers,*player)
-               
+               log.Debug("normal SyncFinished")
                room.GetCreateAction(player.GameData.PlayId,datastruct.DefaultReliveFrameIndex,player.NickName,player.Avatar)
                length=len(room.players)
                room.Mutex.Unlock()
@@ -380,14 +383,14 @@ func (room *Room)syncData(connUUID string,player *datastruct.Player){
                        if lastFrameIndex+1 == room.currentFrameIndex {
                            isSyncFinished = true
                            room.onlineSyncPlayers=append(room.onlineSyncPlayers,*player)
-                           //log.Debug("syncData Channel GetCreateAction")
+                           log.Debug("syncData Channel GetCreateAction")
                            room.GetCreateAction(player.GameData.PlayId,datastruct.DefaultReliveFrameIndex,player.NickName,player.Avatar)
                            length=len(room.players)
                        }
                        room.Mutex.Unlock()
                        if isSyncFinished{
                            room.updateRobotRelive(length)
-                           //log.Debug("Channel SyncFinished")
+                           log.Debug("Channel SyncFinished")
                            break
                        }
                    }
@@ -518,21 +521,24 @@ func (room *Room)IsRemoveRoom()(bool,int,[]datastruct.Player,[]datastruct.Player
               room.offlineSyncPlayers = append(room.offlineSyncPlayers,player)
              }
            }
+           log.Debug("room.onlineSyncPlayers:%v",room.onlineSyncPlayers)
            removeOfflineSyncPlayersInRoom(room,offlineSyncPlayersIndex)//remove offline players
        }
        online_sync=make([]datastruct.Player,len(room.onlineSyncPlayers))
        copy(online_sync,room.onlineSyncPlayers)
        offline_sync=make([]datastruct.Player,len(room.offlineSyncPlayers))
        copy(offline_sync,room.offlineSyncPlayers)
-       if expended_onlineConnUUID != datastruct.NULLSTRING{
+       if expended_onlineConnUUID != datastruct.NULLSTRING && len(online_sync)>0{
         agentData:=online_sync[0].Agent.UserData().(datastruct.AgentUserData)
-        expended_onlineConnUUID = agentData.ConnUUID 
+        expended_onlineConnUUID = agentData.ConnUUID
        }
     }
 
  syncNotFinishedPlayers:=onlinePlayersInRoom-len(online_sync)
  isRemoveHistory:=false
+ log.Debug("rid:%v,onlinePlayersInRoom:%v,syncNotFinishedPlayers:%v",room.unlockedData.roomId,onlinePlayersInRoom,syncNotFinishedPlayers)
  if syncNotFinishedPlayers == 0&&!room.IsOn{
+    log.Debug("rid:%v,room.IsOn:%v",room.unlockedData.roomId,room.IsOn)
     isRemoveHistory = true
  }
  
@@ -545,7 +551,7 @@ func (room *Room)ComputeFrameData(){
         room.removeFromRooms()
         return
      }
-
+    
     var frame_content msg.SC_RoomFrameDataContent
      
     frame_content.FramesData = make([]msg.FrameData,0,1)
@@ -589,7 +595,6 @@ func (room *Room)ComputeFrameData(){
                 if !robot.IsRelive{
                    removeRobotsId=append(removeRobotsId,robot.Id)
                 }
-               
             }
             frame_data.PlayerFrameData = append(frame_data.PlayerFrameData,action)
          }
@@ -600,16 +605,21 @@ func (room *Room)ComputeFrameData(){
      }
      room.robots.Mutex.Unlock()
      
+     rm_action_ids:=make([]int,0)//需要删除的动作id
 
      for _,player := range online_sync{
          connUUID:=player.Agent.UserData().(datastruct.AgentUserData).ConnUUID
-         action_type,action:=room.playersData.GetValue(player.Avatar,player.NickName,player.GameData.PlayId,currentFrameIndex,room,connUUID)
+         pid:=player.GameData.PlayId
+         action_type,action:=room.playersData.GetValue(player.Avatar,player.NickName,pid,currentFrameIndex,room,connUUID)
+         log.Debug("name:%v,action_type:%v",player.NickName,action_type)
          if action != nil{
              if action_type==msg.Death{
                 died:=action.(*PlayerDied)
                 action=died.Action
                 frame_data.CreateEnergyPoints = append(frame_data.CreateEnergyPoints,died.Points...)
-                
+                if room.unlockedData.roomType == EndlessMode{
+                    rm_action_ids = append(rm_action_ids,pid)
+                }
              }
              frame_data.PlayerFrameData = append(frame_data.PlayerFrameData,action)
          }
@@ -617,13 +627,16 @@ func (room *Room)ComputeFrameData(){
      
      for _,player := range offline_sync{
         connUUID:=player.Agent.UserData().(datastruct.AgentUserData).ConnUUID
+        pid:=player.GameData.PlayId
         action_type,action:=room.playersData.GetOfflineAction(player.Avatar,player.NickName,player.GameData.PlayId,currentFrameIndex,room,connUUID)
         if action != nil{
             if action_type==msg.Death{
                died:=action.(*PlayerDied)
                action=died.Action
                frame_data.CreateEnergyPoints = append(frame_data.CreateEnergyPoints,died.Points...)
-              
+               if room.unlockedData.roomType == EndlessMode{
+                rm_action_ids = append(rm_action_ids,pid)
+               }
             }
             frame_data.PlayerFrameData = append(frame_data.PlayerFrameData,action)
         }
@@ -639,26 +652,27 @@ func (room *Room)ComputeFrameData(){
          player.Agent.WriteMsg(msg)
      }
      
-    
-     if !isRemoveHistory{
-        room.history.Mutex.Lock()
+     room.playersData.DeleteDatas(rm_action_ids)
+     
+     room.history.Mutex.Lock()
+     defer room.history.Mutex.Unlock()
+     isClean:=room.history.IsClean
+  
+     if !isRemoveHistory&&!isClean{
         room.history.FramesData = append(room.history.FramesData,&frame_content)
-        room.history.Mutex.Unlock()
-        
         for i:=0;i<syncNotFinishedPlayers;i++{
             isClosed:=safeSendSync(room.unlockedData.startSync,struct{}{})
             if isClosed{
                 break
             }
         }
-     }else{
-        if room.history!=nil{
-            room.history.Mutex.Lock()
+     }else{ 
+        if !isClean{
             room.history.FramesData=room.history.FramesData[:0]
-            room.history.Mutex.Unlock()
-            room.history = nil
+            room.history.IsClean = true
         }
      }
+     
      //log.Debug("Compute FramesData:%v,",frame_content.FramesData)
 }
 
@@ -697,7 +711,8 @@ func (room *Room)createHistoryFrameData(){
     history:=new(HistoryFrameData)
     history.Mutex = new(sync.RWMutex)
     rs:=MaxPlayingTime/(time_interval*time.Millisecond)
-    history.FramesData = make([]*msg.SC_RoomFrameDataContent,0,rs);
+    history.FramesData = make([]*msg.SC_RoomFrameDataContent,0,rs)
+    history.IsClean = false
     room.history = history
 }
 
@@ -928,8 +943,8 @@ func (data *PlayersFrameData)GetValue(avatar string,name string,pid int,currentF
                   isCreate = true
                   reliveFrameIndex=currentFrameIndex+offsetFrames
              case EndlessMode:
-                  delete(data.Data,pid)
-                  room.playerLeftCurrentRoom(connUUID)
+                  log.Debug("GetValue Death %v",name)
+                  room.playerExit(connUUID,pid)
              }
              if isCreate{
                 room.relive(actionData,pid,reliveFrameIndex,name,actionData.Data.(*PlayerDied).AddEnergy,false,avatar)
@@ -990,7 +1005,8 @@ func (data *PlayersFrameData)GetOfflineAction(avatar string,name string,pid int,
                case EndlessMode:
                     isExist:=room.CheckLeftlist(connUUID)
                     if isExist{
-                       room.removePlayer(connUUID)
+                       log.Debug("GetOfflineAction Death %v",name)
+                       room.playerExit(connUUID,pid)
                     }
              }
              if isCreate{
@@ -1333,7 +1349,7 @@ func (room *Room)CheckLeftlist(connUUID string)bool{
     return isExist
 }
 
-func (room *Room)removePlayer(connUUID string){
+func (room *Room)removePlayer(connUUID string,pid int){
     room.Mutex.Lock()
     defer room.Mutex.Unlock()
     rm_index:=datastruct.NULLID
@@ -1343,8 +1359,30 @@ func (room *Room)removePlayer(connUUID string){
             break
         }
     }
+    
+    rm_index1:=datastruct.NULLID
+    for index,v := range room.onlineSyncPlayers{
+        if pid == v.GameData.PlayId{
+            rm_index1=index
+            break
+        }
+    }
+    rm_index2:=datastruct.NULLID
+    for index,v := range room.offlineSyncPlayers{
+        if pid == v.GameData.PlayId{
+            rm_index2=index
+            break
+        }
+    }
+   
     if rm_index!=datastruct.NULLID{
         room.players=append(room.players[:rm_index], room.players[rm_index+1:]...)
+    }
+    if rm_index1!=datastruct.NULLID{
+        room.onlineSyncPlayers=append(room.onlineSyncPlayers[:rm_index1],room.onlineSyncPlayers[rm_index1+1:]...)
+    }
+    if rm_index2!=datastruct.NULLID{
+        room.offlineSyncPlayers=append(room.offlineSyncPlayers[:rm_index2],room.offlineSyncPlayers[rm_index2+1:]...)
     }
 }
 
@@ -1446,7 +1484,15 @@ func (room *Room)DeleteRandPathIndex(k int){
     delete(room.robotPaths.RobotPath,k)
 }
 
-func (room *Room)playerLeftCurrentRoom(connUUID string){
+func (room *Room)playerExit(connUUID string,pid int){
     room.unlockedData.parentMatch.RemovePlayer(connUUID)
-	room.AddPlayerleft(connUUID)
+    room.removePlayer(connUUID,pid)
+}
+
+func (data *PlayersFrameData)DeleteDatas(pids []int){
+     data.Mutex.Lock()
+     data.Mutex.Unlock()
+     for _,v:=range pids{
+        delete(data.Data,v)
+     }
 }

@@ -40,7 +40,7 @@ func handleUserLogin(arg interface{}) int {
 }
 
 func handleCreateDB()*xorm.Engine{
-    dsn := fmt.Sprintf("%s:%s@tcp(%s)/%s?charset=utf8",conf.Server.DB_UserName,conf.Server.DB_Pwd,conf.Server.DB_IP,conf.Server.DB_Name)
+    dsn := fmt.Sprintf("%s:%s@tcp(%s)/%s?charset=utf8mb4",conf.Server.DB_UserName,conf.Server.DB_Pwd,conf.Server.DB_IP,conf.Server.DB_Name)
 	engine, err:= xorm.NewEngine("mysql", dsn)
 	errhandle(err)
 	err=engine.Ping()
@@ -66,8 +66,16 @@ func resetDB(engine *xorm.Engine){
 }
 
 func initData(engine *xorm.Engine){
+    execStr:=fmt.Sprintf("ALTER DATABASE %s CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci;",conf.Server.DB_Name)
+    _,err:=engine.Exec(execStr)
+    errhandle(err)
+    _,err=engine.Exec("ALTER TABLE user CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;")
+    errhandle(err)
+    _,err=engine.Exec("ALTER TABLE user CHANGE nick_name nick_name VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;")
+    errhandle(err)
+
     names:=tools.GetRobotNames()
-    _, err := engine.Insert(&names)
+    _, err = engine.Insert(&names)
     errhandle(err)
     robotPaths = tools.GetRobotPath()
     robotName:=&datastruct.RobotName{}
@@ -211,4 +219,3 @@ func handleUpdateRobotNamesState(names map[int]string,engine *xorm.Engine){
 //     }
 //     session.Commit()
 // }
-

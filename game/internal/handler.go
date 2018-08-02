@@ -61,6 +61,8 @@ func handlePlayerGameOver1(args []interface{}){
     uid:=agentUserData.Uid
     score:=m.MsgContent.Score
     switch agentUserData.GameMode{
+       case datastruct.SinglePersonMode:
+        //加上消息
        case datastruct.EndlessMode:
         maxScore:=db.Module.GetMaxScoreInEndlessMode(uid)
         isUpdate:=false

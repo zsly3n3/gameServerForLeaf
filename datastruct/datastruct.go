@@ -11,8 +11,8 @@ const NULLID = -1
 type User struct {
     Id       int       `xorm:"not null pk autoincr INT(11)"`
     LoginName string    `xorm:"VARCHAR(64) not null"`
-	Avatar      string    `xorm:"VARCHAR(256)"`
-	NickName string `xorm:"not null CHAR(64)"`
+	Avatar      string    `xorm:"VARCHAR(255)"`
+	NickName string `xorm:"not null VARCHAR(255)"`
 	CreatedAt time.Time `xorm:"created"`
 }
 
