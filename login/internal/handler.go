@@ -9,7 +9,7 @@ import (
     "github.com/name5566/leaf/network/json"
     "server/thirdParty"
     "server/tools"
-    //"github.com/name5566/leaf/log"
+    "github.com/name5566/leaf/log"
 )
 
 func handleMsg(m interface{}, h interface{}) {
@@ -35,6 +35,11 @@ func handleUserLogin(args []interface{}) {
            m.MsgContent.LoginName = str
         }
     }
+    avatar:= m.MsgContent.Avatar
+    if avatar == datastruct.NULLSTRING{
+        avatar = tools.GetDefaultAvatar()
+        m.MsgContent.Avatar = avatar
+    }
     uid := db.Module.UserLogin(m)
     
     
@@ -47,7 +52,9 @@ func handleUserLogin(args []interface{}) {
    var msgContent msg.SC_UserLoginContent
    msgContent.Uid =uid
    
+   log.Debug("login uid:%v",uid)
    if uid > 0{
+      log.Debug("uid > 0 ")
       connUUID:=tools.UniqueId()
       mode:=datastruct.NULLMode
       p_id:=datastruct.NULLID
@@ -56,7 +63,9 @@ func handleUserLogin(args []interface{}) {
       extra.PlayName = m.MsgContent.NickName
       extra.RoomID = datastruct.NULLSTRING
       extra.WaitRoomID = datastruct.NULLSTRING
+      extra.IsSettle = false
       tools.ReSetAgentUserData(uid,mode,p_id,a,connUUID,extra)
+      log.Debug("a UserData:%v",a.UserData())
    }
    
    a.WriteMsg(&msg.SC_UserLogin{

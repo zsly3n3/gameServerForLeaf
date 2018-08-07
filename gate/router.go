@@ -28,4 +28,8 @@ func init() {
     msg.Processor.SetRouter(&msg.CS_MasterFirePlayer{}, game.ChanRPC)
     msg.Processor.SetRouter(&msg.CS_MasterStartGame{}, game.ChanRPC)
     msg.Processor.SetRouter(&msg.CS_GameOver1{}, game.ChanRPC)
+    msg.Processor.SetRouter(&msg.CS_GameOverSinglePersonMode{}, game.ChanRPC)
+    msg.Processor.SetRouter(&msg.CS_GameOverInviteMode{}, game.ChanRPC)
+    msg.Processor.SetRouter(&msg.CS_GetSnakeLength{}, game.ChanRPC)
+    msg.Processor.SetRouter(&msg.CS_GetKillNum{}, game.ChanRPC)
 }

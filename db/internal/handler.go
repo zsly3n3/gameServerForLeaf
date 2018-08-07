@@ -8,6 +8,9 @@ import (
     "server/conf"
     "github.com/name5566/leaf/log"
     "server/tools"
+    "strconv"
+    "time"
+    "github.com/robfig/cron"
     //"encoding/json"//json封装解析
 )
 
@@ -51,6 +54,7 @@ func handleCreateDB()*xorm.Engine{
 	engine.SetMaxIdleConns(10)
     resetDB(engine)
     initData(engine)
+    insertTestData(engine)
     dbEngine = engine
     return engine
 }
@@ -59,9 +63,13 @@ func resetDB(engine *xorm.Engine){
     user:=&datastruct.User{}
     robotName:=&datastruct.RobotName{}
     maxScoreInEndlessMode:=&datastruct.MaxScoreInEndlessMode{}
-	err:=engine.DropTables(user,robotName,maxScoreInEndlessMode)
+    maxScoreInSinglePersonMode:=&datastruct.MaxScoreInSinglePersonMode{}
+    maxScoreInInviteMode:=&datastruct.MaxScoreInInviteMode{}
+    skinFragment:=&datastruct.SkinFragment{}
+    gameIntegral:=&datastruct.GameIntegral{}
+	err:=engine.DropTables(user,robotName,maxScoreInEndlessMode,maxScoreInSinglePersonMode,maxScoreInInviteMode,skinFragment,gameIntegral)
     errhandle(err)
-	err=engine.CreateTables(user,robotName,maxScoreInEndlessMode)
+	err=engine.CreateTables(user,robotName,maxScoreInEndlessMode,maxScoreInSinglePersonMode,maxScoreInInviteMode,skinFragment,gameIntegral)
     errhandle(err)
 }
 
@@ -81,40 +89,163 @@ func initData(engine *xorm.Engine){
     robotName:=&datastruct.RobotName{}
     robotName.State = 0
     engine.Cols("state").Update(robotName)
+    go timerTask(engine)//执行定时任务
+}
+
+/*定时任务*/
+func timerTask(engine *xorm.Engine){
+    c := cron.New()
+	spec :="0 0 0 * * 1"
+    c.AddFunc(spec, func() {
+        table0:="max_score_in_single_person_mode"
+        table1:="max_score_in_endless_mode"
+        truncate:="truncate table "
+        engine.Exec(truncate+table0)
+        engine.Exec(truncate+table1)
+    })
+    c.Start()
 }
 
 func errhandle(err error){
 	if err != nil {
-		log.Fatal("db error is %v", err.Error())
+	   log.Fatal("db error is %v", err.Error())
 	}
 }
 
-func handleGetMaxScoreInEndlessMode(uid int) int {
+func handleGetMaxScoreInEndlessMode(uid int) (int,int){
     var scoreInfo datastruct.MaxScoreInEndlessMode
     has,err:=dbEngine.Where("uid =?", uid).Get(&scoreInfo)
     score:=0
+    killNum:=0
     if err !=nil{
        log.Error("handleGetMaxScoreInEndlessMode err:%v",err)
     }
     if has{
        score = scoreInfo.MaxScore
+       killNum = scoreInfo.MaxKillNum
     }
-    return score
+    return score,killNum
 }
 
-func handleUpdateMaxScoreInEndlessMode(uid int,score int){
-     var scoreInfo datastruct.MaxScoreInEndlessMode
-     has,_:=dbEngine.Where("uid =?", uid).Get(&scoreInfo)
-     if !has{
-        scoreInfo.Uid = uid
-        scoreInfo.MaxScore = score
-        dbEngine.Insert(scoreInfo)
-     }else{
-        score_str:=fmt.Sprintf("%d",score)
-        uid_str:=fmt.Sprintf("%d",uid)
-        sql := "update max_score_in_endless_mode set max_score=" + score_str + " where uid="+uid_str
-        dbEngine.Exec(sql)
-     }
+func handleGetMaxScoreInSinglePersonMode(uid int) (int,int){
+    var scoreInfo datastruct.MaxScoreInSinglePersonMode
+    has,err:=dbEngine.Where("uid =?", uid).Get(&scoreInfo)
+    score:=0
+    killNum:=0
+    if err !=nil{
+       log.Error("handleGetMaxScoreInSinglePersonMode err:%v",err)
+    }
+    if has{
+       score = scoreInfo.MaxScore
+       killNum = scoreInfo.MaxKillNum
+    }
+    return score,killNum
+}
+
+func handleGetMaxScoreInviteMode(uid int) (int,int){
+    var scoreInfo datastruct.MaxScoreInInviteMode
+    has,err:=dbEngine.Where("uid =?", uid).Get(&scoreInfo)
+    score:=0
+    killNum:=0
+    if err !=nil{
+       log.Error("handleGetMaxScoreInviteMode err:%v",err)
+    }
+    if has{
+       score = scoreInfo.MaxScore
+       killNum = scoreInfo.MaxKillNum
+    }
+    return score,killNum
+}
+
+func handleUpdateMaxScoreInEndlessMode(uid int,score int,killNum int){
+    var scoreInfo datastruct.MaxScoreInEndlessMode
+    has,_:=dbEngine.Where("uid =?", uid).Get(&scoreInfo)
+    timestamp:=time.Now().Unix()
+    if !has{
+       scoreInfo.Uid = uid
+       scoreInfo.MaxScore = score
+       scoreInfo.MaxKillNum = killNum
+       scoreInfo.UpdateTime = timestamp
+       dbEngine.Insert(scoreInfo)
+    }else{
+       score_str:=fmt.Sprintf("%d",score)
+       killNum_str:=fmt.Sprintf("%d",killNum)
+       uid_str:=fmt.Sprintf("%d",uid)
+       sql := "update max_score_in_endless_mode set max_score=" + score_str + ",max_kill_num="+killNum_str+",update_time="+fmt.Sprintf("%d",timestamp)+" where uid="+uid_str
+       dbEngine.Exec(sql)
+    }
+}
+
+func handleUpdateMaxScoreInSinglePersonMode(uid int,score int,killNum int){
+    var scoreInfo datastruct.MaxScoreInSinglePersonMode
+    has,_:=dbEngine.Where("uid =?", uid).Get(&scoreInfo)
+    timestamp:=time.Now().Unix()
+    if !has{
+       scoreInfo.Uid = uid
+       scoreInfo.MaxScore = score
+       scoreInfo.MaxKillNum = killNum
+       scoreInfo.UpdateTime = timestamp
+       dbEngine.Insert(scoreInfo)
+    }else{
+       score_str:=fmt.Sprintf("%d",score)
+       killNum_str:=fmt.Sprintf("%d",killNum)
+       uid_str:=fmt.Sprintf("%d",uid)
+       sql := "update max_score_in_single_person_mode set max_score=" + score_str + ",max_kill_num="+killNum_str+",update_time="+fmt.Sprintf("%d",timestamp)+" where uid="+uid_str
+       dbEngine.Exec(sql)
+    }
+}
+
+func handleUpdateMaxScoreInviteMode(uid int,score int,killNum int){
+    var scoreInfo datastruct.MaxScoreInInviteMode
+    has,_:=dbEngine.Where("uid =?", uid).Get(&scoreInfo)
+    if !has{
+       scoreInfo.Uid = uid
+       scoreInfo.MaxScore = score
+       scoreInfo.MaxKillNum = killNum
+       dbEngine.Insert(scoreInfo)
+    }else{
+       score_str:=fmt.Sprintf("%d",score)
+       killNum_str:=fmt.Sprintf("%d",killNum)
+       uid_str:=fmt.Sprintf("%d",uid)
+       sql:= "update max_score_in_invite_mode set max_score=" + score_str + ",max_kill_num="+killNum_str+" where uid="+uid_str
+       dbEngine.Exec(sql)
+    }
+}
+
+func hanleAddFragmentNum(uid int,fragmentNum int){
+    if fragmentNum >0{
+        var skinFragment datastruct.SkinFragment
+        has,_:=dbEngine.Where("uid =?", uid).Get(&skinFragment)
+        if !has{
+           skinFragment.Uid = uid
+           skinFragment.FragmentNum = fragmentNum
+           dbEngine.Insert(skinFragment)
+        }else{
+           fragmentNum=skinFragment.FragmentNum+fragmentNum
+           fragmentNum_str:=fmt.Sprintf("%d",fragmentNum)
+           uid_str:=fmt.Sprintf("%d",uid)
+           sql := "update skin_fragment set fragment_num=" + fragmentNum_str + " where uid="+uid_str
+           dbEngine.Exec(sql)
+        }   
+    }
+}
+
+func hanleAddGameIntegral(uid int,integral int){
+    if integral >0{
+        var gameIntegral datastruct.GameIntegral
+        has,_:=dbEngine.Where("uid =?", uid).Get(&gameIntegral)
+        if !has{
+            gameIntegral.Uid = uid
+            gameIntegral.Integral = integral
+            dbEngine.Insert(gameIntegral)
+        }else{
+           integral=gameIntegral.Integral+integral
+           integral_str:=fmt.Sprintf("%d",integral)
+           uid_str:=fmt.Sprintf("%d",uid)
+           sql := "update game_integral set integral=" + integral_str + " where uid="+uid_str
+           dbEngine.Exec(sql)
+        }   
+    }
 }
 
 
@@ -219,3 +350,136 @@ func handleUpdateRobotNamesState(names map[int]string,engine *xorm.Engine){
 //     }
 //     session.Commit()
 // }
+
+func hanleLengthRank(uid int,mode datastruct.GameModeType,rankStart int,rankEnd int)(*datastruct.PlayerScore,[]datastruct.PlayerRankScoreData){
+     desc:="max_score"
+     return queryLengthRank(uid,mode,rankStart,rankEnd,desc)
+}
+
+func queryLengthRank(uid int,mode datastruct.GameModeType,rankStart int,rankEnd int,desc string)(*datastruct.PlayerScore,[]datastruct.PlayerRankScoreData){
+    table,offset,rows:=getTableOffsetRows(mode,rankStart,rankEnd)
+    playersData:=getPlayersMaxData(table,desc,offset,rows)
+    var currentPlayer datastruct.PlayerScore
+    arrData := make([]datastruct.PlayerRankScoreData,0,len(playersData))
+    for index,v:=range playersData{
+        var rankScoreData datastruct.PlayerRankScoreData
+        var playerScore datastruct.PlayerScore
+        playerScore.Rank = index + 1
+        playerScore.Score = v.MaxScore
+        playerScore.Name = v.NickName
+        playerScore.Avatar = v.Avatar
+        rankScoreData.LengthRank=&playerScore
+        arrData = append(arrData,rankScoreData)
+    }
+    rank,score:=getRankWithDesc(desc,table,uid)
+    currentPlayer.Rank = rank
+    currentPlayer.Score = score
+    return &currentPlayer,arrData
+}
+
+func hanleKillNumRank(uid int,mode datastruct.GameModeType,rankStart int,rankEnd int)(*datastruct.PlayerKillNum,[]datastruct.PlayerRankKillNumData){
+    desc:="max_kill_num"
+    return queryKillNumRank(uid,mode,rankStart,rankEnd,desc)
+}
+
+func queryKillNumRank(uid int,mode datastruct.GameModeType,rankStart int,rankEnd int,desc string)(*datastruct.PlayerKillNum,[]datastruct.PlayerRankKillNumData){
+    table,offset,rows:=getTableOffsetRows(mode,rankStart,rankEnd)
+    playersData:=getPlayersMaxData(table,desc,offset,rows)
+    var currentPlayer datastruct.PlayerKillNum
+    arrData := make([]datastruct.PlayerRankKillNumData,0,len(playersData))
+    for index,v:=range playersData{
+        var killNumRankData datastruct.PlayerRankKillNumData
+        var playerKillNum datastruct.PlayerKillNum
+        playerKillNum.Rank = index + 1
+        playerKillNum.KillNum = v.MaxKillNum
+        playerKillNum.Name = v.NickName
+        playerKillNum.Avatar = v.Avatar
+        killNumRankData.KillNumRank=&playerKillNum
+        arrData = append(arrData,killNumRankData)
+    }
+    rank,max:=getRankWithDesc(desc,table,uid)
+    currentPlayer.Rank = rank
+    currentPlayer.KillNum = max
+    return &currentPlayer,arrData
+}
+
+func getRankWithDesc(columnName string,table string,uid int)(int,int){
+     rank:=0
+     max:=0
+     sql_str:=fmt.Sprintf("SELECT b.* FROM ( SELECT t.*, @rownum := @rownum + 1 AS rownum FROM (SELECT @rownum := 0) r, (SELECT * FROM %s ORDER BY %s DESC) AS t ) AS b WHERE b.uid = %d",table,columnName,uid)
+     results,err:= dbEngine.Query(sql_str)
+     if err == nil && len(results)>0{
+        tmp_max,err:=strconv.Atoi(string(results[0][columnName]))
+        if err==nil{
+            max = tmp_max
+        }
+        tmp_rank,err:=strconv.Atoi(string(results[0]["rownum"]))
+        if err==nil{
+            rank = tmp_rank
+        }
+    }
+    return rank,max
+}
+
+type playerMaxData struct {
+    NickName string
+    Avatar string
+    MaxScore int
+    MaxKillNum int
+}
+func getPlayersMaxData(table string,desc string,offset int ,rows int)[]playerMaxData{
+     var playersData []playerMaxData
+     sql_str:=fmt.Sprintf("select max_score,nick_name,avatar,max_kill_num from %s m join user u on m.uid = u.id order by %s desc,update_time asc limit %d,%d",table,desc,offset,rows)
+     dbEngine.Sql(sql_str).Find(&playersData)
+     return playersData
+}
+
+func getTableOffsetRows(mode datastruct.GameModeType,rankStart int,rankEnd int)(string,int,int){
+    rankStart=rankStart-1
+    if rankStart < 0{
+       rankStart = 0
+    }
+    if rankEnd <=0{
+       rankEnd = 1 
+    }
+    offset:=rankStart
+    rows:= rankEnd - offset
+    table:=""
+    switch mode{
+    case datastruct.SinglePersonMode:
+         table="max_score_in_single_person_mode"
+    case datastruct.EndlessMode:
+         table="max_score_in_endless_mode"
+    default:
+    }
+    return table,offset,rows
+}
+
+func insertTestData(engine *xorm.Engine){
+     const avatar="https://wx.qlogo.cn/mmopen/vi_32/XIcVyEkoFxEmrl7z0Iz1NzGgiaLC4pMMb9KY1WO34aYctK2r63tEPulfRfUictw82C3ibjG5PuYOuAU3Qb8wyyeKQ/132"
+     for i:=0;i<200;i++{
+        user:=new(datastruct.User)
+        user.LoginName = fmt.Sprintf("LoginName%d",i+1)
+        user.Avatar=avatar
+        user.NickName=fmt.Sprintf("test%d",i+1)
+        _,err:=engine.Insert(user)
+        if err ==nil {
+            uid:=user.Id
+            if i%2==0{
+                var scoreInfo datastruct.MaxScoreInSinglePersonMode
+                scoreInfo.Uid = uid
+                scoreInfo.MaxScore = tools.RandInt(1,2000+1)
+                scoreInfo.UpdateTime = time.Now().Unix()+int64(i)
+                scoreInfo.MaxKillNum = tools.RandInt(1,100+1)
+                engine.Insert(&scoreInfo)   
+            }else{
+                var scoreInfo datastruct.MaxScoreInEndlessMode
+                scoreInfo.Uid = uid
+                scoreInfo.MaxScore = tools.RandInt(1,1000+1)
+                scoreInfo.UpdateTime = time.Now().Unix()+int64(i)
+                scoreInfo.MaxKillNum = tools.RandInt(1,50+1)
+                engine.Insert(&scoreInfo)
+            }
+        }
+     }
+}

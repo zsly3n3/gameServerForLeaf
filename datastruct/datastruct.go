@@ -26,6 +26,36 @@ type MaxScoreInEndlessMode struct {
 	Id   int       `xorm:"not null pk autoincr INT(11)"`
 	Uid int    `xorm:"INT(11) not null"`
 	MaxScore int    `xorm:"INT(11) not null"`
+	MaxKillNum int    `xorm:"INT(11) not null"`
+	UpdateTime int64 `xorm:"bigint not null"`
+}
+
+type MaxScoreInSinglePersonMode struct {
+	Id   int       `xorm:"not null pk autoincr INT(11)"`
+	Uid int    `xorm:"INT(11) not null"`
+	MaxScore int    `xorm:"INT(11) not null"`
+	MaxKillNum int    `xorm:"INT(11) not null"`
+	UpdateTime int64 `xorm:"bigint not null"`
+}
+
+type MaxScoreInInviteMode struct {
+	Id   int       `xorm:"not null pk autoincr INT(11)"`
+	Uid int    `xorm:"INT(11) not null"`
+	MaxScore int    `xorm:"INT(11) not null"`
+	MaxKillNum int    `xorm:"INT(11) not null"`
+}
+
+type SkinFragment struct {
+	Id   int       `xorm:"not null pk autoincr INT(11)"`
+	Uid int    `xorm:"INT(11) not null"`
+	FragmentNum int    `xorm:"INT(11) not null"`
+}
+
+/*积分表*/
+type GameIntegral struct {
+	Id   int       `xorm:"not null pk autoincr INT(11)"`
+	Uid int    `xorm:"INT(11) not null"`
+	Integral int    `xorm:"INT(11) not null"`
 }
 
 type PlayerEnterType int //玩家进入房间的类型
@@ -52,13 +82,14 @@ type AgentUserData struct {
 	 GameMode GameModeType
 	 Extra ExtraUserData
 }
+
 type ExtraUserData struct {
 	 PlayName string
 	 Avatar string
 	 RoomID string
-	 WaitRoomID string	 
+	 WaitRoomID string
+	 IsSettle bool
 }
-
 
 type Player struct {
 	Uid       int //对应user表中的Id  
@@ -102,8 +133,34 @@ type Robot struct {
 	// SpeedInterval int //加速的时间间隔
 	// StopSpeedFrameIndex int //持续到多少帧结束 
 	// DirectionInterval int //转向的时间间隔
-	
 }
+
+/*用于的排行榜数据*/
+type PlayerScore struct {
+	Rank int 
+	Score int
+	Avatar string
+	Name string
+}
+
+type PlayerRankScoreData struct {
+	 LengthRank *PlayerScore
+}
+
+/*用于的排行榜数据*/
+type PlayerKillNum struct {
+	Rank int
+	KillNum int
+	Avatar string
+	Name string
+}
+
+type PlayerRankKillNumData struct {
+	 KillNumRank *PlayerKillNum
+}
+
+
+
 
 func CreatePlayer(user *User) *Player{
 	player := new(Player)

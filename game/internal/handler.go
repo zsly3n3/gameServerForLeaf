@@ -34,6 +34,12 @@ func init() {
     handleMsg(&msg.CS_PlayerRelive{}, handlePlayerRelive)
 
     handleMsg(&msg.CS_GameOver1{}, handlePlayerGameOver1)
+    
+    handleMsg(&msg.CS_GameOverSinglePersonMode{}, handlePlayerGameOverSinglePersonMode)
+    handleMsg(&msg.CS_GameOverInviteMode{}, handlePlayerGameOverInviteMode)
+
+    handleMsg(&msg.CS_GetSnakeLength{}, handleGetSnakeLength)
+    handleMsg(&msg.CS_GetKillNum{}, handleGetKillNum)
 }
 
 
@@ -51,28 +57,122 @@ func getParentMatch(mode datastruct.GameModeType) match.ParentMatch{
     return match
 }
 
-func handlePlayerGameOver1(args []interface{}){
+func handleGetSnakeLength(args []interface{}){
     a := args[1].(gate.Agent)
     if !tools.IsValid(a.UserData()){
        return
     }
-    m := args[0].(*msg.CS_GameOver1)
+    m := args[0].(*msg.CS_GetSnakeLength)
     agentUserData := a.UserData().(datastruct.AgentUserData)
-    uid:=agentUserData.Uid
-    score:=m.MsgContent.Score
-    switch agentUserData.GameMode{
-       case datastruct.SinglePersonMode:
-        //加上消息
-       case datastruct.EndlessMode:
-        maxScore:=db.Module.GetMaxScoreInEndlessMode(uid)
+    mode:=m.MsgContent.GameMode
+    currentPlayerData,arr:=db.Module.GetSnakeLengthRank(agentUserData.Uid,mode,m.MsgContent.RankStart,m.MsgContent.RankEnd)
+    currentPlayerData.Avatar = agentUserData.Extra.Avatar
+    currentPlayerData.Name = agentUserData.Extra.PlayName
+    a.WriteMsg(msg.GetSnakeLengthMsg(mode,currentPlayerData,arr))
+}
+
+func handleGetKillNum(args []interface{}){
+    a := args[1].(gate.Agent)
+    if !tools.IsValid(a.UserData()){
+       return
+    }
+    m := args[0].(*msg.CS_GetKillNum)
+    agentUserData := a.UserData().(datastruct.AgentUserData)
+    mode:=m.MsgContent.GameMode
+    currentPlayerData,arr:=db.Module.GetKillNumRank(agentUserData.Uid,mode,m.MsgContent.RankStart,m.MsgContent.RankEnd)
+    currentPlayerData.Avatar = agentUserData.Extra.Avatar
+    currentPlayerData.Name = agentUserData.Extra.PlayName
+    a.WriteMsg(msg.GetKillNumMsg(mode,currentPlayerData,arr))
+
+}
+
+func handlePlayerGameOverInviteMode(args []interface{}){
+    a := args[1].(gate.Agent)
+    if !tools.IsValid(a.UserData()){
+       return
+    }
+    m := args[0].(*msg.CS_GameOverInviteMode)
+    tf:=tools.EnableSettle(m.MsgContent.RoomID,a)
+    agentUserData := a.UserData().(datastruct.AgentUserData)
+    if tf&&agentUserData.GameMode==datastruct.InviteMode{
+        uid:=agentUserData.Uid
+        score:=m.MsgContent.Score
+        killNum:=m.MsgContent.KillNum
+        integral:=tools.GetGameIntegral(m.MsgContent.Ranking)
+        db.Module.AddGameIntegral(uid,integral)
+        maxScore,maxKillNum:=db.Module.GetMaxScoreInviteMode(uid)
         isUpdate:=false
         if score>maxScore{
            maxScore = score
            isUpdate = true
         }
+        if killNum>maxKillNum{
+           maxKillNum = killNum
+           isUpdate = true
+        }
+        if isUpdate{
+           db.Module.UpdateMaxScoreInviteMode(uid,maxScore,maxKillNum)
+        }
+    }
+}
+
+func handlePlayerGameOverSinglePersonMode(args []interface{}){
+    a := args[1].(gate.Agent)
+
+    if !tools.IsValid(a.UserData()){
+       return
+    }
+    
+    m := args[0].(*msg.CS_GameOverSinglePersonMode)
+    tf:=tools.EnableSettle(m.MsgContent.RoomID,a)
+    agentUserData := a.UserData().(datastruct.AgentUserData)
+    if tf&&agentUserData.GameMode==datastruct.SinglePersonMode{
+        uid:=agentUserData.Uid
+        score:=m.MsgContent.Score
+        killNum:=m.MsgContent.KillNum
+        fragmentNum:=tools.GetFragmentNum(m.MsgContent.Ranking)
+        db.Module.AddFragmentNum(uid,fragmentNum)
+        maxScore,maxKillNum:=db.Module.GetMaxScoreInSinglePersonMode(uid)
+        isUpdate:=false
+        if score>maxScore{
+           maxScore = score
+           isUpdate = true
+        }
+        if killNum>maxKillNum{
+           maxKillNum = killNum
+           isUpdate = true
+        }
+        if isUpdate{
+           db.Module.UpdateMaxScoreInSinglePersonMode(uid,maxScore,maxKillNum)
+        }
+    }
+}
+
+func handlePlayerGameOver1(args []interface{}){
+    a := args[1].(gate.Agent)
+    if !tools.IsValid(a.UserData()){
+       return
+    }
+    agentUserData := a.UserData().(datastruct.AgentUserData)
+    m := args[0].(*msg.CS_GameOver1)
+    tf:=tools.EnableSettle(m.MsgContent.RoomID,a)
+    if tf&&agentUserData.GameMode==datastruct.EndlessMode{
+        uid:=agentUserData.Uid
+        score:=m.MsgContent.Score
+        killNum:=m.MsgContent.KillNum
+        maxScore,maxKillNum:=db.Module.GetMaxScoreInEndlessMode(uid)
+        isUpdate:=false
+        if score>maxScore{
+            maxScore = score
+            isUpdate = true
+        }
+        if killNum>maxKillNum{
+            maxKillNum = killNum
+            isUpdate = true
+        }
         a.WriteMsg(msg.GetGameOver1Msg(maxScore,m.MsgContent.Score,m.MsgContent.KillNum))
         if isUpdate{
-           db.Module.UpdateMaxScoreInEndlessMode(uid,maxScore)
+            db.Module.UpdateMaxScoreInEndlessMode(uid,maxScore,maxKillNum)
         }
     }
 }
@@ -109,11 +209,9 @@ func handlePlayersDied(args []interface{}){
     
     //接收玩家死亡坐标,生成指定范围能量点
     //指定某一帧复活
-    
     match:=getParentMatch(agentUserData.GameMode)
     match.PlayersDied(agentUserData.Extra.RoomID,m.MsgContent)
 }
-
 
 func handleEnergyExpended(args []interface{}){
     a := args[1].(gate.Agent)
@@ -227,6 +325,8 @@ func startMatching(args []interface{},mode datastruct.GameModeType){
     }
     connUUID:=agentUserData.ConnUUID
     
+    
+    //重置UserData
     tools.ReSetAgentUserData(uid,mode,datastruct.NULLID,a,connUUID,tools.ReSetExtraRoomID(agentUserData.Extra))
     removePlayerFromOtherMatchs(connUUID,mode)
     

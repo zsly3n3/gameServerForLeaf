@@ -10,20 +10,20 @@ import (
     "server/tools"
 )
 
-type RoomDataType int //房间类型,匹配类型还是邀请类型
+// type RoomDataType int //房间类型,匹配类型还是邀请类型
 
-const (
-    SinglePersonMatching RoomDataType = iota
-    EndlessMode
-	Invite
-)
+// const (
+//     SinglePersonMatching RoomDataType = iota + 1
+//     EndlessMode
+// 	Invite
+// )
 
 const min_MapWidth = 24
 const min_MapHeight = 18
 const time_interval = 50//50毫秒
 var map_factor = 200
 
-const RoomCloseTime = 15*time.Minute//房间入口关闭时间
+const RoomCloseTime = 15*time.Second//房间入口关闭时间
 
 var MaxPlayingTime time.Duration
 
@@ -107,7 +107,7 @@ type RoomUnlockedData struct {
      points_ch chan []datastruct.EnergyPoint
      pointData *EnergyPointData
      allowList []string//允许列表
-     roomType RoomDataType//房间类型
+     roomType datastruct.GameModeType//房间类型
      roomId string
      startSync chan struct{} //开始同步的管道
      rebotMoveAction chan msg.Point
@@ -156,10 +156,10 @@ type RobotData struct {
     //get robot, set isrelive = false, write
 }
 
-func CreateRoom(r_type RoomDataType,connUUIDs []string,r_id string,parentMatch ParentMatch,leastPeople int,maxPeopleInRoom int)*Room{
+func CreateRoom(r_type datastruct.GameModeType,connUUIDs []string,r_id string,parentMatch ParentMatch,leastPeople int,maxPeopleInRoom int)*Room{
     //测试
-    if r_type == SinglePersonMatching || r_type == Invite{
-        MaxPlayingTime = 5 * time.Minute
+    if r_type == datastruct.SinglePersonMode || r_type == datastruct.InviteMode{
+        MaxPlayingTime = 15 * time.Second
     }
     room := new(Room)
     room.Mutex = new(sync.RWMutex)
@@ -184,8 +184,8 @@ func CreateRoom(r_type RoomDataType,connUUIDs []string,r_id string,parentMatch P
     room.CreateRobotPaths()
     
     //测试
-    room.createRobotData(0,true)
-    //room.createRobotData(rebotsNum,true)
+    //room.createRobotData(0,true)
+    room.createRobotData(rebotsNum,true)
     room.gameStart()   
       
     return room
@@ -278,10 +278,11 @@ func (room *Room)GetCreateAction(play_id int,reliveFrameIndex int,playername str
 }
 
 func (room *Room)sendInitRoomDataToAgent(player *datastruct.Player,content *msg.SC_InitRoomDataContent,play_id int){
-     if room.unlockedData.roomType != EndlessMode {
+     if room.unlockedData.roomType != datastruct.EndlessMode {
         //测试
-        content.GameTime = 300 * 1000 - room.currentFrameIndex*50
+        content.GameTime = 15 * 1000 - room.currentFrameIndex*50
      }
+
      content.GameMode = int(room.unlockedData.roomType)
      msg_initRoom:=msg.GetInitRoomDataMsg(*content)
      player.Agent.WriteMsg(msg_initRoom)
@@ -291,12 +292,14 @@ func (room *Room)sendInitRoomDataToAgent(player *datastruct.Player,content *msg.
      uid:=agentData.Uid
      rid:=room.unlockedData.roomId
      mode:=agentData.GameMode
+     
      player.GameData.PlayId = play_id
      var extra datastruct.ExtraUserData
      extra.Avatar = agentData.Extra.Avatar
      extra.PlayName = agentData.Extra.PlayName
      extra.WaitRoomID = datastruct.NULLSTRING
      extra.RoomID = rid
+     extra.IsSettle = false
      tools.ReSetAgentUserData(uid,mode,play_id,player.Agent,connUUID,extra)
 }
 
@@ -617,7 +620,7 @@ func (room *Room)ComputeFrameData(){
                 died:=action.(*PlayerDied)
                 action=died.Action
                 frame_data.CreateEnergyPoints = append(frame_data.CreateEnergyPoints,died.Points...)
-                if room.unlockedData.roomType == EndlessMode{
+                if room.unlockedData.roomType == datastruct.EndlessMode{
                     rm_action_ids = append(rm_action_ids,pid)
                 }
              }
@@ -634,7 +637,7 @@ func (room *Room)ComputeFrameData(){
                died:=action.(*PlayerDied)
                action=died.Action
                frame_data.CreateEnergyPoints = append(frame_data.CreateEnergyPoints,died.Points...)
-               if room.unlockedData.roomType == EndlessMode{
+               if room.unlockedData.roomType == datastruct.EndlessMode{
                 rm_action_ids = append(rm_action_ids,pid)
                }
             }
@@ -646,11 +649,9 @@ func (room *Room)ComputeFrameData(){
      msg:=msg.GetRoomFrameDataMsg(&frame_content)
     
     
-     
-     
-     for _,player := range online_sync{
+    for _,player := range online_sync{
          player.Agent.WriteMsg(msg)
-     }
+    }
      
      room.playersData.DeleteDatas(rm_action_ids)
      
@@ -688,7 +689,7 @@ func removeOfflineSyncPlayersInRoom(room *Room,removeIndex []int){
 }
 
 
-func (room *Room)createRoomUnlockedData(r_type RoomDataType,connUUIDs []string,r_id string,parentMatch ParentMatch,rebotsNum int,leastPeople int,maxPeopleInRoom int){
+func (room *Room)createRoomUnlockedData(r_type datastruct.GameModeType,connUUIDs []string,r_id string,parentMatch ParentMatch,rebotsNum int,leastPeople int,maxPeopleInRoom int){
     unlockedData:=new(RoomUnlockedData)
     unlockedData.points_ch = make(chan []datastruct.EnergyPoint,2)
     unlockedData.rebotMoveAction = make(chan msg.Point,leastPeople-1+maxPeopleInRoom-1)
@@ -937,12 +938,12 @@ func (data *PlayersFrameData)GetValue(avatar string,name string,pid int,currentF
              isCreate:=false
              reliveFrameIndex:=datastruct.DefaultReliveFrameIndex
              switch room.unlockedData.roomType{
-             case Invite:
+             case datastruct.InviteMode:
                   fallthrough
-             case SinglePersonMatching:
+             case datastruct.SinglePersonMode:
                   isCreate = true
                   reliveFrameIndex=currentFrameIndex+offsetFrames
-             case EndlessMode:
+             case datastruct.EndlessMode:
                   log.Debug("GetValue Death %v",name)
                   room.playerExit(connUUID,pid)
              }
@@ -997,12 +998,12 @@ func (data *PlayersFrameData)GetOfflineAction(avatar string,name string,pid int,
              isCreate:=false
              reliveFrameIndex:=datastruct.DefaultReliveFrameIndex
              switch room.unlockedData.roomType{
-               case Invite:
+               case datastruct.InviteMode:
                     fallthrough            
-               case SinglePersonMatching:
+               case datastruct.SinglePersonMode:
                     isCreate = true
                     reliveFrameIndex=currentFrameIndex+offsetFrames
-               case EndlessMode:
+               case datastruct.EndlessMode:
                     isExist:=room.CheckLeftlist(connUUID)
                     if isExist{
                        log.Debug("GetOfflineAction Death %v",name)
@@ -1294,7 +1295,7 @@ func (room *Room)GetAllowList()[]string{
 }
 
 func (room *Room)gameStart(){
-    if room.unlockedData.roomType == SinglePersonMatching || room.unlockedData.roomType == Invite{
+    if room.unlockedData.roomType == datastruct.SinglePersonMode || room.unlockedData.roomType == datastruct.InviteMode{
         time.AfterFunc(MaxPlayingTime,func(){
             content:=new(msg.SC_GameOverDataContent)
             content.RoomId = room.unlockedData.roomId

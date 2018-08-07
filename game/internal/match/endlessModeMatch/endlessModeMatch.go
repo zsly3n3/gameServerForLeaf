@@ -88,7 +88,7 @@ func (match *EndlessModeMatch)Matching(connUUID string, a gate.Agent,uid int)str
 func (endlessModeMatch *EndlessModeMatch)createRoom(connUUID string)string{
 	log.Debug("无尽模式匹配完成，创建房间")
 	r_uuid:=tools.UniqueId()
-	room:=match.CreateRoom(match.EndlessMode,[]string{connUUID},r_uuid,endlessModeMatch,LeastPeople,20)
+	room:=match.CreateRoom(datastruct.EndlessMode,[]string{connUUID},r_uuid,endlessModeMatch,LeastPeople,20)
     endlessModeMatch.rooms.Set(r_uuid,room)
 	return r_uuid
 }

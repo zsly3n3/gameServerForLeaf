@@ -184,7 +184,7 @@ func (waitRoom *WaitRoom)IfCanStartGame(connUUID string) bool {
 	tf := false
 	waitRoom.mutex.RLock()
 	defer waitRoom.mutex.RUnlock()
-	if len(waitRoom.players) > 1{
+	if len(waitRoom.players) > 0{ //测试
 	  for _,v := range waitRoom.players{
 		u_data:=v.agent.UserData().(datastruct.AgentUserData)
 		if u_data.ConnUUID == connUUID{

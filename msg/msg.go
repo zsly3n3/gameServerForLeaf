@@ -51,6 +51,13 @@ func init() {
 	Processor.Register(&SC_GameOver1{})
 
 	Processor.Register(&SC_InviteQRCode{})
+	Processor.Register(&CS_GameOverSinglePersonMode{})
+	Processor.Register(&CS_GameOverInviteMode{})
+
+	Processor.Register(&CS_GetSnakeLength{})
+	Processor.Register(&CS_GetKillNum{})
+	Processor.Register(&SC_GetSnakeLength{})
+	Processor.Register(&SC_GetKillNum{})
 }
 
 /*接收消耗的能量值*/
@@ -75,6 +82,8 @@ type CS_UserLoginContent struct {
 	Avatar string
 	Platform string //告知服务端是从哪家平台发送过来的,比如"微信","QQ"
 }
+
+
 
 
 /*服务端发送给客户端*/
@@ -278,7 +287,6 @@ type CS_PlayerDied struct {
 	MsgContent []datastruct.PlayerDiedData
 }
 
-
 type CS_PlayerLeftRoom struct { //玩家离开房间
 	MsgHeader json.MsgHeader
 }
@@ -371,6 +379,31 @@ type CS_GameOver1 struct {
 type CS_GameOver1Content struct {
 	KillNum int //当前击杀数
 	Score int //当前分数
+	RoomID string//判断此房间结算
+}
+
+/*玩家在限时模式游戏结束时结算,保存各项数据*/
+type CS_GameOverSinglePersonMode struct {
+	MsgHeader json.MsgHeader
+	MsgContent *CS_GameOverSinglePersonModeContent
+}
+type CS_GameOverSinglePersonModeContent struct {
+	KillNum int //当前击杀数
+	Score int //当前分数
+	Ranking int //排名
+	RoomID string //判断此房间结算
+}
+
+/*玩家在好友模式中游戏结束时结算,保存各项数据*/
+type CS_GameOverInviteMode struct {
+	MsgHeader json.MsgHeader
+	MsgContent *CS_GameOverInviteModeContent
+}
+type CS_GameOverInviteModeContent struct {
+	KillNum int //当前击杀数
+	Score int //当前分数
+	Ranking int //排名
+	RoomID string //判断此房间结算
 }
 
 /*当前玩家无尽模式中死亡,返回相应数据*/
@@ -392,8 +425,81 @@ type SC_GameOverData struct {
 	MsgContent *SC_GameOverDataContent
 }
 type SC_GameOverDataContent struct {
-    RoomId string 
+    RoomId string
 }
+
+/*获取蛇长度的数据*/
+type CS_GetSnakeLength struct {
+	MsgHeader json.MsgHeader
+	MsgContent CS_GetSnakeLengthContent
+}
+type CS_GetSnakeLengthContent struct {
+	GameMode datastruct.GameModeType //在哪种模式下
+	RankStart int //传入的名次数据,从多少开始
+	RankEnd int //传入的名次数据,从多少结束,闭区间如:RankStart:1,RankEnd:10就是[1,10]
+}
+
+/*发送给客户端长度榜数据*/
+const SC_GetSnakeLengthKey = "SC_GetSnakeLength"
+type SC_GetSnakeLength struct {
+	MsgHeader json.MsgHeader
+	MsgContent SC_GetSnakeLengthContent
+}
+type SC_GetSnakeLengthContent struct {
+	GameMode datastruct.GameModeType //在哪种模式下
+	LengthRank *datastruct.PlayerScore
+	ArrayData []datastruct.PlayerRankScoreData
+}
+
+/*获取击败数据*/
+type CS_GetKillNum struct {
+	MsgHeader json.MsgHeader
+	MsgContent CS_GetKillNumContent
+}
+type CS_GetKillNumContent struct {
+	GameMode datastruct.GameModeType //在何种模式下
+	RankStart int //传入的名次数据,从多少开始
+	RankEnd int //传入的名次数据,从多少结束,闭区间如:RankStart:1,RankEnd:10就是[1,10]
+}
+
+/*发送给客户端击败榜数据*/
+const SC_GetKillNumKey = "SC_GetKillNum"
+type SC_GetKillNum struct {
+	MsgHeader json.MsgHeader
+	MsgContent SC_GetKillNumContent
+}
+type SC_GetKillNumContent struct {
+	GameMode datastruct.GameModeType //在何种模式下
+	KillNumRank *datastruct.PlayerKillNum
+	ArrayData []datastruct.PlayerRankKillNumData
+}
+
+func GetSnakeLengthMsg(mode datastruct.GameModeType,lengthRank *datastruct.PlayerScore,arrayData []datastruct.PlayerRankScoreData) *SC_GetSnakeLength{
+	var msgHeader json.MsgHeader
+    msgHeader.MsgName = SC_GetSnakeLengthKey
+	var msgContent SC_GetSnakeLengthContent
+	msgContent.GameMode = mode
+	msgContent.LengthRank = lengthRank
+	msgContent.ArrayData = arrayData
+	return &SC_GetSnakeLength{
+		MsgHeader:msgHeader,
+		MsgContent:msgContent,
+	}
+}
+
+func GetKillNumMsg(mode datastruct.GameModeType,killNumRank *datastruct.PlayerKillNum,arrayData []datastruct.PlayerRankKillNumData) *SC_GetKillNum{
+	var msgHeader json.MsgHeader
+    msgHeader.MsgName = SC_GetKillNumKey
+	var msgContent SC_GetKillNumContent
+	msgContent.GameMode = mode
+	msgContent.KillNumRank = killNumRank
+	msgContent.ArrayData = arrayData
+	return &SC_GetKillNum{
+		MsgHeader:msgHeader,
+		MsgContent:msgContent,
+	}
+}
+
 
 func GetInviteQRCodeMsg(qrcode string) *SC_InviteQRCode{
 	var msgHeader json.MsgHeader

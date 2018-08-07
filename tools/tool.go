@@ -202,8 +202,10 @@ func ReSetAgentUserData(uid int,mode datastruct.GameModeType,PlayId int,a gate.A
 func ReSetExtraRoomID(extra datastruct.ExtraUserData) datastruct.ExtraUserData{
      extra.RoomID = datastruct.NULLSTRING
      extra.WaitRoomID = datastruct.NULLSTRING
+     extra.IsSettle = false
      return extra
 }
+
 
 const minDirectionInterval = 5
 const maxDirectionInterval = 10
@@ -382,4 +384,55 @@ func GetRandomFromSlice(slice []int)int{
 
 func GetRobotAvatar()string{
      return conf.Server.HttpServer+"/assets/robotAvatar/robot.jpeg"
+}
+
+func EnableSettle(rid string,a gate.Agent) bool{
+    tf:=false
+    agentUserData := a.UserData().(datastruct.AgentUserData)
+    if rid == agentUserData.Extra.RoomID && !agentUserData.Extra.IsSettle{
+       tf = true
+       agentUserData.Extra.IsSettle = true
+       log.Debug("EnableSettle")
+       ReSetAgentUserData(agentUserData.Uid,agentUserData.GameMode,agentUserData.PlayId,a,agentUserData.ConnUUID,agentUserData.Extra)
+    }
+    return tf
+}
+
+func GetFragmentNum(rank int)int{
+     rs:=0
+     switch rank{
+      case 1:
+        rs=20
+      case 2:
+        rs=15
+      case 3:
+        rs=10
+      case 4:
+        rs=6
+      case 5:
+        rs=5
+      case 6:
+        rs=4
+     }
+     return rs
+}
+func GetGameIntegral(rank int) int{
+    rs:=0
+    switch rank{
+      case 1:
+        rs=3
+      case 2:
+        rs=2
+      case 3:
+        rs=1
+    }
+    return rs
+}
+func GetDefaultAvatar() string{
+    return conf.Server.HttpServer+"/assets/robotAvatar/DefaultAvatar.jpg"
+}
+
+
+func RandInt(min int,max int) int {
+     return min + rand.Intn(max-min)
 }

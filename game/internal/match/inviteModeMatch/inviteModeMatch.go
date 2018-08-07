@@ -86,6 +86,7 @@ func (match *InviteModeMatch)Matching(connUUID string,a gate.Agent,uid int)strin
 	extra.PlayName = userData.Extra.PlayName
 	extra.RoomID = userData.Extra.RoomID
 	extra.WaitRoomID = r_id
+	extra.IsSettle = false
 	tools.ReSetAgentUserData(uid,datastruct.InviteMode,userData.PlayId,a,connUUID,extra)
 	a.WriteMsg(msg.GetInWaitRoomMsg(datastruct.NotFull,r_id,1,players))
 	return r_id
@@ -100,6 +101,7 @@ func (match *InviteModeMatch)JoinWaitRoom(w_id string,a gate.Agent,uid int,connU
 		extra.PlayName = userData.Extra.PlayName
 		extra.RoomID = userData.Extra.RoomID
 		extra.WaitRoomID = w_id
+		extra.IsSettle = false
 		tools.ReSetAgentUserData(uid,datastruct.InviteMode,userData.PlayId,a,connUUID,extra)
 		match.addPlayer(connUUID,a,uid)
 		waitRoom.Join(a)
@@ -206,7 +208,7 @@ func (match *InviteModeMatch)StartGame(w_id string,connUUID string){
 func (inviteModeMatch *InviteModeMatch)createRoom(playersUUID []string)string{
 	log.Debug("邀请模式匹配完成，创建房间")
 	r_uuid:=tools.UniqueId()
-	room:=match.CreateRoom(match.Invite,playersUUID,r_uuid,inviteModeMatch,MaxPeople,MaxPeople)
+	room:=match.CreateRoom(datastruct.InviteMode,playersUUID,r_uuid,inviteModeMatch,MaxPeople,MaxPeople)
     inviteModeMatch.rooms.Set(r_uuid,room)
 	return r_uuid
 }

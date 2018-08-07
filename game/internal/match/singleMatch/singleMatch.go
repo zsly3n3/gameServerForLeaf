@@ -203,7 +203,7 @@ func (singleMatch *SingleMatch)createMatchingTypeRoom(playerUUID []string){
 	log.Debug("单人匹配完成，创建房间")
     r_uuid:=tools.UniqueId()
 	players:=singleMatch.onlinePlayers.GetsAndUpdateState(playerUUID,datastruct.FromMatchingPool,r_uuid)
-    room:=match.CreateRoom(match.SinglePersonMatching,playerUUID,r_uuid,singleMatch,LeastPeople,20)
+    room:=match.CreateRoom(datastruct.SinglePersonMode,playerUUID,r_uuid,singleMatch,LeastPeople,20)
     singleMatch.rooms.Set(r_uuid,room)
     for _,play := range players{
         play.Agent.WriteMsg(msg.GetMatchingEndMsg(r_uuid))
