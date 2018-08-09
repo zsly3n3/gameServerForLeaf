@@ -1,12 +1,12 @@
 {
-	"LogLevel": "release",
-	"LogPath": "",
+	"LogLevel": "debug",
+	"LogPath": "log",
 	"TCPAddr": "127.0.0.1:3563",
-	"WSAddr": "14.29.123.151:3653",
+	"WSAddr": "127.0.0.1:3653",
 	"HttpServer":"http://192.168.6.103:8080",
 	"MaxConnNum": 20000,
-	"DB_IP":"127.0.0.1:3306",
-	"DB_Name":"testbase",
-	"DB_UserName":"zsly",
-	"DB_Pwd":"Zsly2018!"
+	"DB_IP":"localhost:3306",
+	"DB_Name":"snakebase",
+	"DB_UserName":"root",
+	"DB_Pwd":"zsly3n@S"
 }

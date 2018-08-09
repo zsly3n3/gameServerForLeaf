@@ -9,7 +9,7 @@ var (
 	// log conf
 	LogFlag = log.LstdFlags
 	
-	IsRelease = false//是否为正式服的开关
+	IsRelease = true//是否为正式服的开关
 	
 	// gate conf
 	PendingWriteNum        = 2000
