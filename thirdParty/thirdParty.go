@@ -75,7 +75,7 @@ type InviteQRCode struct {
 func GetQRCode(key string)string{
 	 token:=getWXToken()
 	 var buf bytes.Buffer
-	 buf.WriteString(conf.Server.HttpServer)
+	 buf.WriteString(conf.Server.LocalHttpServer)
 	 buf.WriteString("/generateQRCode/"+key)
 	 buf.WriteString("/"+token)
 	 url:=buf.String()
@@ -83,14 +83,14 @@ func GetQRCode(key string)string{
 	 str:=""
 	 data := new(InviteQRCode)
 	 if json_err := json.Unmarshal(*p_body, data); json_err == nil {
-	  str = conf.Server.HttpServer+"/"+ data.QRCode
+	  str = conf.Server.RemoteHttpServer+"/"+ data.QRCode
 	 }
 	 return str
 }
 
 func RemoveQRCode(key string){
 	var buf bytes.Buffer
-	buf.WriteString(conf.Server.HttpServer)
+	buf.WriteString(conf.Server.LocalHttpServer)
 	buf.WriteString("/deleteQRCode/"+key)
 	url:=buf.String()
 	httpGet(url)

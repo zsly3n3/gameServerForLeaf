@@ -383,7 +383,7 @@ func GetRandomFromSlice(slice []int)int{
 }
 
 func GetRobotAvatar()string{
-     return conf.Server.HttpServer+"/assets/robotAvatar/robot.jpeg"
+     return conf.Server.RemoteHttpServer+"/assets/robotAvatar/robot.jpeg"
 }
 
 func EnableSettle(rid string,a gate.Agent) bool{
@@ -429,7 +429,7 @@ func GetGameIntegral(rank int) int{
     return rs
 }
 func GetDefaultAvatar() string{
-    return conf.Server.HttpServer+"/assets/robotAvatar/DefaultAvatar.jpg"
+    return conf.Server.RemoteHttpServer+"/assets/robotAvatar/DefaultAvatar.jpg"
 }
 
 
