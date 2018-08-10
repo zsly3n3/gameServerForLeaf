@@ -159,7 +159,7 @@ type RobotData struct {
 func CreateRoom(r_type datastruct.GameModeType,connUUIDs []string,r_id string,parentMatch ParentMatch,leastPeople int,maxPeopleInRoom int)*Room{
     //测试
     if r_type == datastruct.SinglePersonMode || r_type == datastruct.InviteMode{
-        MaxPlayingTime = 300 * time.Second
+        MaxPlayingTime = 60 * time.Second
     }
     room := new(Room)
     room.Mutex = new(sync.RWMutex)
@@ -280,7 +280,7 @@ func (room *Room)GetCreateAction(play_id int,reliveFrameIndex int,playername str
 func (room *Room)sendInitRoomDataToAgent(player *datastruct.Player,content *msg.SC_InitRoomDataContent,play_id int){
      if room.unlockedData.roomType != datastruct.EndlessMode {
         //测试
-        content.GameTime = 300 * 1000 - room.currentFrameIndex*50
+        content.GameTime = 60 * 1000 - room.currentFrameIndex*50
      }
 
      content.GameMode = int(room.unlockedData.roomType)

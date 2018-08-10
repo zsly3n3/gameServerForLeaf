@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"encoding/json"//json封装解析
 	"server/conf"
+	"github.com/name5566/leaf/log"
 )
 
 const wx_appid = "wx92a437da81573148"
@@ -39,6 +40,7 @@ func GetOpenID(platform string,code string) string{
 }
 
 func httpGet(url string) *[]byte{
+	log.Debug("httpGet_url:%v",url)
 	resp, err := http.Get(url)
     if err != nil {
         fmt.Println("error:", err)
