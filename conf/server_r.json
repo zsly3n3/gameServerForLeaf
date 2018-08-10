@@ -1,8 +1,8 @@
 {
-	"LogLevel": "debug",
-	"LogPath": "log",
-	"TCPAddr": "127.0.0.1:3563",
-	"WSAddr": "0.0.0.0:3653",
+	"LogLevel":"debug",
+	"LogPath":"log",
+	"TCPAddr":"0.0.0.0:3563",
+	"WSAddr":"game.scdianzhi.com:3653",
 	"RemoteHttpServer":"https://gameapi.scdianzhi.com:9090",
 	"LocalHttpServer":"http://127.0.0.1:8080",
 	"MaxConnNum": 20000,
