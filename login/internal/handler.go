@@ -51,7 +51,9 @@ func handleUserLogin(args []interface{}) {
 
    var msgContent msg.SC_UserLoginContent
    msgContent.Uid =uid
-   
+   if m.MsgContent.Platform != msg.PC_Platform{
+    msgContent.WXOpenID=m.MsgContent.LoginName
+   }
    //log.Debug("login uid:%v",uid)
    log.Release("login uid:%v",uid)
    if uid > 0{

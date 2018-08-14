@@ -93,6 +93,7 @@ type SC_UserLogin struct {
 }
 type SC_UserLoginContent struct {
 	Uid int //生成的用户id;为-1时,代表没登陆成功
+	WXOpenID string //微信openid
 }
 
 
