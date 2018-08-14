@@ -525,7 +525,7 @@ func (room *Room)IsRemoveRoom()(bool,int,[]datastruct.Player,[]datastruct.Player
               room.offlineSyncPlayers = append(room.offlineSyncPlayers,player)
              }
            }
-           log.Debug("room.onlineSyncPlayers:%v",room.onlineSyncPlayers)
+           //log.Debug("room.onlineSyncPlayers:%v",room.onlineSyncPlayers)
            removeOfflineSyncPlayersInRoom(room,offlineSyncPlayersIndex)//remove offline players
        }
        online_sync=make([]datastruct.Player,len(room.onlineSyncPlayers))
@@ -540,9 +540,9 @@ func (room *Room)IsRemoveRoom()(bool,int,[]datastruct.Player,[]datastruct.Player
 
  syncNotFinishedPlayers:=onlinePlayersInRoom-len(online_sync)
  isRemoveHistory:=false
- log.Debug("rid:%v,onlinePlayersInRoom:%v,syncNotFinishedPlayers:%v",room.unlockedData.roomId,onlinePlayersInRoom,syncNotFinishedPlayers)
+ //log.Debug("rid:%v,onlinePlayersInRoom:%v,syncNotFinishedPlayers:%v",room.unlockedData.roomId,onlinePlayersInRoom,syncNotFinishedPlayers)
  if syncNotFinishedPlayers == 0&&!room.IsOn{
-    log.Debug("rid:%v,room.IsOn:%v",room.unlockedData.roomId,room.IsOn)
+    //log.Debug("rid:%v,room.IsOn:%v",room.unlockedData.roomId,room.IsOn)
     isRemoveHistory = true
  }
  
@@ -615,7 +615,7 @@ func (room *Room)ComputeFrameData(){
          connUUID:=player.Agent.UserData().(datastruct.AgentUserData).ConnUUID
          pid:=player.GameData.PlayId
          action_type,action:=room.playersData.GetValue(player.Avatar,player.NickName,pid,currentFrameIndex,room,connUUID)
-         log.Debug("name:%v,action_type:%v",player.NickName,action_type)
+         //log.Debug("name:%v,action_type:%v",player.NickName,action_type)
          if action != nil{
              if action_type==msg.Death{
                 died:=action.(*PlayerDied)
@@ -875,7 +875,7 @@ func safeCloseSync(ch chan struct{}) (justClosed bool) {
 func NewPlayersFrameData() *PlayersFrameData {
 	return &PlayersFrameData{
 		Mutex: new(sync.RWMutex),
-		Data:   make(map[int]*PlayerActionData),//key is play_id
+		Data:  make(map[int]*PlayerActionData),//key is play_id
 	}
 }
 

@@ -52,7 +52,7 @@ func handleUserLogin(args []interface{}) {
    var msgContent msg.SC_UserLoginContent
    msgContent.Uid =uid
    
-   log.Debug("login uid:%v",uid)
+   //log.Debug("login uid:%v",uid)
    log.Release("login uid:%v",uid)
    if uid > 0{
       connUUID:=tools.UniqueId()
@@ -65,7 +65,7 @@ func handleUserLogin(args []interface{}) {
       extra.WaitRoomID = datastruct.NULLSTRING
       extra.IsSettle = false
       tools.ReSetAgentUserData(uid,mode,p_id,a,connUUID,extra)
-      log.Debug("a UserData:%v",a.UserData())
+      //log.Debug("a UserData:%v",a.UserData())
       log.Release("a UserData:%v",a.UserData())
    }
    

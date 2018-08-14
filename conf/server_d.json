@@ -3,12 +3,11 @@
 	"LogPath": "",
 	"TCPAddr": "127.0.0.1:3563",
 	"WSAddr": "192.168.6.106:3653",
-	"RemoteHttpServer":"http://192.168.6.103:9090",
+	"RemoteHttpServer":"http://192.168.6.106:9090",
 	"LocalHttpServer":"http://127.0.0.1:8080",
 	"MaxConnNum": 20000,
 	"DB_IP":"192.168.6.102:3306",
 	"DB_Name":"testbase",
 	"DB_UserName":"root",
 	"DB_Pwd":"1234s6"
-
 }
