@@ -2,7 +2,7 @@
 	"LogLevel":"release",
 	"LogPath":"",
 	"TCPAddr":"0.0.0.0:3563",
-	"WSAddr":"127.0.0.1:443",
+	"WSAddr":"0.0.0.0:3653",
 	"RemoteHttpServer":"https://gameapi.scdianzhi.com",
 	"LocalHttpServer":"http://127.0.0.1:8080",
 	"MaxConnNum": 20000,
