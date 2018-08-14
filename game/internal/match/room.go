@@ -282,8 +282,9 @@ func (room *Room)sendInitRoomDataToAgent(player *datastruct.Player,content *msg.
         //测试
         content.GameTime = 60 * 1000 - room.currentFrameIndex*50
      }
-
+  
      content.GameMode = int(room.unlockedData.roomType)
+     log.Debug("content.GameMode:%v",room.unlockedData.roomType)
      msg_initRoom:=msg.GetInitRoomDataMsg(*content)
      player.Agent.WriteMsg(msg_initRoom)
      
@@ -291,7 +292,7 @@ func (room *Room)sendInitRoomDataToAgent(player *datastruct.Player,content *msg.
      connUUID:=agentData.ConnUUID
      uid:=agentData.Uid
      rid:=room.unlockedData.roomId
-     mode:=agentData.GameMode
+     mode:=room.unlockedData.roomType
      
      player.GameData.PlayId = play_id
      var extra datastruct.ExtraUserData
