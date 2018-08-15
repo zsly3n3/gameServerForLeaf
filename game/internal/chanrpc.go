@@ -6,6 +6,7 @@ import (
 	"server/game/internal/match"
 	"server/game/internal/match/inviteModeMatch"
 	"server/thirdParty"
+	"github.com/name5566/leaf/log"
 )
 
 const MatchingKey="Matching"
@@ -51,6 +52,8 @@ func removeOnlinePlayer(args []interface{}){
 		}
 	}
 	if a != nil{
+	   a.Close()
 	   a.Destroy()
+	   log.Debug("client Close & Destroy")
 	}
 }
