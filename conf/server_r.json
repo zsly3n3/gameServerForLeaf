@@ -3,6 +3,8 @@
 	"LogPath":"",
 	"TCPAddr":"0.0.0.0:3563",
 	"WSAddr":"127.0.0.1:443",
+	"CertFile":"gameapi.pem",
+	"KeyFile":"gameapi.ket",
 	"RemoteHttpServer":"https://gameapi.scdianzhi.com",
 	"LocalHttpServer":"http://127.0.0.1:8080",
 	"MaxConnNum": 20000,
