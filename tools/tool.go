@@ -18,6 +18,8 @@ import (
     "server/tools/snowFlakeByGo"
 )
 
+var gateUserData datastruct.GateUserData
+
 func randInt(min int,max int) int {
     return min + rand.Intn(max-min)
 }
@@ -181,24 +183,49 @@ func UniqueIdFromInt()string{
     return fmt.Sprintf("%d",worker.GetId())
 }
 
-func IsValid(data interface{}) bool{//判断此连接是否有效
-    tf:=true
-    if data == nil{
-       log.Error("Conn isValid")
-       tf=false
-    }
+func IsValid(a gate.Agent) bool{//判断此连接是否有效
+    gateUserData.Mutex.RLock()
+    defer gateUserData.Mutex.RUnlock()
+    _,tf:=gateUserData.UserData[a]
+    // tf:=true
+    // if data == nil{
+    //    log.Error("Conn isValid")
+    //    tf=false
+    // }
     return tf
 }
 
 func ReSetAgentUserData(uid int,mode datastruct.GameModeType,PlayId int,a gate.Agent,connUUID string,extra datastruct.ExtraUserData){
-    a.SetUserData(datastruct.AgentUserData{
-        ConnUUID:connUUID,
-        Uid:uid,
-        GameMode:mode,
-        PlayId:PlayId,
-        Extra:extra,
-    })
+    // a.SetUserData(datastruct.AgentUserData{
+    //     ConnUUID:connUUID,
+    //     Uid:uid,
+    //     GameMode:mode,
+    //     PlayId:PlayId,
+    //     Extra:extra,
+    // })
+    gateUserData.Mutex.Lock()
+    defer gateUserData.Mutex.Unlock()
+    if gateUserData.UserData == nil && len(gateUserData.UserData)<=0{
+       gateUserData.UserData = make(map[gate.Agent]datastruct.AgentUserData) 
+    }
+    userData:=datastruct.AgentUserData{
+            ConnUUID:connUUID,
+            Uid:uid,
+            GameMode:mode,
+            PlayId:PlayId,
+            Extra:extra,
+    }
+    gateUserData.UserData[a]=userData
 }
+
+func GetUserData(a gate.Agent)*datastruct.AgentUserData{
+    gateUserData.Mutex.RLock()
+    defer gateUserData.Mutex.RUnlock()
+    data:=gateUserData.UserData[a]
+    return &data
+}
+
+
 func ReSetExtraRoomID(extra datastruct.ExtraUserData) datastruct.ExtraUserData{
      extra.RoomID = datastruct.NULLSTRING
      extra.WaitRoomID = datastruct.NULLSTRING
@@ -388,7 +415,7 @@ func GetRobotAvatar()string{
 
 func EnableSettle(rid string,a gate.Agent) bool{
     tf:=false
-    agentUserData := a.UserData().(datastruct.AgentUserData)
+    agentUserData := GetUserData(a)
     if rid == agentUserData.Extra.RoomID && !agentUserData.Extra.IsSettle{
        tf = true
        agentUserData.Extra.IsSettle = true

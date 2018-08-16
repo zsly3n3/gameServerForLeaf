@@ -59,11 +59,11 @@ func getParentMatch(mode datastruct.GameModeType) match.ParentMatch{
 
 func handleGetSnakeLength(args []interface{}){
     a := args[1].(gate.Agent)
-    if !tools.IsValid(a.UserData()){
+    if !tools.IsValid(a){
        return
     }
     m := args[0].(*msg.CS_GetSnakeLength)
-    agentUserData := a.UserData().(datastruct.AgentUserData)
+    agentUserData := tools.GetUserData(a)
     mode:=m.MsgContent.GameMode
     currentPlayerData,arr:=db.Module.GetSnakeLengthRank(agentUserData.Uid,mode,m.MsgContent.RankStart,m.MsgContent.RankEnd)
     currentPlayerData.Avatar = agentUserData.Extra.Avatar
@@ -73,11 +73,11 @@ func handleGetSnakeLength(args []interface{}){
 
 func handleGetKillNum(args []interface{}){
     a := args[1].(gate.Agent)
-    if !tools.IsValid(a.UserData()){
+    if !tools.IsValid(a){
        return
     }
     m := args[0].(*msg.CS_GetKillNum)
-    agentUserData := a.UserData().(datastruct.AgentUserData)
+    agentUserData := tools.GetUserData(a)
     mode:=m.MsgContent.GameMode
     currentPlayerData,arr:=db.Module.GetKillNumRank(agentUserData.Uid,mode,m.MsgContent.RankStart,m.MsgContent.RankEnd)
     currentPlayerData.Avatar = agentUserData.Extra.Avatar
@@ -88,12 +88,12 @@ func handleGetKillNum(args []interface{}){
 
 func handlePlayerGameOverInviteMode(args []interface{}){
     a := args[1].(gate.Agent)
-    if !tools.IsValid(a.UserData()){
+    if !tools.IsValid(a){
        return
     }
     m := args[0].(*msg.CS_GameOverInviteMode)
     tf:=tools.EnableSettle(m.MsgContent.RoomID,a)
-    agentUserData := a.UserData().(datastruct.AgentUserData)
+    agentUserData := tools.GetUserData(a)
     if tf&&agentUserData.GameMode==datastruct.InviteMode{
         uid:=agentUserData.Uid
         score:=m.MsgContent.Score
@@ -119,13 +119,13 @@ func handlePlayerGameOverInviteMode(args []interface{}){
 func handlePlayerGameOverSinglePersonMode(args []interface{}){
     a := args[1].(gate.Agent)
 
-    if !tools.IsValid(a.UserData()){
+    if !tools.IsValid(a){
        return
     }
     
     m := args[0].(*msg.CS_GameOverSinglePersonMode)
     tf:=tools.EnableSettle(m.MsgContent.RoomID,a)
-    agentUserData := a.UserData().(datastruct.AgentUserData)
+    agentUserData := tools.GetUserData(a)
     if tf&&agentUserData.GameMode==datastruct.SinglePersonMode{
         uid:=agentUserData.Uid
         score:=m.MsgContent.Score
@@ -150,10 +150,10 @@ func handlePlayerGameOverSinglePersonMode(args []interface{}){
 
 func handlePlayerGameOver1(args []interface{}){
     a := args[1].(gate.Agent)
-    if !tools.IsValid(a.UserData()){
+    if !tools.IsValid(a){
        return
     }
-    agentUserData := a.UserData().(datastruct.AgentUserData)
+    agentUserData := tools.GetUserData(a)
     m := args[0].(*msg.CS_GameOver1)
     tf:=tools.EnableSettle(m.MsgContent.RoomID,a)
     if tf&&agentUserData.GameMode==datastruct.EndlessMode{
@@ -179,10 +179,10 @@ func handlePlayerGameOver1(args []interface{}){
 
 func handlePlayerRelive(args []interface{}){
     a := args[1].(gate.Agent)
-    if !tools.IsValid(a.UserData()){
+    if !tools.IsValid(a){
        return
     }
-    agentUserData := a.UserData().(datastruct.AgentUserData)
+    agentUserData := tools.GetUserData(a)
     switch agentUserData.GameMode{
        case datastruct.EndlessMode:
         ptr_endlessModeMatch.PlayerRelive(agentUserData.Extra.RoomID,agentUserData.PlayId,agentUserData.Extra.PlayName,agentUserData.Extra.Avatar)
@@ -191,20 +191,19 @@ func handlePlayerRelive(args []interface{}){
 
 func handlePlayerLeftRoom(args []interface{}){
     a := args[1].(gate.Agent)
-    if !tools.IsValid(a.UserData()){
+    if !tools.IsValid(a){
        return
     }
-    agentUserData := a.UserData().(datastruct.AgentUserData)
+    agentUserData := tools.GetUserData(a)
     playerLeftRoom(agentUserData.ConnUUID,agentUserData.GameMode,agentUserData.Extra.RoomID)
 }
 
 func handlePlayersDied(args []interface{}){
     a := args[1].(gate.Agent)
-    if !tools.IsValid(a.UserData()){
+    if !tools.IsValid(a){
        return
     }
-    
-    agentUserData := a.UserData().(datastruct.AgentUserData)
+    agentUserData := tools.GetUserData(a)
     m := args[0].(*msg.CS_PlayerDied)
     
     //接收玩家死亡坐标,生成指定范围能量点
@@ -215,15 +214,15 @@ func handlePlayersDied(args []interface{}){
 
 func handleEnergyExpended(args []interface{}){
     a := args[1].(gate.Agent)
-    if !tools.IsValid(a.UserData()){
+    if !tools.IsValid(a){
        return
     }
-    agentUserData := a.UserData().(datastruct.AgentUserData)
+    agentUserData := tools.GetUserData(a)
     m := args[0].(*msg.CS_EnergyExpended)
     expended:=m.MsgContent.EnergyExpended
     if expended>0{
         match:=getParentMatch(agentUserData.GameMode)
-        match.EnergyExpended(expended,agentUserData)
+        match.EnergyExpended(expended,*agentUserData)
     }
 }
 
@@ -231,10 +230,10 @@ func handlePlayerMoveData(args []interface{}){
     //测试
     //msg.Num = 0
     a := args[1].(gate.Agent)
-    if !tools.IsValid(a.UserData()){
+    if !tools.IsValid(a){
        return
     }
-    agentUserData := a.UserData().(datastruct.AgentUserData)
+    agentUserData := tools.GetUserData(a)
     r_id:=agentUserData.Extra.RoomID
     m := args[0].(*msg.CS_MoveData)
     match:=getParentMatch(agentUserData.GameMode)
@@ -243,10 +242,10 @@ func handlePlayerMoveData(args []interface{}){
 
 func handlePlayerJoinRoom(args []interface{}){
     a := args[1].(gate.Agent)
-    if !tools.IsValid(a.UserData()){
+    if !tools.IsValid(a){
        return
     }
-    agentUserData := a.UserData().(datastruct.AgentUserData)
+    agentUserData := tools.GetUserData(a)
     connUUID:=agentUserData.ConnUUID
     m := args[0].(*msg.CS_PlayerJoinRoom)
     match:=getParentMatch(agentUserData.GameMode)
@@ -255,10 +254,10 @@ func handlePlayerJoinRoom(args []interface{}){
 
 func handleCancelMatching(args []interface{}){
     a := args[1].(gate.Agent)
-    if !tools.IsValid(a.UserData()){
+    if !tools.IsValid(a){
        return
     }
-    agentUserData := a.UserData().(datastruct.AgentUserData)
+    agentUserData := tools.GetUserData(a)
     connUUID:=agentUserData.ConnUUID
 
     switch agentUserData.GameMode{
@@ -313,10 +312,10 @@ func playerLeftRoom(connUUID string,mode datastruct.GameModeType,r_id string){
 
 func startMatching(args []interface{},mode datastruct.GameModeType){
     a := args[1].(gate.Agent)
-    if !tools.IsValid(a.UserData()){
+    if !tools.IsValid(a){
        return
     }
-    agentUserData := a.UserData().(datastruct.AgentUserData)
+    agentUserData := tools.GetUserData(a)
     
     uid:=agentUserData.Uid
     if uid <= 0{
@@ -390,10 +389,10 @@ func matchingChanRPC(mode datastruct.GameModeType,connUUID string,a gate.Agent,u
 func handleJoinInviteMode(args []interface{}){
    
     a := args[1].(gate.Agent)
-    if !tools.IsValid(a.UserData()){
+    if !tools.IsValid(a){
        return
     }
-    agentUserData := a.UserData().(datastruct.AgentUserData)
+    agentUserData := tools.GetUserData(a)
     
     uid:=agentUserData.Uid
     if uid <= 0{
@@ -416,19 +415,19 @@ func handleJoinInviteMode(args []interface{}){
 
 func handleLeaveInviteMode(args []interface{}){
     a := args[1].(gate.Agent)
-    if !tools.IsValid(a.UserData()){
+    if !tools.IsValid(a){
        return
     }
-    agentUserData:= a.UserData().(datastruct.AgentUserData)
+    agentUserData:= tools.GetUserData(a)
     ptr_inviteModeMatch.LeftWaitRoom(agentUserData.Extra.WaitRoomID,agentUserData.ConnUUID)
 }
 
 func handleMasterFirePlayer(args []interface{}){
     a := args[1].(gate.Agent)
-    if !tools.IsValid(a.UserData()){
+    if !tools.IsValid(a){
        return
     }
-    agentUserData:= a.UserData().(datastruct.AgentUserData)
+    agentUserData:= tools.GetUserData(a)
     m := args[0].(*msg.CS_MasterFirePlayer)
     seat := m.MsgContent.Seat
     ptr_inviteModeMatch.MasterFirePlayer(agentUserData.Extra.WaitRoomID,agentUserData.ConnUUID,seat)
@@ -436,10 +435,10 @@ func handleMasterFirePlayer(args []interface{}){
 
 func handleMasterStartGame(args []interface{}){
     a := args[1].(gate.Agent)
-    if !tools.IsValid(a.UserData()){
+    if !tools.IsValid(a){
        return
     }
-    agentUserData:= a.UserData().(datastruct.AgentUserData)
+    agentUserData:= tools.GetUserData(a)
     ptr_inviteModeMatch.StartGame(agentUserData.Extra.WaitRoomID,agentUserData.ConnUUID)
 }
 

@@ -35,7 +35,7 @@ func CreateWaitRoom(a gate.Agent,maxPeople int) *WaitRoom{
 }
 
 func (waitRoom *WaitRoom)addPlayer(a gate.Agent,isMaster int){
-	u_data:=a.UserData().(datastruct.AgentUserData)
+	u_data:=tools.GetUserData(a)
 	seat:=waitRoom.getSeatNumber()
 	var data datastruct.PlayerInWaitRoom
 	data.Seat = seat
@@ -71,7 +71,7 @@ func (waitRoom *WaitRoom)Left(connUUID string,waitRooms *WaitRooms) bool{
 	isMaster:=-1
 	rm_nickname:=""
 	for k,p_data:= range waitRoom.players{
-		u_data:=p_data.agent.UserData().(datastruct.AgentUserData)
+		u_data:=tools.GetUserData(p_data.agent)
 		if u_data.ConnUUID == connUUID{
 			rm_key = k
 			isMaster = p_data.data.IsMaster
@@ -111,7 +111,7 @@ func (waitRoom *WaitRoom)FirePlayer(seat int,waitRooms *WaitRooms) (bool,string)
 	    waitRoom.mutex.Unlock()
         return false,rm_connUUID
 	}
-	u_data:=v.agent.UserData().(datastruct.AgentUserData)
+	u_data:=tools.GetUserData(v.agent)
 	rm_connUUID = u_data.ConnUUID
 	length:=len(waitRoom.players)
 	if length <= 1{
@@ -164,7 +164,7 @@ func (waitRoom *WaitRoom)GetPlayersUUID()[]string{
 	 length:=len(waitRoom.players)
 	 rs:=make([]string,0,length)
 	 for _,p_data:= range waitRoom.players{
-		u_data:=p_data.agent.UserData().(datastruct.AgentUserData)
+		u_data:=tools.GetUserData(p_data.agent)
 		rs = append(rs,u_data.ConnUUID)
 	 }
 	 return rs
@@ -172,7 +172,7 @@ func (waitRoom *WaitRoom)GetPlayersUUID()[]string{
 
 func (waitRoom *WaitRoom)SendMatchingEndMsg(msg *msg.SC_PlayerMatchingEnd,onlinePlayers *datastruct.OnlinePlayers,r_id string){
 	for _,v := range waitRoom.players{
-		u_data:=v.agent.UserData().(datastruct.AgentUserData)
+		u_data:=tools.GetUserData(v.agent)
 		player,tf:=onlinePlayers.GetAndUpdateState(u_data.ConnUUID,datastruct.BeInvited,r_id)
 		if tf {
 			player.Agent.WriteMsg(msg)
@@ -186,7 +186,7 @@ func (waitRoom *WaitRoom)IfCanStartGame(connUUID string) bool {
 	defer waitRoom.mutex.RUnlock()
 	if len(waitRoom.players) > 1{ //测试
 	  for _,v := range waitRoom.players{
-		u_data:=v.agent.UserData().(datastruct.AgentUserData)
+		u_data:=tools.GetUserData(v.agent)
 		if u_data.ConnUUID == connUUID{
 			if v.data.IsMaster == 1 {
 			   tf = true
@@ -203,7 +203,7 @@ func (waitRoom *WaitRoom)IsPermit(connUUID string,seat int)bool{
 	waitRoom.mutex.RLock()
 	defer waitRoom.mutex.RUnlock() 
 	for _,v := range waitRoom.players{
-		u_data:=v.agent.UserData().(datastruct.AgentUserData)
+		u_data:=tools.GetUserData(v.agent)
 		if u_data.ConnUUID == connUUID{
 		   if v.data.IsMaster == 1 && v.data.Seat != seat {
 			  tf = true

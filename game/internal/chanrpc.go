@@ -7,6 +7,7 @@ import (
 	"server/game/internal/match/inviteModeMatch"
 	"server/thirdParty"
 	"github.com/name5566/leaf/log"
+	"server/tools"
 )
 
 const MatchingKey="Matching"
@@ -39,9 +40,9 @@ func rpcGetQRCode(args []interface{}){
 
 func removeOnlinePlayer(args []interface{}){
 	a := args[0].(gate.Agent)
-	u_data:=a.UserData()
+	u_data:=tools.GetUserData(a)
 	if u_data != nil{
-		au_data:=u_data.(datastruct.AgentUserData)
+		au_data:=u_data
 		connUUID:=au_data.ConnUUID
 		mode:=au_data.GameMode
 		r_id:=au_data.Extra.RoomID

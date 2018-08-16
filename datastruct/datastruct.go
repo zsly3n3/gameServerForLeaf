@@ -3,6 +3,7 @@ package datastruct
 import (
 	"time"
 	"github.com/name5566/leaf/gate"
+	"sync"
 )
 
 const NULLSTRING = ""
@@ -198,6 +199,9 @@ const (
 	Importance//重要
 )
 
-
+type GateUserData struct {
+	UserData map[gate.Agent]AgentUserData
+	Mutex sync.RWMutex
+}
 
 

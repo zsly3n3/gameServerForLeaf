@@ -287,8 +287,8 @@ func (room *Room)sendInitRoomDataToAgent(player *datastruct.Player,content *msg.
      log.Debug("content.GameMode:%v",room.unlockedData.roomType)
      msg_initRoom:=msg.GetInitRoomDataMsg(*content)
      player.Agent.WriteMsg(msg_initRoom)
-     
-     agentData:=player.Agent.UserData().(datastruct.AgentUserData)
+      
+     agentData:=tools.GetUserData(player.Agent)
      connUUID:=agentData.ConnUUID
      uid:=agentData.Uid
      rid:=room.unlockedData.roomId
@@ -519,7 +519,7 @@ func (room *Room)IsRemoveRoom()(bool,int,[]datastruct.Player,[]datastruct.Player
        }
        for _,uuid := range offlinePlayersUUID{
            for index,player := range room.onlineSyncPlayers{
-             agentData:=player.Agent.UserData().(datastruct.AgentUserData)
+             agentData:=tools.GetUserData(player.Agent)
              if agentData.ConnUUID == uuid{
               offlineSyncPlayersIndex = append(offlineSyncPlayersIndex,index)
               room.offlineSyncPlayers = append(room.offlineSyncPlayers,player)
@@ -533,7 +533,7 @@ func (room *Room)IsRemoveRoom()(bool,int,[]datastruct.Player,[]datastruct.Player
        offline_sync=make([]datastruct.Player,len(room.offlineSyncPlayers))
        copy(offline_sync,room.offlineSyncPlayers)
        if expended_onlineConnUUID != datastruct.NULLSTRING && len(online_sync)>0{
-        agentData:=online_sync[0].Agent.UserData().(datastruct.AgentUserData)
+        agentData:=tools.GetUserData(online_sync[0].Agent)
         expended_onlineConnUUID = agentData.ConnUUID
        }
     }
@@ -612,7 +612,7 @@ func (room *Room)ComputeFrameData(){
      rm_action_ids:=make([]int,0)//需要删除的动作id
 
      for _,player := range online_sync{
-         connUUID:=player.Agent.UserData().(datastruct.AgentUserData).ConnUUID
+         connUUID:=tools.GetUserData(player.Agent).ConnUUID
          pid:=player.GameData.PlayId
          action_type,action:=room.playersData.GetValue(player.Avatar,player.NickName,pid,currentFrameIndex,room,connUUID)
          //log.Debug("name:%v,action_type:%v",player.NickName,action_type)
@@ -630,7 +630,7 @@ func (room *Room)ComputeFrameData(){
      }
      
      for _,player := range offline_sync{
-        connUUID:=player.Agent.UserData().(datastruct.AgentUserData).ConnUUID
+        connUUID:=tools.GetUserData(player.Agent).ConnUUID
         pid:=player.GameData.PlayId
         action_type,action:=room.playersData.GetOfflineAction(player.Avatar,player.NickName,player.GameData.PlayId,currentFrameIndex,room,connUUID)
         if action != nil{

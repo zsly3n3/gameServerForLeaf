@@ -73,7 +73,7 @@ func (match *InviteModeMatch)Matching(connUUID string,a gate.Agent,uid int)strin
 	r_id:=waitRoom.roomID
 	match.waitRooms.Set(r_id,waitRoom)
 	
-	userData:=a.UserData().(datastruct.AgentUserData)
+	userData:=tools.GetUserData(a)
 	var data datastruct.PlayerInWaitRoom
 	data.NickName = userData.Extra.PlayName
 	data.Avatar = userData.Extra.Avatar
@@ -95,7 +95,7 @@ func (match *InviteModeMatch)Matching(connUUID string,a gate.Agent,uid int)strin
 func (match *InviteModeMatch)JoinWaitRoom(w_id string,a gate.Agent,uid int,connUUID string){
 	 tf,waitRoom:=match.waitRooms.Get(w_id)
 	 if tf{
-		userData:=a.UserData().(datastruct.AgentUserData)
+		userData:=tools.GetUserData(a)
 		var extra datastruct.ExtraUserData
 		extra.Avatar = userData.Extra.Avatar
 		extra.PlayName = userData.Extra.PlayName
