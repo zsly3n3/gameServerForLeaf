@@ -2,7 +2,7 @@
 	"LogLevel":"debug",
 	"LogPath":"",
 	"TCPAddr":"0.0.0.0:3563",
-	"WSAddr":"127.0.0.1:443",
+	"WSAddr":"0.0.0.0:443",
 	"CertFile":"gameapi.pem",
 	"KeyFile":"gameapi.key",
 	"RemoteHttpServer":"https://gameapi.scdianzhi.com",
