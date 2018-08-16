@@ -188,7 +188,7 @@ func IsValid(a gate.Agent) bool{//判断此连接是否有效
     defer gateUserData.Mutex.RUnlock()
     _,tf:=gateUserData.UserData[a]
     if !tf{
-       log.Error("Conn isValid")
+      log.Error("Conn isValid")
     }
     // tf:=true
     // if data == nil{
