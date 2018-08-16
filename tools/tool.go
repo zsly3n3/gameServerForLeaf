@@ -209,7 +209,6 @@ func ReSetAgentUserData(uid int,mode datastruct.GameModeType,PlayId int,a gate.A
        log.Debug("create gateUserData.UserData") 
        gateUserData.UserData = make(map[gate.Agent]datastruct.AgentUserData)
     }
-    log.Debug("___len(gateUserData.UserData):%v",len(gateUserData.UserData)) 
     userData:=datastruct.AgentUserData{
             ConnUUID:connUUID,
             Uid:uid,
@@ -218,6 +217,7 @@ func ReSetAgentUserData(uid int,mode datastruct.GameModeType,PlayId int,a gate.A
             Extra:extra,
     }
     gateUserData.UserData[a]=userData
+    log.Debug("___len(gateUserData.UserData):%v",len(gateUserData.UserData))
 }
 
 func GetUserData(a gate.Agent)*datastruct.AgentUserData{
