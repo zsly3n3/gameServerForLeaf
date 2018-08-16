@@ -53,6 +53,7 @@ func removeOnlinePlayer(args []interface{}){
 		}
 	}
 	if a != nil{
+	   tools.RemoveUserData(a)
 	   a.Close()
 	   a.Destroy()
 	   log.Debug("client Close & Destroy")

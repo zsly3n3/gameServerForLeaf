@@ -224,6 +224,11 @@ func GetUserData(a gate.Agent)*datastruct.AgentUserData{
     data:=gateUserData.UserData[a]
     return &data
 }
+func RemoveUserData(a gate.Agent){
+    gateUserData.Mutex.Lock()
+    defer gateUserData.Mutex.Unlock()
+    delete(gateUserData.UserData,a)
+}
 
 
 func ReSetExtraRoomID(extra datastruct.ExtraUserData) datastruct.ExtraUserData{
