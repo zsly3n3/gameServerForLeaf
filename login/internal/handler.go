@@ -9,7 +9,7 @@ import (
     "github.com/name5566/leaf/network/json"
     "server/thirdParty"
     "server/tools"
-    "github.com/name5566/leaf/log"
+    //"github.com/name5566/leaf/log"
 )
 
 func handleMsg(m interface{}, h interface{}) {
@@ -55,7 +55,7 @@ func handleUserLogin(args []interface{}) {
     msgContent.WXOpenID=m.MsgContent.LoginName
    }
    //log.Debug("login uid:%v",uid)
-   log.Release("login uid:%v",uid)
+   //log.Release("login uid:%v",uid)
    if uid > 0{
       connUUID:=tools.UniqueId()
       mode:=datastruct.NULLMode
@@ -68,7 +68,7 @@ func handleUserLogin(args []interface{}) {
       extra.IsSettle = false
       tools.ReSetAgentUserData(uid,mode,p_id,a,connUUID,extra)
       //log.Debug("a UserData:%v",a.UserData())
-      log.Release("a UserData:%v",a.UserData())
+      //log.Release("a UserData:%v",a.UserData())
    }
    
    a.WriteMsg(&msg.SC_UserLogin{
