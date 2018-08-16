@@ -205,8 +205,7 @@ func ReSetAgentUserData(uid int,mode datastruct.GameModeType,PlayId int,a gate.A
     // })
     gateUserData.Mutex.Lock()
     defer gateUserData.Mutex.Unlock()
-    if gateUserData.UserData == nil && len(gateUserData.UserData)<=0{
-       log.Debug("create gateUserData.UserData") 
+    if gateUserData.UserData == nil && len(gateUserData.UserData)<=0{ 
        gateUserData.UserData = make(map[gate.Agent]datastruct.AgentUserData)
     }
     userData:=datastruct.AgentUserData{
@@ -217,7 +216,6 @@ func ReSetAgentUserData(uid int,mode datastruct.GameModeType,PlayId int,a gate.A
             Extra:extra,
     }
     gateUserData.UserData[a]=userData
-    log.Debug("___len(gateUserData.UserData):%v",len(gateUserData.UserData))
 }
 
 func GetUserData(a gate.Agent)*datastruct.AgentUserData{
@@ -229,7 +227,7 @@ func GetUserData(a gate.Agent)*datastruct.AgentUserData{
 func RemoveUserData(a gate.Agent){
     gateUserData.Mutex.Lock()
     defer gateUserData.Mutex.Unlock()
-    log.Debug("len(gateUserData.UserData):%v",gateUserData.UserData)
+    log.Debug("len(gateUserData.UserData):%v",len(gateUserData.UserData))
     delete(gateUserData.UserData,a)
 }
 
