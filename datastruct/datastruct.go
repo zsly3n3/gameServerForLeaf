@@ -192,6 +192,11 @@ type PlayerInWaitRoom struct {
 	Seat int //座位号
 }
 
+type MsgLevel int //消息等级
+const (
+	Common MsgLevel = iota //一般消息
+	Importance//重要
+)
 
 
 

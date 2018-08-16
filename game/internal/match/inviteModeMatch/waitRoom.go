@@ -95,7 +95,7 @@ func (waitRoom *WaitRoom)Left(connUUID string,waitRooms *WaitRooms) bool{
 		notice_str := rm_nickname + leaveStr
 		for _,v := range waitRoom.players{
 		  v.agent.WriteMsg(msg.GetInWaitRoomMsg(datastruct.NotFull,waitRoom.roomID,v.data.IsMaster,players))
-		  v.agent.WriteMsg(msg.GetNotifyMsg(notice_str))
+		  v.agent.WriteMsg(msg.GetNotifyMsg(notice_str,datastruct.Common))
 		}	
 	}
 	waitRoom.mutex.Unlock()
@@ -123,7 +123,7 @@ func (waitRoom *WaitRoom)FirePlayer(seat int,waitRooms *WaitRooms) (bool,string)
 		notice_str := v.data.NickName + leaveStr
 		for _,v := range waitRoom.players{
 		  v.agent.WriteMsg(msg.GetInWaitRoomMsg(datastruct.NotFull,waitRoom.roomID,v.data.IsMaster,players))
-		  v.agent.WriteMsg(msg.GetNotifyMsg(notice_str))
+		  v.agent.WriteMsg(msg.GetNotifyMsg(notice_str,datastruct.Common))
 		}
 	}
 	waitRoom.mutex.Unlock()

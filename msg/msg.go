@@ -169,6 +169,7 @@ type SC_NotifyMsg struct {
 }
 type SC_NotifyMsgContent struct {
 	Msg string
+	MsgLevel datastruct.MsgLevel
 }
 
 /*发送房主踢人消息*/
@@ -575,11 +576,12 @@ func UpdatePlayerMoved(move *PlayerMoved,x int,y int,speed int){
 	move.Speed = speed
 }
 
-func GetNotifyMsg(str string) *SC_NotifyMsg{
+func GetNotifyMsg(str string,level datastruct.MsgLevel) *SC_NotifyMsg{
 	var msgHeader json.MsgHeader
     msgHeader.MsgName = SC_NotifyMsgKey
 	var msgContent SC_NotifyMsgContent
 	msgContent.Msg = str
+	msgContent.MsgLevel = level
 	return &SC_NotifyMsg{
 		MsgHeader:msgHeader,
 		MsgContent:msgContent,
