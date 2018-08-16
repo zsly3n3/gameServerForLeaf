@@ -227,7 +227,6 @@ func GetUserData(a gate.Agent)*datastruct.AgentUserData{
 func RemoveUserData(a gate.Agent){
     gateUserData.Mutex.Lock()
     defer gateUserData.Mutex.Unlock()
-    log.Debug("len(gateUserData.UserData):%v",len(gateUserData.UserData))
     delete(gateUserData.UserData,a)
 }
 

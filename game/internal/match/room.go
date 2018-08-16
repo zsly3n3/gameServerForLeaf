@@ -42,6 +42,9 @@ const offset = 400//出生点偏移量
 const offsetFrames = (1000/time_interval)*2 //多少帧复活
 
 type Room struct {
+
+    gameoverTimer *time.Timer
+
     Mutex *sync.RWMutex //读写互斥量
     IsOn bool //玩家是否能进入的开关
     players []string//玩家列表
@@ -163,6 +166,7 @@ func CreateRoom(r_type datastruct.GameModeType,connUUIDs []string,r_id string,pa
     }
     room := new(Room)
     room.Mutex = new(sync.RWMutex)
+    room.gameoverTimer = nil
     room.pid_auto = 0
     rebotsNum:=leastPeople-len(connUUIDs)
     room.createGameMap(map_factor)
@@ -552,6 +556,9 @@ func (room *Room)IsRemoveRoom()(bool,int,[]datastruct.Player,[]datastruct.Player
 func (room *Room)ComputeFrameData(){
      isRemove,currentFrameIndex,online_sync,offline_sync,syncNotFinishedPlayers,isRemoveHistory,expended_onlineConnUUID:=room.IsRemoveRoom()
      if isRemove{
+        if room.gameoverTimer != nil{
+           room.gameoverTimer.Stop()
+        }
         room.removeFromRooms()
         return
      }
@@ -1297,7 +1304,7 @@ func (room *Room)GetAllowList()[]string{
 
 func (room *Room)gameStart(){
     if room.unlockedData.roomType == datastruct.SinglePersonMode || room.unlockedData.roomType == datastruct.InviteMode{
-        time.AfterFunc(MaxPlayingTime,func(){
+        room.gameoverTimer=time.AfterFunc(MaxPlayingTime,func(){
             content:=new(msg.SC_GameOverDataContent)
             content.RoomId = room.unlockedData.roomId
             msg:=msg.GetGameOverMsg(content)
