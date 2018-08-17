@@ -8,8 +8,8 @@ import (
     "github.com/name5566/leaf/gate"
     "github.com/name5566/leaf/network/json"
     "server/thirdParty"
-    "server/tools"
-    //"github.com/name5566/leaf/log"
+    "server/tools"    
+    "github.com/name5566/leaf/log"
 )
 
 func handleMsg(m interface{}, h interface{}) {
@@ -28,13 +28,15 @@ func handleUserLogin(args []interface{}) {
     m := args[0].(*msg.CS_UserLogin)  
     // 消息的发送者  
     a := args[1].(gate.Agent)
-
+     
+    log.Debug("handleUserLogin_0")
     if m.MsgContent.Platform != msg.PC_Platform{
        str:=thirdParty.GetOpenID(m.MsgContent.Platform,m.MsgContent.LoginName)
         if str!=""{
            m.MsgContent.LoginName = str
         }
     }
+    log.Debug("handleUserLogin_1")
     avatar:= m.MsgContent.Avatar
     if avatar == datastruct.NULLSTRING{
         avatar = tools.GetDefaultAvatar()
@@ -46,8 +48,8 @@ func handleUserLogin(args []interface{}) {
     //log.Debug("RemoteAddr %v", a.RemoteAddr().String())//客户端地址
 	// log.Debug("LocalAddr %v", a.LocalAddr().String())//服务器本机地址
 
-    var msgHeader json.MsgHeader
-    msgHeader.MsgName = "SC_UserLogin"
+   var msgHeader json.MsgHeader
+   msgHeader.MsgName = "SC_UserLogin"
 
    var msgContent msg.SC_UserLoginContent
    msgContent.Uid =uid
@@ -70,7 +72,6 @@ func handleUserLogin(args []interface{}) {
       //log.Debug("a UserData:%v",a.UserData())
       //log.Release("a UserData:%v",a.UserData())
    }
-   
    a.WriteMsg(&msg.SC_UserLogin{
         MsgHeader:msgHeader,
         MsgContent:msgContent,
