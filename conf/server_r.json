@@ -1,6 +1,6 @@
 {
 	"LogLevel":"debug",
-	"LogPath":"",
+	"LogPath":"log",
 	"TCPAddr":"0.0.0.0:3563",
 	"WSAddr":"0.0.0.0:443",
 	"CertFile":"gameapi.pem",

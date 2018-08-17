@@ -191,6 +191,8 @@ func IsValid(a gate.Agent) bool{//判断此连接是否有效
     if !tf{
       log.Debug("all_UserData:%v",gateUserData.UserData)
       log.Error("Conn isValid,ip:%v",ip_str)
+      a.Close()
+      a.Destroy()
     }
     // tf:=true
     // if data == nil{

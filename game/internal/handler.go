@@ -313,6 +313,8 @@ func playerLeftRoom(connUUID string,mode datastruct.GameModeType,r_id string){
 func startMatching(args []interface{},mode datastruct.GameModeType){
     a := args[1].(gate.Agent)
     if !tools.IsValid(a){
+       a.Close()
+       a.Destroy()
        return
     }
     agentUserData := tools.GetUserData(a)
