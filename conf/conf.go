@@ -15,7 +15,7 @@ var (
 	PendingWriteNum        = 2000
 	MaxMsgLen       uint32 = 4096*1024
 	HTTPTimeout            = 10 * time.Second
-	LenMsgLen              = 4
+	LenMsgLen              = 2
 	LittleEndian           = false
 
 	// skeleton conf
