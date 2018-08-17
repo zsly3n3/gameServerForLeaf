@@ -18,7 +18,7 @@ func handleMsg(m interface{}, h interface{}) {
 
 func init() {
     // 向当前模块（login 模块）注册 UserLogin 消息的消息处理函数 handleUserLogin  
-    handleMsg(&msg.CS_UserLogin{}, handleUserLogin)
+    //handleMsg(&msg.CS_UserLogin{}, handleUserLogin)
    
 }
 
