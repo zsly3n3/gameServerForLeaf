@@ -186,9 +186,11 @@ func UniqueIdFromInt()string{
 func IsValid(a gate.Agent) bool{//判断此连接是否有效
     gateUserData.Mutex.RLock()
     defer gateUserData.Mutex.RUnlock()
-    _,tf:=gateUserData.UserData[a]
+    ip_str:=a.RemoteAddr().String()
+    _,tf:=gateUserData.UserData[ip_str]
     if !tf{
-      log.Error("Conn isValid")
+      log.Debug("all_UserData:%v",gateUserData.UserData)
+      log.Error("Conn isValid,ip:%v",ip_str)
     }
     // tf:=true
     // if data == nil{
@@ -209,7 +211,7 @@ func ReSetAgentUserData(uid int,mode datastruct.GameModeType,PlayId int,a gate.A
     gateUserData.Mutex.Lock()
     defer gateUserData.Mutex.Unlock()
     if gateUserData.UserData == nil && len(gateUserData.UserData)<=0{ 
-       gateUserData.UserData = make(map[gate.Agent]datastruct.AgentUserData)
+       gateUserData.UserData = make(map[string]datastruct.AgentUserData)
     }
     userData:=datastruct.AgentUserData{
             ConnUUID:connUUID,
@@ -218,19 +220,21 @@ func ReSetAgentUserData(uid int,mode datastruct.GameModeType,PlayId int,a gate.A
             PlayId:PlayId,
             Extra:extra,
     }
-    gateUserData.UserData[a]=userData
+    ip_str:=a.RemoteAddr().String()
+    gateUserData.UserData[ip_str]=userData
+    log.Debug("save ip:%v,userdata:%v",ip_str,gateUserData.UserData[ip_str])
 }
 
 func GetUserData(a gate.Agent)*datastruct.AgentUserData{
     gateUserData.Mutex.RLock()
     defer gateUserData.Mutex.RUnlock()
-    data:=gateUserData.UserData[a]
+    data:=gateUserData.UserData[a.RemoteAddr().String()]
     return &data
 }
 func RemoveUserData(a gate.Agent){
     gateUserData.Mutex.Lock()
     defer gateUserData.Mutex.Unlock()
-    delete(gateUserData.UserData,a)
+    delete(gateUserData.UserData,a.RemoteAddr().String())
 }
 
 

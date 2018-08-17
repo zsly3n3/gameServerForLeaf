@@ -18,7 +18,7 @@ func handleMsg(m interface{}, h interface{}) {
 
 func init() {
     // 向当前模块（login 模块）注册 UserLogin 消息的消息处理函数 handleUserLogin  
-    //handleMsg(&msg.CS_UserLogin{}, handleUserLogin)
+    handleMsg(&msg.CS_UserLogin{}, handleUserLogin)
    
 }
 
@@ -29,14 +29,14 @@ func handleUserLogin(args []interface{}) {
     // 消息的发送者  
     a := args[1].(gate.Agent)
      
-    log.Debug("handleUserLogin_0")
+  
     if m.MsgContent.Platform != msg.PC_Platform{
        str:=thirdParty.GetOpenID(m.MsgContent.Platform,m.MsgContent.LoginName)
         if str!=""{
            m.MsgContent.LoginName = str
         }
     }
-    log.Debug("handleUserLogin_1")
+
     avatar:= m.MsgContent.Avatar
     if avatar == datastruct.NULLSTRING{
         avatar = tools.GetDefaultAvatar()
@@ -68,6 +68,7 @@ func handleUserLogin(args []interface{}) {
       extra.RoomID = datastruct.NULLSTRING
       extra.WaitRoomID = datastruct.NULLSTRING
       extra.IsSettle = false
+      log.Debug("nickname:%v,IP:%v",extra.PlayName,a.RemoteAddr().String())
       tools.ReSetAgentUserData(uid,mode,p_id,a,connUUID,extra)
       //log.Debug("a UserData:%v",a.UserData())
       //log.Release("a UserData:%v",a.UserData())
