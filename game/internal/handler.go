@@ -449,3 +449,25 @@ func leaveWaitRoom(w_id string,connUUID string){
 func sendInviteQRCode(r_id string,qrcode string){
     ptr_inviteModeMatch.SendInviteQRCode(r_id,qrcode)
 }
+
+func relogin(loginName string,a gate.Agent){
+    onlinePlayersData.Mutex.Lock()
+    defer onlinePlayersData.Mutex.Unlock()
+    agent,tf:=onlinePlayersData.LoginNames[loginName]
+    if tf{
+        agent.Close()
+        agent.Destroy()
+    }
+    onlinePlayersData.LoginNames[loginName]=a
+}
+
+func deleteOnlinePlayersData(ip_str string){
+    onlinePlayersData.Mutex.Lock()
+    defer onlinePlayersData.Mutex.Unlock()
+    for k,v := range onlinePlayersData.LoginNames{
+        if v.RemoteAddr().String() == ip_str{
+            delete(onlinePlayersData.LoginNames,k)
+            break
+        }
+    }
+}

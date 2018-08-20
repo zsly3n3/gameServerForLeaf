@@ -201,7 +201,19 @@ const (
 
 type GateUserData struct {
 	UserData map[string]AgentUserData
-	Mutex sync.RWMutex
+	Mutex *sync.RWMutex
+}
+
+type OnlinePlayersData struct {
+	LoginNames map[string]gate.Agent
+	Mutex *sync.Mutex
+}
+
+func CreateOnlinePlayersData() *OnlinePlayersData{
+	 onlinePlayersData := new(OnlinePlayersData)
+	 onlinePlayersData.Mutex = new(sync.Mutex)
+	 onlinePlayersData.LoginNames = make(map[string]gate.Agent)
+	 return onlinePlayersData
 }
 
 

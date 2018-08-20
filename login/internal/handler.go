@@ -5,6 +5,7 @@ import (
 	"reflect"
     "server/msg"
     "server/db"
+    "server/game"
     "github.com/name5566/leaf/gate"
     "github.com/name5566/leaf/network/json"
     "server/thirdParty"
@@ -29,14 +30,25 @@ func handleUserLogin(args []interface{}) {
     // 消息的发送者  
     a := args[1].(gate.Agent)
      
-  
+   
+    
+    if m.MsgContent.LoginName == datastruct.NULLSTRING{
+        loginFailed(a)
+        return
+    }
+    
     if m.MsgContent.Platform != msg.PC_Platform{
        str:=thirdParty.GetOpenID(m.MsgContent.Platform,m.MsgContent.LoginName)
         if str!=""{
            m.MsgContent.LoginName = str
         }
     }
-
+    
+    if m.MsgContent.LoginName == datastruct.NULLSTRING{
+        loginFailed(a)
+        return 
+    }
+   
     avatar:= m.MsgContent.Avatar
     if avatar == datastruct.NULLSTRING{
         avatar = tools.GetDefaultAvatar()
@@ -48,14 +60,8 @@ func handleUserLogin(args []interface{}) {
     //log.Debug("RemoteAddr %v", a.RemoteAddr().String())//客户端地址
 	// log.Debug("LocalAddr %v", a.LocalAddr().String())//服务器本机地址
 
-   var msgHeader json.MsgHeader
-   msgHeader.MsgName = "SC_UserLogin"
-
-   var msgContent msg.SC_UserLoginContent
-   msgContent.Uid =uid
-   if m.MsgContent.Platform != msg.PC_Platform{
-    msgContent.WXOpenID=m.MsgContent.LoginName
-   }
+   
+   
    //log.Debug("login uid:%v",uid)
    //log.Release("login uid:%v",uid)
    if uid > 0{
@@ -68,16 +74,42 @@ func handleUserLogin(args []interface{}) {
       extra.RoomID = datastruct.NULLSTRING
       extra.WaitRoomID = datastruct.NULLSTRING
       extra.IsSettle = false
-      log.Debug("nickname:%v,IP:%v",extra.PlayName,a.RemoteAddr().String())
-      tools.ReSetAgentUserData(uid,mode,p_id,a,connUUID,extra)
-      //log.Debug("a UserData:%v",a.UserData())
-      //log.Release("a UserData:%v",a.UserData())
-   }
-   a.WriteMsg(&msg.SC_UserLogin{
+      
+      var msgHeader json.MsgHeader
+      msgHeader.MsgName = "SC_UserLogin"
+      var msgContent msg.SC_UserLoginContent
+      msgContent.IsSuccessed = 1
+      msgContent.Uid =uid
+      if m.MsgContent.Platform != msg.PC_Platform{
+        msgContent.WXOpenID=m.MsgContent.LoginName
+      }
+      a.WriteMsg(&msg.SC_UserLogin{
         MsgHeader:msgHeader,
         MsgContent:msgContent,
-   })
+      })
+      log.Debug("nickname:%v,IP:%v",extra.PlayName,a.RemoteAddr().String())
+      tools.ReSetAgentUserData(uid,mode,p_id,a,connUUID,extra)
+      game.Module.Relogin(m.MsgContent.LoginName,a)
+      //log.Debug("a UserData:%v",a.UserData())
+      //log.Release("a UserData:%v",a.UserData())
+   }else{
+      loginFailed(a)
+   }
+   
     
+}
+
+func loginFailed(a gate.Agent){
+    var msgHeader json.MsgHeader
+    msgHeader.MsgName = "SC_UserLogin"
+    var msgContent msg.SC_UserLoginContent
+    msgContent.IsSuccessed = 0
+    a.WriteMsg(&msg.SC_UserLogin{
+        MsgHeader:msgHeader,
+        MsgContent:msgContent,
+    })
+    a.Close()
+    a.Destroy()
 }
 
 

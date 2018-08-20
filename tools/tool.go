@@ -16,9 +16,17 @@ import (
     "server/conf"
     "github.com/360EntSecGroup-Skylar/excelize"
     "server/tools/snowFlakeByGo"
+    "sync"
 )
 
 var gateUserData datastruct.GateUserData
+
+func CreateGateUserData(){
+	var new_gateUserData datastruct.GateUserData
+	new_gateUserData.Mutex = new(sync.RWMutex)
+	new_gateUserData.UserData = make(map[string]datastruct.AgentUserData)
+	gateUserData = new_gateUserData
+}
 
 func randInt(min int,max int) int {
     return min + rand.Intn(max-min)
@@ -212,9 +220,6 @@ func ReSetAgentUserData(uid int,mode datastruct.GameModeType,PlayId int,a gate.A
     // })
     gateUserData.Mutex.Lock()
     defer gateUserData.Mutex.Unlock()
-    if gateUserData.UserData == nil && len(gateUserData.UserData)<=0{ 
-       gateUserData.UserData = make(map[string]datastruct.AgentUserData)
-    }
     userData:=datastruct.AgentUserData{
             ConnUUID:connUUID,
             Uid:uid,
@@ -472,7 +477,6 @@ func GetGameIntegral(rank int) int{
 func GetDefaultAvatar() string{
     return conf.Server.RemoteHttpServer+"/robotAvatar/DefaultAvatar.jpg"
 }
-
 
 func RandInt(min int,max int) int {
      return min + rand.Intn(max-min)

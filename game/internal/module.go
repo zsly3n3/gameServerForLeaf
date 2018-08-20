@@ -6,6 +6,8 @@ import (
 	"server/game/internal/match/singleMatch"
 	"server/game/internal/match/endlessModeMatch"
 	"server/game/internal/match/inviteModeMatch"
+	"server/datastruct"
+	"github.com/name5566/leaf/gate"
 )
 
 var (
@@ -14,6 +16,7 @@ var (
 	ptr_singleMatch=singleMatch.NewSingleMatch()
 	ptr_endlessModeMatch=endlessModeMatch.NewEndlessModeMatch()
 	ptr_inviteModeMatch=inviteModeMatch.NewInviteModeMatch()
+	onlinePlayersData = datastruct.CreateOnlinePlayersData()
 )
 
 type Module struct {
@@ -28,7 +31,10 @@ func (m *Module) OnInit() {
 func (m *Module) OnDestroy() {
 }
 
-
+/*多次登录,踢掉关键的在线玩家*/
+func (m *Module)Relogin(loginName string,a gate.Agent){
+     relogin(loginName,a)
+}
 
 
 

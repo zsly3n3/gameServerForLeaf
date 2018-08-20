@@ -83,9 +83,6 @@ type CS_UserLoginContent struct {
 	Platform string //告知服务端是从哪家平台发送过来的,比如"微信","QQ"
 }
 
-
-
-
 /*服务端发送给客户端*/
 type SC_UserLogin struct {
     MsgHeader json.MsgHeader
@@ -94,8 +91,8 @@ type SC_UserLogin struct {
 type SC_UserLoginContent struct {
 	Uid int //生成的用户id;为-1时,代表没登陆成功
 	WXOpenID string //微信openid
+	IsSuccessed int//0表示登录失败,1是成功
 }
-
 
 /*玩家开始单人匹配模式*/
 type CS_PlayerMatching struct {
@@ -475,6 +472,8 @@ type SC_GetKillNumContent struct {
 	KillNumRank *datastruct.PlayerKillNum
 	ArrayData []datastruct.PlayerRankKillNumData
 }
+
+
 
 func GetSnakeLengthMsg(mode datastruct.GameModeType,lengthRank *datastruct.PlayerScore,arrayData []datastruct.PlayerRankScoreData) *SC_GetSnakeLength{
 	var msgHeader json.MsgHeader

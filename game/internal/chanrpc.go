@@ -53,6 +53,7 @@ func removeOnlinePlayer(args []interface{}){
 		}
 	}
 	if a != nil{
+	   deleteOnlinePlayersData(a.RemoteAddr().String())
 	   tools.RemoveUserData(a)
 	   a.Close()
 	   a.Destroy()
