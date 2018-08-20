@@ -46,6 +46,7 @@ func handleUserLogin(args []interface{}) {
     
     if m.MsgContent.LoginName == datastruct.NULLSTRING{
         loginFailed(a)
+        
         return 
     }
    
@@ -65,6 +66,7 @@ func handleUserLogin(args []interface{}) {
    //log.Debug("login uid:%v",uid)
    //log.Release("login uid:%v",uid)
    if uid > 0{
+
       connUUID:=tools.UniqueId()
       mode:=datastruct.NULLMode
       p_id:=datastruct.NULLID

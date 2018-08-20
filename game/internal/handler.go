@@ -454,11 +454,11 @@ func relogin(loginName string,a gate.Agent){
     onlinePlayersData.Mutex.Lock()
     defer onlinePlayersData.Mutex.Unlock()
     agent,tf:=onlinePlayersData.LoginNames[loginName]
-    if tf{
+    onlinePlayersData.LoginNames[loginName]=a
+    if tf && agent.RemoteAddr().String() != a.RemoteAddr().String(){
         agent.Close()
         agent.Destroy()
     }
-    onlinePlayersData.LoginNames[loginName]=a
 }
 
 func deleteOnlinePlayersData(ip_str string){

@@ -6,7 +6,6 @@ import (
 	"server/game/internal/match"
 	"server/game/internal/match/inviteModeMatch"
 	"server/thirdParty"
-	"github.com/name5566/leaf/log"
 	"server/tools"
 )
 
@@ -57,6 +56,5 @@ func removeOnlinePlayer(args []interface{}){
 	   tools.RemoveUserData(a)
 	   a.Close()
 	   a.Destroy()
-	   log.Debug("client Close & Destroy")
 	}
 }
