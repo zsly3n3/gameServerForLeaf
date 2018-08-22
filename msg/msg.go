@@ -236,8 +236,8 @@ type EnergyPointType int
 //能量点类型
 const (
 	TypeA EnergyPointType= 1 +iota
-    TypeB 
-    TypeC 
+    TypeB
+    TypeC
     TypeD
 )
 
@@ -681,10 +681,11 @@ func GetPower(e_type EnergyPointType) int {
 	   case TypeA:
 		 power=10
 	   case TypeB:
-		 power=20
+		 power=10
 	   case TypeC:
-		 power=36
-	   case TypeD: 
+		 power=10
+	   case TypeD:
+		 power=10
 	 }
 	 return power
 }

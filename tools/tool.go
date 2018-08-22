@@ -76,7 +76,6 @@ func GetCreatePlayerPoint(quad msg.Quadrant,index int) msg.Point {
 }
 
 func GetRandomPoint(num1 int,num2 int,quad []msg.Quadrant)[]datastruct.EnergyPoint{
-    //  num1,num2:=GetEnergyNum(msg.TypeA,msg.TypeB,num,maxpower) 
      slice_point:=make([]datastruct.EnergyPoint,0,num1+num2)
      slice_point=append(slice_point,getQuadrantPoints(num1,msg.TypeA,quad)...)
      slice_point=append(slice_point,getQuadrantPoints(num2,msg.TypeB,quad)...)

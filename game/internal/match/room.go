@@ -29,8 +29,8 @@ var MaxPlayingTime time.Duration
 
 const FirstFrameIndex = 0//第一帧索引
 
-const MaxEnergyPower = 2000 //全场最大能量值
-const InitEnergyPower = 1000 //地图初始化的能量值
+const MaxEnergyPower = 1600 //全场最大能量值
+const InitEnergyPower = 800 //地图初始化的能量值
 const PerFramePower = 30 //每帧能量30，1秒能量600
 const InitEnergy_A=60
 const InitEnergy_B=20
@@ -435,14 +435,14 @@ func(room *Room)Join(connUUID string,player datastruct.Player,force bool) bool{
     return isOn
 }
 
-func (room*Room)goCreatePoints(maxRangeType msg.EnergyPointType){
-     for {
-        points:=tools.GetRandomPoint(PerFrameEnergy_A,PerFrameEnergy_B,room.unlockedData.pointData.quadrant)
-        isClosed := safeSendPoint(room.unlockedData.points_ch,points)
-        if isClosed{
+func (room*Room)goCreatePoints(){
+    for {
+       points:=tools.GetRandomPoint(PerFrameEnergy_A,PerFrameEnergy_B,room.unlockedData.pointData.quadrant)
+       isClosed := safeSendPoint(room.unlockedData.points_ch,points)
+       if isClosed{
             break
-        }
-     }
+       }
+    }
 }
 
 func (room*Room)goCreateMovePoint(){
@@ -712,7 +712,7 @@ func (room *Room)createRoomUnlockedData(r_type datastruct.GameModeType,connUUIDs
     unlockedData.maxPeopleInRoom = maxPeopleInRoom
     unlockedData.roomType = r_type
     room.unlockedData = unlockedData
-    go room.goCreatePoints(msg.TypeB)
+    go room.goCreatePoints()
     go room.goCreateMovePoint()
 }
 
